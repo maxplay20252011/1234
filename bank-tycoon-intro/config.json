@@ -1,129 +1,174 @@
 {
   "meta": {
-    "project": "Bank Tycoon Intro",
+    "project": "Bank Tycoon Intro — pixel art",
     "channel": "MAXWER",
-    "note": "Editá SOLO este archivo para cambiar textos, colores, tiempos y beats. No hace falta tocar código."
+    "note": "Editá SOLO este archivo para cambiar textos, paleta, tiempos y beats. No hace falta tocar código."
   },
   "text": {
-    "kicker": "SERIE NUEVA",
     "title": "BANK TYCOON",
     "titleLayout": "auto",
-    "tagline": "EL BANCO MAS RICO DE MINECRAFT",
-    "brand": "MAXWER"
+    "brand": "MAXWER",
+    "hudLabel": "SALDO",
+    "coinFrom": 0,
+    "coinTo": 999999,
+    "coinPrefix": "$"
   },
-  "colors": {
-    "bg": "#0B0B0F",
-    "gold": "#FFC531",
-    "goldDeep": "#F2A33C",
-    "money": "#3BD16F",
-    "white": "#FFFFFF",
-    "outline": "#000000",
-    "grid": "#FFC531"
+  "palette": {
+    "gold": [
+      "#FCEE4B",
+      "#F8C627",
+      "#9C7B1E"
+    ],
+    "emerald": [
+      "#17DD62",
+      "#0FA84A"
+    ],
+    "iron": [
+      "#D8D8D8",
+      "#A8A8A8"
+    ],
+    "stone": [
+      "#7F7F7F",
+      "#5B5B5B"
+    ],
+    "wood": [
+      "#9C7B4E",
+      "#6E5433",
+      "#4A3722"
+    ],
+    "bg": "#0D0D12",
+    "text": "#FFFFFF",
+    "textShadow": "#3F3F3F",
+    "hudBack": "#3F3F3F",
+    "hudSlot": "#5B5B5B"
   },
-  "fonts": {
-    "display": {
-      "family": "Anton",
-      "file": "assets/fonts/Anton-Regular.ttf",
-      "fallback": "Impact, 'Arial Black', 'DejaVu Sans', sans-serif"
+  "pixel": {
+    "grid": 16,
+    "faceBrightness": {
+      "top": 1.0,
+      "front": 0.8,
+      "side": 0.6
     },
-    "pixel": {
-      "family": "PressStart2P",
-      "file": "assets/fonts/PressStart2P-Regular.ttf",
-      "fallback": "'Courier New', 'DejaVu Sans Mono', monospace"
-    }
+    "edgeDarken": 0.9,
+    "textureSeed": 1337
   },
   "timeline": {
     "fps": 60,
+    "ticksPerSecond": 20,
     "duration": 4.0,
     "baseDuration": 4.0,
     "seed": 20252011
   },
   "variants": {
     "short": {
-      "duration": 1.2
+      "duration": 1.2,
+      "beats": {
+        "drop": {
+          "enabled": false
+        },
+        "vault": {
+          "enabled": false
+        },
+        "chest": {
+          "enabled": false
+        },
+        "title": {
+          "start": 0.0,
+          "end": 0.6
+        },
+        "hud": {
+          "start": 0.6,
+          "end": 1.0
+        },
+        "burst": {
+          "start": 1.0,
+          "end": 1.2
+        }
+      }
     }
   },
   "formats": {
     "vertical": {
       "width": 1080,
       "height": 1920,
-      "titleScale": 1.0,
+      "lowWidth": 270,
+      "lowHeight": 480,
       "safeTop": 120,
       "safeBottom": 320,
-      "safeSide": 90,
-      "brandCorner": "top-right",
-      "stageY": -0.05,
-      "stageZoom": 1.0
+      "safeSide": 60,
+      "sceneY": 0.2833,
+      "titleY": 0.4833,
+      "hudY": 0.7083,
+      "titleLines": 2
     },
     "horizontal": {
       "width": 1920,
       "height": 1080,
-      "titleScale": 0.78,
+      "lowWidth": 480,
+      "lowHeight": 270,
       "safeTop": 60,
       "safeBottom": 80,
       "safeSide": 120,
-      "brandCorner": "bottom-right",
-      "stageY": -0.02,
-      "stageZoom": 0.7
+      "sceneY": 0.3,
+      "titleY": 0.55,
+      "hudY": 0.72,
+      "titleLines": 1
     }
   },
-  "camera": {
-    "isoX": 60,
-    "isoZ": 45,
-    "perspective": 5200,
-    "shakeAmp": 1.0
+  "scene": {
+    "footprint": 11,
+    "wallHeight": 3,
+    "chestFootprint": 7,
+    "goldChance": 0.22
   },
   "beats": {
-    "grid": {
+    "drop": {
       "enabled": true,
       "start": 0.0,
-      "end": 0.5,
-      "cell": 76,
-      "lineWidth": 1.5,
-      "shake": 1.0
+      "end": 0.45,
+      "fallBlocks": 26,
+      "bounceTicks": 2,
+      "dust": 46,
+      "blockScale": 3
     },
     "vault": {
       "enabled": true,
-      "start": 0.5,
-      "end": 1.3,
-      "cubeSize": 92,
-      "moneyRatio": 0.16,
-      "billRatio": 0.1,
-      "fallHeight": 14,
-      "stagger": 0.62
+      "start": 0.45,
+      "end": 1.2,
+      "ticksPerPlace": 2,
+      "blocksPerStep": 0,
+      "shakePx": 1
     },
-    "door": {
+    "chest": {
       "enabled": true,
-      "start": 1.3,
-      "end": 2.2,
-      "openDeg": 108,
-      "wheelTurns": 1.75,
-      "sweep": true
+      "start": 1.2,
+      "end": 2.0,
+      "lidFrames": 4,
+      "items": 9,
+      "spinFrames": 8,
+      "bobPx": 3
     },
     "title": {
       "enabled": true,
-      "start": 2.2,
-      "end": 3.1,
-      "fromScale": 1.15,
-      "toScale": 1.0,
-      "fromBlur": 8,
-      "fromTracking": 22,
-      "toTracking": 2,
-      "strokePx": 16,
-      "shadowPx": 12
+      "start": 2.0,
+      "end": 2.9,
+      "ticksPerLetter": 1,
+      "fallBlocks": 9,
+      "shadowOffset": 1
     },
-    "brand": {
+    "hud": {
       "enabled": true,
-      "start": 3.1,
-      "end": 3.7,
-      "coins": 34
+      "start": 2.9,
+      "end": 3.6,
+      "barWidth": 176,
+      "barHeight": 7
     },
-    "flash": {
+    "burst": {
       "enabled": true,
-      "start": 3.7,
+      "start": 3.6,
       "end": 4.0,
-      "peak": 0.14,
-      "holdOut": 0.1
+      "particles": 130,
+      "flashTicks": 2
     }
   },
   "audio": {
@@ -136,34 +181,34 @@
     "bitrate": "192k",
     "cues": [
       {
-        "file": "01_grid_riser.wav",
-        "at": 0.0,
+        "file": "01_block_break.wav",
+        "at": 0.28,
+        "gain": 1.0
+      },
+      {
+        "file": "02_build.wav",
+        "at": 0.45,
         "gain": 0.9
       },
       {
-        "file": "02_blocks.wav",
-        "at": 0.5,
+        "file": "03_chest_open.wav",
+        "at": 1.2,
         "gain": 1.0
       },
       {
-        "file": "03_vault_door.wav",
-        "at": 1.3,
+        "file": "04_title.wav",
+        "at": 1.98,
         "gain": 1.0
       },
       {
-        "file": "04_title_impact.wav",
-        "at": 2.18,
-        "gain": 1.0
-      },
-      {
-        "file": "05_coins.wav",
-        "at": 3.1,
-        "gain": 0.8
-      },
-      {
-        "file": "06_flash_out.wav",
-        "at": 3.66,
+        "file": "05_levelup.wav",
+        "at": 2.9,
         "gain": 0.9
+      },
+      {
+        "file": "06_explode.wav",
+        "at": 3.58,
+        "gain": 1.0
       }
     ]
   },
@@ -177,18 +222,17 @@
       3.2,
       3.9
     ],
-    "legibilityScale": 0.3,
     "checkSafeArea": true
   },
   "encode": {
     "crf": 18,
     "preset": "slow",
     "pixFmt": "yuv420p",
+    "scaleFlags": "neighbor",
     "maxSizeMB": 8,
     "alpha": {
       "enabled": true,
-      "codec": "vp9",
-      "crf": 32
+      "crf": 24
     }
   }
 }

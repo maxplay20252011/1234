@@ -3,21 +3,24 @@
   "format": "vertical",
   "width": 1080,
   "height": 1920,
+  "lowWidth": 270,
+  "lowHeight": 480,
+  "upscale": 4,
   "fps": 60,
+  "ticksPerSecond": 20,
   "duration": 4,
   "frames": 240,
-  "alpha": "out/frames/vertical_4s_alpha",
   "dir": "out/frames/vertical_4s",
+  "alpha": "out/frames/vertical_4s_alpha",
   "safeArea": {
     "ok": true,
     "violations": [],
     "limits": {
       "top": 120,
       "bottom": 320,
-      "side": 90
+      "side": 60
     }
   },
-  "createdAt": "2026-08-24T02:33:57.533Z",
   "stills": [
     "out/preview/still_0.30s_vertical.png",
     "out/preview/still_1.00s_vertical.png",
@@ -25,6 +28,7 @@
     "out/preview/still_2.50s_vertical.png",
     "out/preview/still_3.20s_vertical.png",
     "out/preview/still_3.90s_vertical.png",
-    "out/preview/legibility_30pct_vertical.png"
-  ]
+    "out/preview/zoom8x_vertical.png"
+  ],
+  "createdAt": "2026-08-24T03:10:38.044Z"
 }

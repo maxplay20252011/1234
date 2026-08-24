@@ -3,96 +3,16 @@
 <head>
 <meta charset="utf-8">
 <title>Bank Tycoon — Intro MAXWER</title>
-<!-- Fuentes locales (SIL OFL). Se declaran dos rutas: la relativa sirve tanto
-     para file:// como para el server local de render.mjs. Si el archivo falta,
-     cae al fallback definido en config.json. -->
-<style>
-  @font-face{
-    font-family:'AntonLocal';
-    src:url('../assets/fonts/Anton-Regular.ttf') format('truetype'),
-        url('/assets/fonts/Anton-Regular.ttf') format('truetype');
-    font-weight:400; font-style:normal; font-display:block;
-  }
-  @font-face{
-    font-family:'PressStart2P';
-    src:url('../assets/fonts/PressStart2P-Regular.ttf') format('truetype'),
-        url('/assets/fonts/PressStart2P-Regular.ttf') format('truetype');
-    font-weight:400; font-style:normal; font-display:block;
-  }
-</style>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<!-- Un único canvas a resolución BAJA (270x480 en vertical).
+     El upscale x4 a 1080x1920 lo hace ffmpeg con nearest-neighbor:
+     así el píxel queda cuadrado y sin una gota de interpolación. -->
+<canvas id="stage"></canvas>
 
-<!-- ============================================================
-     ESTRUCTURA DE CAPAS (de atrás hacia adelante)
-     #bg      fondo sólido (se apaga en modo alfa)
-     #shake   wrapper del micro-shake de cámara
-       #grid    grilla isométrica dorada
-       #stage   escena 3D CSS (cubos voxel + bóveda + puerta)
-       #sweep   barrido de luz dorada
-       #coins   partículas de monedas
-       #ui      título, tagline y logo
-     #flash   destello final y corte
-     ============================================================ -->
-
-<div id="bg"></div>
-
-<div id="shake">
-
-  <!-- 0.00–0.50 · grilla isométrica que se dibuja desde el centro -->
-  <div id="grid">
-    <div class="grid-lines"></div>
-    <div class="grid-ring"></div>
-  </div>
-  <div id="vignette"></div>
-
-  <!-- 0.50–2.20 · cubos voxel + bóveda + puerta -->
-  <div id="stage">
-    <div id="scene">
-      <div id="voxels"></div>
-      <div id="doorMount">
-        <div class="door-frame"></div>
-        <div class="door-hinge">
-          <div class="door-disc">
-            <div class="door-ring"></div>
-            <div class="door-spokes"></div>
-            <div class="door-hub"></div>
-            <div class="door-wheel"></div>
-          </div>
-        </div>
-        <div class="door-hole"></div>
-      </div>
-    </div>
-    <div id="stageGlow"></div>
-  </div>
-
-  <!-- 1.30–2.20 · barrido de luz -->
-  <div id="sweep"><div class="sweep-bar"></div></div>
-
-  <!-- 3.10–3.70 · monedas -->
-  <div id="coins"></div>
-
-  <!-- 2.20–3.70 · tipografía -->
-  <div id="ui">
-    <div id="titleWrap">
-      <div id="kicker"></div>
-      <div id="title">
-        <div class="t-line" data-line="0"><span class="t-stroke"></span><span class="t-fill"></span></div>
-        <div class="t-line" data-line="1"><span class="t-stroke"></span><span class="t-fill"></span></div>
-      </div>
-      <div id="titleBar"></div>
-      <div id="tagline"></div>
-    </div>
-    <div id="brand"><span class="brand-dot"></span><span class="brand-name"></span></div>
-  </div>
-
-  <!-- Guías de zona segura: solo visibles con ?safe=1 -->
-  <div id="safeGuides"><div class="sg sg-top"></div><div class="sg sg-bottom"></div><div class="sg sg-left"></div><div class="sg sg-right"></div></div>
-</div>
-
-<div id="flash"></div>
-
+<script src="font.js"></script>
+<script src="blocks.js"></script>
 <script src="animation.js"></script>
 </body>
 </html>
