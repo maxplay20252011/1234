@@ -1,0 +1,28 @@
+{
+  "name": "tv-remote",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Control y casting de televisores en la red local. Self-hosted, sin nube.",
+  "type": "module",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "workspaces": [
+    "shared",
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "discover": "npm run discover -w server --",
+    "dev": "npm run dev -w server",
+    "dev:web": "npm run dev -w web",
+    "build": "npm run build -w shared && npm run build -w web && npm run build -w server",
+    "start": "npm run start -w server",
+    "typecheck": "tsc --noEmit -p shared && tsc --noEmit -p server && tsc --noEmit -p web",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.11"
+  }
+}
