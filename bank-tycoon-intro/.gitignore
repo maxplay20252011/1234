@@ -1,0 +1,11 @@
+node_modules/
+
+# Los frames PNG son intermedios y pesan cientos de MB: se regeneran con
+# node scripts/render.mjs
+out/frames/
+
+# Las versiones con alfa se regeneran con --with-alpha (VP9/ProRes son pesados)
+out/*_alpha.webm
+out/*_alpha.mov
+
+.DS_Store

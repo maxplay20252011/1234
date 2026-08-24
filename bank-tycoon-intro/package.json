@@ -1,0 +1,20 @@
+{
+  "name": "bank-tycoon-intro",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Intro animada 100% por codigo (HTML/CSS/JS + Puppeteer + FFmpeg) para el canal MAXWER.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "render": "node scripts/render.mjs --format=vertical",
+    "render:h": "node scripts/render.mjs --format=horizontal",
+    "render:short": "node scripts/render.mjs --format=vertical --variant=short",
+    "build": "bash scripts/build.sh",
+    "preview": "node scripts/render.mjs --serve"
+  },
+  "dependencies": {
+    "puppeteer": "^24.43.1"
+  }
+}

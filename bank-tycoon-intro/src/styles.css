@@ -1,0 +1,319 @@
+/* =========================================================================
+   Bank Tycoon — Intro MAXWER
+   Todo el look vive acá; los valores que cambian por config se inyectan
+   como variables CSS desde animation.js (--gold, --bg, --u, etc.).
+   REGLA DURA: acá NO hay @keyframes ni transition. Toda la animación la
+   calcula seek(t) en JS para que cada frame sea determinístico.
+   ========================================================================= */
+
+*{margin:0;padding:0;box-sizing:border-box}
+
+html,body{
+  width:100%;height:100%;overflow:hidden;background:transparent;
+  /* Render tipográfico estable frame a frame */
+  -webkit-font-smoothing:antialiased;
+  text-rendering:geometricPrecision;
+}
+
+:root{
+  --bg:#0B0B0F;
+  --gold:#FFC531;
+  --goldDeep:#F2A33C;
+  --money:#3BD16F;
+  --white:#fff;
+  --outline:#000;
+  --grid:#FFC531;
+  --u:1;                 /* unidad de escala = min(ancho,alto)/1080 */
+  --shakeX:0px; --shakeY:0px; --shakeR:0deg;
+}
+
+/* ---------- Fondo ---------- */
+#bg{position:fixed;inset:0;background:var(--bg);z-index:0}
+/* En modo alfa el fondo desaparece y el PNG sale con canal alfa real */
+html.alpha #bg{opacity:0}
+
+#shake{
+  position:fixed;inset:0;z-index:1;
+  transform:translate3d(var(--shakeX),var(--shakeY),0) rotate(var(--shakeR));
+  will-change:transform;
+}
+
+/* ---------- 0.00–0.50 · Grilla isométrica ---------- */
+#grid{
+  position:absolute;inset:0;opacity:0;
+  /* La máscara radial crece desde el centro: "se dibuja" la grilla */
+  -webkit-mask-image:radial-gradient(circle at 50% 50%,
+      #000 0%, #000 calc(var(--gridR) * 0.86), transparent var(--gridR));
+  mask-image:radial-gradient(circle at 50% 50%,
+      #000 0%, #000 calc(var(--gridR) * 0.86), transparent var(--gridR));
+  --gridR:0%;
+}
+.grid-lines{
+  position:absolute;inset:-60%;
+  background-image:
+    repeating-linear-gradient(30deg,  var(--grid) 0 var(--gw), transparent var(--gw) var(--gcell)),
+    repeating-linear-gradient(-30deg, var(--grid) 0 var(--gw), transparent var(--gw) var(--gcell)),
+    repeating-linear-gradient(90deg,  var(--gridDim) 0 var(--gw), transparent var(--gw) calc(var(--gcell) * 1.732));
+  opacity:.72;
+  --gw:1.5px; --gcell:72px;
+}
+/* Anillo brillante en el borde que avanza */
+.grid-ring{
+  position:absolute;inset:0;
+  /* Filo fino y brillante en el borde que avanza (no un anillo grueso) */
+  background:radial-gradient(circle at 50% 50%,
+      transparent calc(var(--gridR) * 0.972),
+      var(--gold) calc(var(--gridR) * 0.9885),
+      #fff calc(var(--gridR) * 0.994),
+      transparent var(--gridR));
+  opacity:.5;mix-blend-mode:screen;
+}
+/* En modo alfa el viñeteado se apaga: sobre el gameplay ensuciaría los bordes */
+html.alpha #vignette{display:none}
+#vignette{
+  position:absolute;inset:0;pointer-events:none;opacity:0;
+  background:radial-gradient(ellipse at 50% 45%, transparent 34%, rgba(0,0,0,.72) 100%);
+}
+
+/* ---------- 0.50–2.20 · Escena 3D ---------- */
+#stage{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  perspective:3000px;
+  opacity:0;
+}
+#scene{
+  position:relative;width:0;height:0;
+  transform-style:preserve-3d;
+  /* Cámara isométrica: rotateX(60) rotateZ(45). +Z del mundo = arriba en pantalla */
+  transform:translateY(var(--stageY,0px)) scale(var(--stageZoom,1))
+            rotateX(var(--isoX,60deg)) rotateZ(var(--isoZ,45deg));
+}
+#voxels{position:absolute;transform-style:preserve-3d}
+
+/* Cada cubo: 6 caras; backface-visibility oculta las 3 que no se ven.
+   Eso deja exactamente 3 caras dibujadas por cubo (+X, +Y, +Z). */
+/* Sin will-change: promover cada cubo a su propia capa hace que el
+   compositor redondee distinto entre corridas (ruido de ±1/255). */
+.cube{position:absolute;transform-style:preserve-3d}
+.cube .face{
+  position:absolute;left:0;top:0;
+  width:var(--s);height:var(--s);
+  backface-visibility:hidden;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.55);
+}
+.cube .fz  {transform:translate3d(-50%,-50%,0) translateZ(calc(var(--s)/2))}
+.cube .fnz {transform:translate3d(-50%,-50%,0) translateZ(calc(var(--s)/-2)) rotateX(180deg)}
+.cube .fx  {transform:translate3d(-50%,-50%,0) translateX(calc(var(--s)/2))  rotateY(90deg)}
+.cube .fnx {transform:translate3d(-50%,-50%,0) translateX(calc(var(--s)/-2)) rotateY(-90deg)}
+.cube .fy  {transform:translate3d(-50%,-50%,0) translateY(calc(var(--s)/2))  rotateX(-90deg)}
+.cube .fny {transform:translate3d(-50%,-50%,0) translateY(calc(var(--s)/-2)) rotateX(90deg)}
+
+/* Sombreado por cara: top clara, +X media, +Y oscura.
+   Los tres tonos se calculan en JS y entran como colores planos: usar
+   filter:brightness() metía un pase extra de compositing por cara. */
+.cube .fz, .cube .fnz {background:var(--cz)}
+.cube .fx, .cube .fnx {background:var(--cx)}
+.cube .fy, .cube .fny {background:var(--cy)}
+
+/* Detalle "billete": franja verde sobre la cara superior */
+.cube.bill .fz{
+  background:
+    linear-gradient(0deg, transparent 30%, rgba(255,255,255,.22) 30% 36%, transparent 36%),
+    linear-gradient(90deg, transparent 42%, rgba(0,0,0,.35) 42% 58%, transparent 58%),
+    var(--cz);
+}
+/* Detalle "lingote": brillo diagonal en la cara superior */
+.cube.gold .fz{
+  background:linear-gradient(135deg, rgba(255,255,255,.45) 0 18%, transparent 42%), var(--cz);
+}
+
+/* ---------- Puerta de la bóveda ---------- */
+/* El mount se orienta sobre la cara +X del cuerpo.
+   rotateY(90deg) la apoya en el plano; rotateZ(-90deg) endereza el "arriba". */
+#doorMount{
+  position:absolute;transform-style:preserve-3d;
+  width:var(--dw);height:var(--dw);
+  margin-left:calc(var(--dw)/-2);margin-top:calc(var(--dw)/-2);
+  opacity:0;
+}
+#doorMount .door-frame{
+  position:absolute;inset:0;
+  background:#141017;
+  box-shadow:inset 0 0 0 calc(6px * var(--u)) var(--goldDeep),
+             inset 0 0 0 calc(10px * var(--u)) #0a0a0d;
+}
+#doorMount .door-hole{
+  position:absolute;left:8%;top:8%;width:84%;height:84%;
+  border-radius:50%;
+  background:radial-gradient(circle at 50% 50%, var(--gold) 0%, var(--goldDeep) 38%, #3a2405 78%, #120b02 100%);
+  opacity:0;
+}
+.door-hinge{
+  position:absolute;left:8%;top:8%;width:84%;height:84%;
+  transform-style:preserve-3d;transform-origin:left center;
+  will-change:transform;
+}
+.door-disc{
+  position:absolute;inset:0;border-radius:50%;
+  background:
+    radial-gradient(circle at 34% 30%, #4a4a55 0%, #23232b 46%, #15151a 100%);
+  box-shadow:inset 0 0 0 calc(9px * var(--u)) var(--gold),
+             inset 0 0 calc(30px * var(--u)) rgba(0,0,0,.85),
+             0 0 calc(26px * var(--u)) rgba(0,0,0,.6);
+}
+.door-ring{
+  position:absolute;left:11%;top:11%;width:78%;height:78%;
+  border-radius:50%;
+  box-shadow:inset 0 0 0 calc(5px * var(--u)) var(--goldDeep);
+  opacity:.9;
+}
+/* 8 pernos + radios: se dibujan con gradientes cónicos, sin imágenes */
+.door-spokes{
+  position:absolute;left:18%;top:18%;width:64%;height:64%;
+  border-radius:50%;
+  background:conic-gradient(from 0deg,
+     var(--gold) 0 3deg, transparent 3deg 45deg,
+     var(--gold) 45deg 48deg, transparent 48deg 90deg,
+     var(--gold) 90deg 93deg, transparent 93deg 135deg,
+     var(--gold) 135deg 138deg, transparent 138deg 180deg,
+     var(--gold) 180deg 183deg, transparent 183deg 225deg,
+     var(--gold) 225deg 228deg, transparent 228deg 270deg,
+     var(--gold) 270deg 273deg, transparent 273deg 315deg,
+     var(--gold) 315deg 318deg, transparent 318deg 360deg);
+  opacity:.75;will-change:transform;
+}
+.door-hub{
+  position:absolute;left:38%;top:38%;width:24%;height:24%;
+  border-radius:50%;
+  background:radial-gradient(circle at 38% 34%, var(--gold), var(--goldDeep) 60%, #6b4406 100%);
+  box-shadow:0 0 0 calc(4px * var(--u)) #0a0a0d;
+}
+/* Volante/manivela de 4 brazos */
+.door-wheel{
+  position:absolute;left:26%;top:26%;width:48%;height:48%;
+  border-radius:50%;
+  background:
+    linear-gradient(0deg,  transparent 44%, var(--gold) 44% 56%, transparent 56%),
+    linear-gradient(90deg, transparent 44%, var(--gold) 44% 56%, transparent 56%);
+  box-shadow:inset 0 0 0 calc(6px * var(--u)) var(--gold);
+  -webkit-mask-image:radial-gradient(circle at 50% 50%, transparent 0 16%, #000 17%);
+  mask-image:radial-gradient(circle at 50% 50%, transparent 0 16%, #000 17%);
+  will-change:transform;
+}
+#stageGlow{
+  position:absolute;inset:0;pointer-events:none;opacity:0;
+  background:radial-gradient(circle at 50% 46%, rgba(255,197,49,.55) 0%, transparent 46%);
+  mix-blend-mode:screen;
+}
+
+/* ---------- 1.30–2.20 · Barrido de luz ---------- */
+#sweep{position:absolute;inset:0;overflow:hidden;pointer-events:none;opacity:0;mix-blend-mode:screen}
+.sweep-bar{
+  position:absolute;top:-30%;left:0;height:160%;width:46%;
+  transform:translateX(-140%) skewX(-18deg);
+  background:linear-gradient(90deg,
+     transparent 0%, rgba(255,197,49,.18) 22%, rgba(255,255,255,.92) 50%,
+     rgba(242,163,60,.30) 74%, transparent 100%);
+  filter:blur(calc(2px * var(--u)));
+}
+
+/* ---------- 3.10–3.70 · Monedas ---------- */
+#coins{position:absolute;inset:0;pointer-events:none}
+.coin{
+  position:absolute;left:0;top:0;
+  width:var(--cs);height:var(--cs);border-radius:50%;
+  background:radial-gradient(circle at 34% 30%, #fff6cf 0 12%, var(--gold) 40%, var(--goldDeep) 78%, #8a5a06 100%);
+  box-shadow:inset 0 0 0 calc(3px * var(--u)) rgba(0,0,0,.55);
+  will-change:transform,opacity;opacity:0;
+}
+.coin::after{
+  content:"";position:absolute;left:28%;top:22%;width:44%;height:16%;
+  border-radius:50%;background:rgba(255,255,255,.55);
+}
+
+/* ---------- 2.20–3.70 · Tipografía ---------- */
+#ui{position:absolute;inset:0;pointer-events:none}
+#titleWrap{
+  position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%);
+  width:100%;text-align:center;
+  opacity:0;will-change:transform,filter,opacity;
+}
+#kicker{
+  font-family:'PressStart2P', var(--fbPixel);
+  font-size:calc(26px * var(--u) * var(--tScale,1));
+  letter-spacing:calc(6px * var(--u));
+  color:var(--gold);
+  margin-bottom:calc(34px * var(--u));
+  opacity:0;
+  text-shadow:calc(4px * var(--u)) calc(4px * var(--u)) 0 #000;
+}
+#title{
+  font-family:'AntonLocal', var(--fbDisplay);
+  line-height:.92;
+  text-transform:uppercase;
+}
+.t-line{
+  position:relative;display:block;
+  font-size:calc(var(--tSize,190px) * var(--u) * var(--tScale,1));
+  letter-spacing:var(--tTrack,2px);
+  will-change:letter-spacing;
+}
+.t-line[data-line="1"]{margin-top:calc(4px * var(--u))}
+.t-line.empty{display:none}
+/* Capa de contorno (atrás) + capa de relleno (adelante):
+   técnica de dos capas, más confiable que paint-order en headless. */
+.t-stroke{
+  position:absolute;left:0;right:0;top:0;
+  color:var(--outline);
+  -webkit-text-stroke:var(--tStroke,16px) var(--outline);
+  text-shadow:
+     var(--tShadow,12px) var(--tShadow,12px) 0 var(--goldDeep),
+     calc(var(--tShadow,12px) * 1.9) calc(var(--tShadow,12px) * 1.9) 0 rgba(0,0,0,.85);
+}
+.t-fill{position:relative;color:var(--white)}
+#titleBar{
+  height:calc(12px * var(--u));width:0;max-width:76%;
+  margin:calc(26px * var(--u)) auto 0;
+  background:linear-gradient(90deg, var(--goldDeep), var(--gold), var(--goldDeep));
+  box-shadow:0 calc(6px * var(--u)) 0 rgba(0,0,0,.85);
+}
+#tagline{
+  font-family:'PressStart2P', var(--fbPixel);
+  font-size:calc(22px * var(--u) * var(--tScale,1));
+  letter-spacing:calc(2px * var(--u));
+  line-height:1.7;
+  color:var(--money);
+  margin-top:calc(34px * var(--u));
+  opacity:0;
+  text-shadow:calc(4px * var(--u)) calc(4px * var(--u)) 0 #000;
+}
+#brand{
+  position:absolute;display:flex;align-items:center;gap:calc(14px * var(--u));
+  font-family:'AntonLocal', var(--fbDisplay);
+  font-size:calc(52px * var(--u));
+  letter-spacing:calc(5px * var(--u));
+  color:var(--white);
+  padding:calc(12px * var(--u)) calc(22px * var(--u));
+  background:rgba(0,0,0,.55);
+  border:calc(4px * var(--u)) solid var(--gold);
+  text-shadow:calc(4px * var(--u)) calc(4px * var(--u)) 0 #000;
+  opacity:0;will-change:transform,opacity;
+}
+#brand .brand-dot{
+  width:calc(26px * var(--u));height:calc(26px * var(--u));
+  background:var(--money);box-shadow:0 0 0 calc(4px * var(--u)) #000;
+}
+
+/* ---------- 3.70–4.00 · Flash y corte ---------- */
+#flash{position:fixed;inset:0;z-index:99;background:var(--white);opacity:0;pointer-events:none}
+
+/* ---------- Guías de zona segura (debug: ?safe=1) ---------- */
+#safeGuides{position:absolute;inset:0;display:none;z-index:80;pointer-events:none}
+html.showsafe #safeGuides{display:block}
+.sg{position:absolute;background:rgba(255,0,90,.35)}
+.sg-top{left:0;right:0;top:0;height:var(--safeTop)}
+.sg-bottom{left:0;right:0;bottom:0;height:var(--safeBottom)}
+.sg-left{top:0;bottom:0;left:0;width:var(--safeSide)}
+.sg-right{top:0;bottom:0;right:0;width:var(--safeSide)}
