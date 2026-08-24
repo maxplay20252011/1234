@@ -10,8 +10,8 @@
   "ticksPerSecond": 20,
   "duration": 4,
   "frames": 240,
-  "dir": "out/frames/vertical_4s",
-  "alpha": "out/frames/vertical_4s_alpha",
+  "dir": null,
+  "alpha": null,
   "safeArea": {
     "ok": true,
     "violations": [],
@@ -30,5 +30,30 @@
     "out/preview/still_3.90s_vertical.png",
     "out/preview/zoom8x_vertical.png"
   ],
-  "createdAt": "2026-08-24T03:10:38.044Z"
+  "createdAt": "2026-08-24T03:38:37.182Z",
+  "colors": {
+    "max": 16,
+    "limit": 16,
+    "at": 1.35,
+    "ok": true,
+    "list": [
+      "#0D0D12",
+      "#3F3F3F",
+      "#9C7A4A",
+      "#6E5433",
+      "#FCEE4B",
+      "#5B5B5B",
+      "#7F7F7F",
+      "#C9C5BC",
+      "#ECE9E2",
+      "#A29E96",
+      "#F8C627",
+      "#9C7B1E",
+      "#B8945F",
+      "#FFFFFF",
+      "#6E2320",
+      "#A8322D"
+    ]
+  },
+  "walkSheet": "out/preview/walkcycle_vertical.png"
 }

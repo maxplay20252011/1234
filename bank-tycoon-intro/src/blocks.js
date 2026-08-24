@@ -1,32 +1,27 @@
 /* =========================================================================
    Bank Tycoon — intro MAXWER
-   blocks.js · Texturas procedurales y sprites de bloque isométricos.
+   blocks.js · Texturas procedurales 16x16 y tiles de bloque en vista lateral.
 
-   Nada de esto es un asset: cada textura de 16x16 se genera con ruido
-   determinístico a partir de una semilla, y cada cubo se rasteriza píxel
-   por píxel (sin transformaciones de canvas, así que no hay ni un pixel
-   interpolado ni una costura entre caras).
+   Nada acá es un asset: cada textura se genera con ruido determinístico a
+   partir de una semilla. La textura NO guarda colores, guarda ÍNDICES DE
+   TONO (0 claro / 1 medio / 2 oscuro). El color sale de la paleta de
+   config.json en el momento de armar el tile.
 
-   La textura NO guarda colores: guarda ÍNDICES DE TONO (0 = claro,
-   1 = medio, 2 = oscuro). El color sale de la paleta de config.json en el
-   momento de construir el sprite, y encima se aplica el brillo por cara
-   (superior 100%, frontal 80%, lateral 60%). Por eso cambiar la paleta en
-   el config cambia la intro sin tocar una línea de código.
+   Sombreado por caras, una sola dirección de luz (arriba-izquierda):
+     cara superior expuesta -> tonos claros (100%)
+     cuerpo del bloque      -> tonos medios (80%)
+     lateral derecho y base -> tono oscuro  (60%)
+   Y donde el bloque toca a otro va una línea de ambient occlusion de 1 px.
 
-   Proyección isométrica falsa 2:1, como los renders de bloque:
-       screenX = (gx - gy) * B/2
-       screenY = (gx + gy) * B/4 - gz * B
-   Con B = 16 todos los pasos son de 8 y 4 px: siempre enteros.
+   Como el sombreado ELIGE un tono de la rampa en vez de multiplicar el
+   color, la intro no inventa colores nuevos: se queda en la paleta de 16.
    ========================================================================= */
 (function () {
   'use strict';
 
-  const B = 16;            // lado del bloque en píxeles (grilla de 16)
-  const TH = B / 2;        // alto de la cara superior en la proyección 2:1
+  const T = 16;                       // lado de la textura en píxeles
 
   /* --------------------------- utilidades ------------------------------ */
-
-  // PRNG determinístico (mulberry32): misma semilla, misma textura siempre.
   function rng(seed) {
     let a = seed >>> 0;
     return function () {
@@ -43,11 +38,6 @@
     const v = parseInt(n, 16);
     return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
   }
-  function shade(hex, f) {
-    const [r, g, b] = hexToRgb(hex);
-    const c = x => Math.max(0, Math.min(255, Math.round(x * f)));
-    return 'rgb(' + c(r) + ',' + c(g) + ',' + c(b) + ')';
-  }
 
   function newCanvas(w, h) {
     const cv = document.createElement('canvas');
@@ -57,238 +47,197 @@
     return { cv, cx };
   }
 
-  /* ------------------- 1. Texturas 16x16 por tipo ---------------------- *
-   * Devuelven un Uint8Array de 16*16 con el índice de tono de cada texel. */
+  /* ------------------- Texturas: mapas de tono 16x16 ------------------- */
 
-  function texStone(seed) {
-    const r = rng(seed), m = new Uint8Array(B * B);
-    // Piedra: ruido plano con manchones sueltos más oscuros
-    for (let i = 0; i < m.length; i++) m[i] = r() < 0.34 ? 1 : 0;
-    for (let k = 0; k < 5; k++) {                       // manchones de 2x2
-      const x = (r() * (B - 1)) | 0, y = (r() * (B - 1)) | 0;
-      for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) m[(y + dy) * B + x + dx] = 1;
+  // Tablones horizontales de 4 px con juntas verticales escalonadas.
+  // Tilea sin costura en los dos ejes.
+  function texPlanks(seed) {
+    const r = rng(seed), m = new Uint8Array(T * T);
+    // Tablas de 8 px: dos por tile, como el roble de referencia.
+    for (let y = 0; y < T; y++) {
+      const row = (y / 8) | 0;
+      const joint = (row * 9 + 5) % T;               // junta desplazada por tabla
+      for (let x = 0; x < T; x++) {
+        let t = r() < 0.20 ? 1 : 0;                  // veta suave
+        if (y % 8 === 0) t = 0;                      // canto superior de la tabla
+        if (y % 8 === 7) t = 1;                      // sombra entre tablas (tono medio)
+        if (x === joint && row % 2 === 0) t = 1;     // junta vertical, una cada dos
+        if (r() < 0.03) t = 2;                       // nudos
+        m[y * T + x] = t;
+      }
     }
     return m;
   }
 
-  function texIron(seed) {
-    const r = rng(seed), m = new Uint8Array(B * B);
-    // Hierro: casi liso, con vetas verticales cortas
-    for (let i = 0; i < m.length; i++) m[i] = r() < 0.14 ? 1 : 0;
-    for (let k = 0; k < 7; k++) {
-      const x = (r() * B) | 0, y = (r() * (B - 4)) | 0, len = 2 + ((r() * 3) | 0);
-      for (let d = 0; d < len; d++) m[(y + d) * B + x] = 1;
-    }
+  // Tablones VERTICALES, para las hojas de la puerta
+  function texPlanksV(seed) {
+    const r = rng(seed), m = new Uint8Array(T * T);
+    for (let x = 0; x < T; x++)
+      for (let y = 0; y < T; y++) {
+        let t = r() < 0.26 ? 1 : 0;
+        if (x % 4 === 0) t = 0;
+        if (x % 4 === 3) t = 2;
+        if (r() < 0.06) t = 2;
+        m[y * T + x] = t;
+      }
     return m;
   }
 
-  function texGold(seed) {
-    const r = rng(seed), m = new Uint8Array(B * B);
-    // Oro: base media, brillos claros arriba-izquierda y vetas oscuras
+  // Piedra pulida: casi lisa, con manchones muy suaves
+  function texPolished(seed) {
+    const r = rng(seed), m = new Uint8Array(T * T);
     for (let i = 0; i < m.length; i++) m[i] = 1;
     for (let i = 0; i < m.length; i++) {
-      const x = i % B, y = (i / B) | 0;
-      const bias = (B - x + B - y) / (2 * B);           // más brillo arriba-izq
-      if (r() < 0.20 + bias * 0.22) m[i] = 0;
-      else if (r() < 0.20) m[i] = 2;
+      const v = r();
+      if (v < 0.10) m[i] = 0;
+      else if (v < 0.18) m[i] = 2;
     }
-    for (let k = 0; k < 4; k++) {                        // pepitas oscuras
-      const x = 1 + ((r() * (B - 3)) | 0), y = 1 + ((r() * (B - 3)) | 0);
-      m[y * B + x] = 2; m[y * B + x + 1] = 2; m[(y + 1) * B + x] = 2;
-    }
-    return m;
-  }
-
-  function texEmerald(seed) {
-    const r = rng(seed), m = new Uint8Array(B * B);
-    // Esmeralda: cristal romboidal claro sobre base oscura
-    for (let i = 0; i < m.length; i++) m[i] = 1;
-    for (let y = 0; y < B; y++) {
-      for (let x = 0; x < B; x++) {
-        const d = Math.abs(x - 7.5) + Math.abs(y - 7.5);
-        if (d < 6.5) m[y * B + x] = 0;
-        if (d < 6.5 && r() < 0.22) m[y * B + x] = 1;     // facetas
-      }
-    }
-    for (let i = 0; i < m.length; i++) if (r() < 0.08) m[i] = m[i] === 0 ? 1 : 0;
-    return m;
-  }
-
-  function texWood(seed) {
-    const r = rng(seed), m = new Uint8Array(B * B);
-    // Madera: tablas horizontales de 5px separadas por línea oscura + veta
-    for (let y = 0; y < B; y++) {
-      const plankEdge = (y % 5 === 4);
-      for (let x = 0; x < B; x++) {
-        let t = plankEdge ? 2 : (r() < 0.30 ? 1 : 0);
-        if (!plankEdge && r() < 0.09) t = 2;             // veta
-        m[y * B + x] = t;
-      }
+    for (let k = 0; k < 3; k++) {                     // vetas diagonales claras
+      let x = (r() * T) | 0, y = (r() * T) | 0;
+      for (let d = 0; d < 5; d++) m[((y + d) % T) * T + ((x + d) % T)] = 0;
     }
     return m;
   }
 
-  // Cofre: tablas oscuras con un fleje horizontal y un cerrojo (tono 2 = dorado)
-  function texChest(seed) {
-    const r = rng(seed), m = new Uint8Array(B * B);
-    for (let y = 0; y < B; y++)
-      for (let x = 0; x < B; x++)
-        m[y * B + x] = (y % 5 === 4) ? 1 : (r() < 0.26 ? 1 : 0);
-    for (let y = 6; y <= 8; y++) for (let x = 0; x < B; x++) m[y * B + x] = 2;   // fleje
-    for (let y = 4; y <= 11; y++) for (let x = 6; x <= 9; x++) m[y * B + x] = 2; // cerrojo
-    for (let y = 6; y <= 9; y++) for (let x = 7; x <= 8; x++) m[y * B + x] = 1;  // ojo de la cerradura
+  // Cuarzo: muy claro y parejo
+  function texQuartz(seed) {
+    const r = rng(seed), m = new Uint8Array(T * T);
+    for (let i = 0; i < m.length; i++) m[i] = r() < 0.20 ? 1 : 0;
+    for (let k = 0; k < 4; k++) m[((r() * T) | 0) * T + ((r() * T) | 0)] = 2;
+    return m;
+  }
+
+  // Oro: base media con brillos arriba-izquierda y pepitas oscuras
+  function texGold(seed) {
+    const r = rng(seed), m = new Uint8Array(T * T);
+    for (let i = 0; i < m.length; i++) {
+      const x = i % T, y = (i / T) | 0;
+      const bias = (T - x + T - y) / (2 * T);
+      m[i] = r() < 0.18 + bias * 0.28 ? 0 : (r() < 0.20 ? 2 : 1);
+    }
+    for (let k = 0; k < 4; k++) {
+      const x = 1 + ((r() * (T - 2)) | 0), y = 1 + ((r() * (T - 2)) | 0);
+      m[y * T + x] = 2; m[y * T + x + 1] = 2;
+    }
+    return m;
+  }
+
+  // Alfombra: trama tejida
+  function texCarpet(seed) {
+    const r = rng(seed), m = new Uint8Array(T * T);
+    for (let y = 0; y < T; y++)
+      for (let x = 0; x < T; x++)
+        m[y * T + x] = ((x + y) % 4 < 2) ? 0 : 1;
+    for (let i = 0; i < m.length; i++) if (r() < 0.06) m[i] = 2;
     return m;
   }
 
   const TEXTURES = {
-    stone: texStone, iron: texIron, gold: texGold,
-    emerald: texEmerald, wood: texWood, chest: texChest
+    planks: texPlanks, planksV: texPlanksV, polished: texPolished,
+    quartz: texQuartz, gold: texGold, carpet: texCarpet
   };
 
-  // Devuelve el mapa de tonos de un tipo de bloque (16x16)
   function makeToneMap(kind, seed) {
     const f = TEXTURES[kind];
-    if (!f) throw new Error('Tipo de bloque desconocido: ' + kind);
+    if (!f) throw new Error('Textura desconocida: ' + kind);
     return f(seed);
   }
 
-  /* ------------------- 2. Sprite de cubo isométrico -------------------- *
-   * Rasterizado a mano: para cada píxel del sprite se calcula a qué cara
-   * pertenece y qué texel le toca. Sin drawImage con transform => ni una
-   * costura, ni un píxel interpolado.
-   * Sprite: B de ancho, TH + h de alto (h = altura del bloque, 16 normal,
-   * 8 para una losa).                                                     */
-  function makeCubeSprite(tones, ramp, bright, opts) {
-    const o = opts || {};
-    const h = o.h === undefined ? B : o.h;
-    const edge = o.edgeDarken === undefined ? 0.9 : o.edgeDarken;
-    const { cv, cx } = newCanvas(B, TH + h);
-    const img = cx.createImageData(B, TH + h);
-    const d = img.data;
+  /* ------------------------- Tile 16x16 con caras ---------------------- *
+   * edges: bitmask  1 arriba · 2 derecha · 4 abajo · 8 izquierda
+   *        expuesto = ese lado da al aire.
+   *        edges === -1 => tile "plano", sin caras ni AO (para tilear pared)
+   */
+  function makeTile(tones, ramp, edges) {
+    const { cv, cx } = newCanvas(T, T);
+    const img = cx.createImageData(T, T), d = img.data;
+    const RGB = ramp.map(hexToRgb);
+    const up = !!(edges & 1), rt = !!(edges & 2), dn = !!(edges & 4), lf = !!(edges & 8);
+    const plain = edges === -1;
 
-    // Tabla de colores: [cara][tono] -> [r,g,b], y su versión de borde
-    const faces = ['top', 'front', 'side'];
-    const LUT = {};
-    for (const f of faces) {
-      LUT[f] = ramp.map(hex => {
-        const [r, g, b] = hexToRgb(hex), k = bright[f];
-        return [[r * k, g * k, b * k], [r * k * edge, g * k * edge, b * k * edge]]
-          .map(c => c.map(v => Math.max(0, Math.min(255, Math.round(v)))));
-      });
-    }
-
-    for (let py = 0; py < TH + h; py++) {
-      for (let px = 0; px < B; px++) {
-        const dx = px + 0.5, dy = py + 0.5;
-        let face = null, u = 0, v = 0;
-
-        // Cara superior (rombo): u,v se despejan de la afín 2:1
-        const tu = (dx) - 2 * (dy - TH / 2);
-        const tv = (dx) + 2 * (dy - TH / 2);
-        if (tu >= 0 && tu < B && tv >= 0 && tv < B) { face = 'top'; u = tu; v = tv; }
-        else if (dx < B / 2) {                       // cara frontal (izquierda)
-          u = 2 * dx;
-          v = (dy - TH / 2 - 0.25 * u) * B / h;
-          if (u >= 0 && u < B && v >= 0 && v < B) face = 'front';
-        } else {                                     // cara lateral (derecha)
-          u = 2 * (dx - B / 2);
-          v = (dy - TH + 0.25 * u) * B / h;
-          if (u >= 0 && u < B && v >= 0 && v < B) face = 'side';
+    for (let y = 0; y < T; y++) {
+      for (let x = 0; x < T; x++) {
+        const tone = tones[y * T + x];
+        let t;
+        if (plain) {
+          t = tone;
+        } else {
+          t = Math.max(1, tone);                     // cuerpo: cara frontal (80%)
+          if (up && y < 2) t = Math.min(1, tone);    // cara superior (100%)
+          if (lf && x === 0) t = Math.min(1, tone);  // canto izquierdo iluminado
+          if (rt && x === T - 1) t = 2;              // lateral derecho (60%)
+          if (dn && y === T - 1) t = 2;              // base (60%)
+          if (!up && y === 0) t = 2;                 // AO del bloque de arriba
+          if (!lf && x === 0) t = 2;                 // AO del bloque de al lado
         }
-        if (!face) continue;
-
-        const iu = Math.min(B - 1, Math.max(0, u | 0));
-        const iv = Math.min(B - 1, Math.max(0, v | 0));
-        const tone = tones[iv * B + iu];
-        const isEdge = (iu === B - 1 || iv === B - 1);
-        const c = LUT[face][Math.min(tone, ramp.length - 1)][isEdge ? 1 : 0];
-        const o4 = (py * B + px) * 4;
-        d[o4] = c[0]; d[o4 + 1] = c[1]; d[o4 + 2] = c[2]; d[o4 + 3] = 255;
+        const c = RGB[Math.min(t, RGB.length - 1)];
+        const o = (y * T + x) * 4;
+        d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
       }
     }
     cx.putImageData(img, 0, 0);
     return cv;
   }
 
-  /* ------------------- 3. Sprites de ítem (16x16) ---------------------- */
-
-  // Lingote de oro: trapecio con cara superior clara y frente medio/oscuro
-  function makeIngot(ramp) {
-    const { cv, cx } = newCanvas(B, B);
-    const img = cx.createImageData(B, B), d = img.data;
-    const put = (x, y, hex) => {
-      if (x < 0 || y < 0 || x >= B || y >= B) return;
-      const [r, g, b] = hexToRgb(hex), o = (y * B + x) * 4;
-      d[o] = r; d[o + 1] = g; d[o + 2] = b; d[o + 3] = 255;
+  /* Juego de tiles de un material, con caché por combinación de caras.
+     Se construyen los 16 casos una sola vez y después es puro blit.       */
+  function tileSet(kind, ramp, seed) {
+    const tones = makeToneMap(kind, seed);
+    const cache = new Map();
+    return {
+      tones,
+      get(edges) {
+        if (!cache.has(edges)) cache.set(edges, makeTile(tones, ramp, edges));
+        return cache.get(edges);
+      }
     };
-    for (let y = 3; y <= 6; y++) {                    // cara superior
-      const half = 3 + (y - 3);
-      for (let x = 8 - half; x < 8 + half; x++) put(x, y, ramp[0]);
-    }
-    for (let y = 7; y <= 12; y++) {                   // frente
-      const half = 6;
-      for (let x = 8 - half; x < 8 + half; x++) put(x, y, y >= 11 ? ramp[2] : ramp[1]);
-    }
-    for (let x = 2; x < 14; x++) put(x, 13, ramp[2]); // base
-    cx.putImageData(img, 0, 0);
+  }
+
+  // Rectángulo de color plano, útil para sombras y AO
+  function makeSolid(color, w, h) {
+    const { cv, cx } = newCanvas(w || T, h || T);
+    cx.fillStyle = color; cx.fillRect(0, 0, cv.width, cv.height);
     return cv;
   }
 
-  // Esmeralda: gema romboidal con brillo arriba-izquierda
-  function makeGem(ramp) {
-    const { cv, cx } = newCanvas(B, B);
-    const img = cx.createImageData(B, B), d = img.data;
-    for (let y = 1; y < B - 1; y++) {
-      for (let x = 1; x < B - 1; x++) {
-        const dd = Math.abs(x - 7.5) / 6.2 + Math.abs(y - 7.5) / 7.2;
-        if (dd > 1) continue;
-        const light = (x - 7.5) + (y - 7.5) < -2;
-        const hex = light ? ramp[0] : (dd > 0.72 ? ramp[1] : ramp[0]);
-        const o = (y * B + x) * 4, [r, g, b] = hexToRgb(hex);
-        d[o] = r; d[o + 1] = g; d[o + 2] = b; d[o + 3] = 255;
-      }
-    }
-    cx.putImageData(img, 0, 0);
-    return cv;
-  }
+  /* ------------------ Máscara de viñeta con dithering ------------------ *
+   * Oscurecer multiplicando inventaría colores nuevos y rompería el límite
+   * de 16. En su lugar se apagan píxeles sueltos al color de fondo con una
+   * matriz de Bayer 8x8: viñeta pixel art de verdad, sin colores nuevos.  */
+  const BAYER8 = (function () {
+    const m = [[0, 32, 8, 40, 2, 34, 10, 42], [48, 16, 56, 24, 50, 18, 58, 26],
+               [12, 44, 4, 36, 14, 46, 6, 38], [60, 28, 52, 20, 62, 30, 54, 22],
+               [3, 35, 11, 43, 1, 33, 9, 41], [51, 19, 59, 27, 49, 17, 57, 25],
+               [15, 47, 7, 39, 13, 45, 5, 37], [63, 31, 55, 23, 61, 29, 53, 21]];
+    return m;
+  })();
 
-  /* Fotogramas de giro en Y, como un item drop: el sprite se comprime
-     horizontalmente a anchos discretos. Muestreo nearest hecho a mano. */
-  function makeSpinFrames(src, n) {
-    const sctx = src.getContext('2d', { willReadFrequently: true });
-    const sd = sctx.getImageData(0, 0, src.width, src.height).data;
-    const out = [];
-    for (let f = 0; f < n; f++) {
-      const k = Math.cos((f / n) * Math.PI * 2);
-      const w = Math.max(1, Math.round(Math.abs(k) * src.width));
-      const { cv, cx } = newCanvas(src.width, src.height);
-      const img = cx.createImageData(src.width, src.height), d = img.data;
-      const x0 = ((src.width - w) / 2) | 0;
-      for (let y = 0; y < src.height; y++) {
-        for (let x = 0; x < w; x++) {
-          let sx = Math.min(src.width - 1, ((x + 0.5) / w * src.width) | 0);
-          if (k < 0) sx = src.width - 1 - sx;         // espejado en media vuelta
-          const so = (y * src.width + sx) * 4, dof = (y * src.width + x0 + x) * 4;
-          d[dof] = sd[so]; d[dof + 1] = sd[so + 1]; d[dof + 2] = sd[so + 2]; d[dof + 3] = sd[so + 3];
+  function makeVignette(w, h, color, strength, cyFrac, inner) {
+    const { cv, cx } = newCanvas(w, h);
+    const img = cx.createImageData(w, h), d = img.data;
+    const [r, g, b] = hexToRgb(color);
+    // El centro va bajo, a la altura de la acción: así el cielo/pared de
+    // arriba se apaga y el título entra sobre negro, sin colores nuevos.
+    const cxp = (w - 1) / 2, cyp = (h - 1) * (cyFrac === undefined ? 0.5 : cyFrac);
+    const maxD = Math.hypot(Math.max(cxp, w - cxp), Math.max(cyp, h - cyp));
+    const inn = inner === undefined ? 0.55 : inner;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const nd = Math.hypot(x - cxp, y - cyp) / maxD;
+        const k = Math.max(0, (nd - inn) / (1 - inn)) * strength;
+        const thr = (BAYER8[y & 7][x & 7] + 0.5) / 64;
+        if (k > thr) {
+          const o = (y * w + x) * 4;
+          d[o] = r; d[o + 1] = g; d[o + 2] = b; d[o + 3] = 255;
         }
       }
-      cx.putImageData(img, 0, 0);
-      out.push(cv);
     }
-    return out;
+    cx.putImageData(img, 0, 0);
+    return cv;
   }
-
-  /* ------------------- 4. Proyección isométrica ------------------------ */
-  // Esquina superior izquierda del sprite del bloque (gx,gy,gz)
-  function isoPos(gx, gy, gz) {
-    return { x: (gx - gy) * (B / 2), y: (gx + gy) * (B / 4) - gz * B };
-  }
-  // Clave de pintor: menor = más lejos. +x, +y y +z se dibujan después.
-  function isoDepth(gx, gy, gz) { return gx + gy + gz; }
 
   window.PixelBlocks = {
-    B, TH, rng, shade, hexToRgb, newCanvas,
-    makeToneMap, makeCubeSprite, makeIngot, makeGem, makeSpinFrames,
-    isoPos, isoDepth
+    T, rng, hexToRgb, newCanvas,
+    makeToneMap, makeTile, tileSet, makeSolid, makeVignette
   };
 })();

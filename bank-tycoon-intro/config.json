@@ -1,56 +1,88 @@
 {
   "meta": {
-    "project": "Bank Tycoon Intro — pixel art",
+    "project": "Bank Tycoon Intro — side-scroller pixel art",
     "channel": "MAXWER",
-    "note": "Editá SOLO este archivo para cambiar textos, paleta, tiempos y beats. No hace falta tocar código."
+    "note": "Editá SOLO este archivo. Textos, paleta, tiempos, beats y el color del personaje salen todos de acá."
   },
   "text": {
     "title": "BANK TYCOON",
     "titleLayout": "auto",
     "brand": "MAXWER",
-    "hudLabel": "SALDO",
+    "bankSign": "BANK",
     "coinFrom": 0,
     "coinTo": 999999,
     "coinPrefix": "$"
   },
   "palette": {
+    "bg": "#0D0D12",
+    "text": "#FFFFFF",
+    "shadow": "#3F3F3F",
+    "oak": [
+      "#B8945F",
+      "#9C7A4A",
+      "#6E5433"
+    ],
     "gold": [
       "#FCEE4B",
       "#F8C627",
       "#9C7B1E"
     ],
-    "emerald": [
-      "#17DD62",
-      "#0FA84A"
-    ],
-    "iron": [
-      "#D8D8D8",
-      "#A8A8A8"
+    "quartz": [
+      "#ECE9E2",
+      "#C9C5BC",
+      "#A29E96"
     ],
     "stone": [
       "#7F7F7F",
+      "#5B5B5B",
+      "#3F3F3F"
+    ],
+    "carpet": [
+      "#A8322D",
+      "#6E2320",
+      "#3F3F3F"
+    ],
+    "darkOak": [
+      "#9C7A4A",
+      "#6E5433",
+      "#3F3F3F"
+    ],
+    "wallNear": [
+      "#6E5433",
+      "#3F3F3F",
+      "#3F3F3F"
+    ],
+    "wallFar": [
+      "#3F3F3F",
+      "#3F3F3F",
+      "#0D0D12"
+    ]
+  },
+  "character": {
+    "skin": [
+      "#B8945F",
+      "#9C7A4A"
+    ],
+    "suit": [
+      "#7F7F7F",
       "#5B5B5B"
     ],
-    "wood": [
-      "#9C7B4E",
-      "#6E5433",
-      "#4A3722"
-    ],
-    "bg": "#0D0D12",
-    "text": "#FFFFFF",
-    "textShadow": "#3F3F3F",
-    "hudBack": "#3F3F3F",
-    "hudSlot": "#5B5B5B"
+    "shirt": "#FFFFFF",
+    "tie": "#F8C627",
+    "eye": "#0D0D12",
+    "xFrac": 0.355,
+    "legSwingDeg": 35,
+    "armSwingDeg": 30,
+    "cycleTicks": 10,
+    "poseTicks": 2,
+    "bobTexPx": 1,
+    "hair": "#3F3F3F"
   },
   "pixel": {
-    "grid": 16,
-    "faceBrightness": {
-      "top": 1.0,
-      "front": 0.8,
-      "side": 0.6
-    },
-    "edgeDarken": 0.9,
-    "textureSeed": 1337
+    "tile": 16,
+    "blockScale": 2,
+    "textureSeed": 1337,
+    "maxColors": 16
   },
   "timeline": {
     "fps": 60,
@@ -63,25 +95,26 @@
     "short": {
       "duration": 1.2,
       "beats": {
-        "drop": {
+        "fade": {
+          "start": 0.0,
+          "end": 0.12
+        },
+        "walk": {
           "enabled": false
         },
-        "vault": {
-          "enabled": false
-        },
-        "chest": {
-          "enabled": false
+        "stop": {
+          "start": 0.0,
+          "end": 0.35
         },
         "title": {
-          "start": 0.0,
-          "end": 0.6
+          "start": 0.35,
+          "end": 0.85
         },
         "hud": {
-          "start": 0.6,
-          "end": 1.0
+          "enabled": false
         },
         "burst": {
-          "start": 1.0,
+          "start": 0.85,
           "end": 1.2
         }
       }
@@ -96,10 +129,12 @@
       "safeTop": 120,
       "safeBottom": 320,
       "safeSide": 60,
-      "sceneY": 0.2833,
-      "titleY": 0.4833,
-      "hudY": 0.7083,
-      "titleLines": 2
+      "floorTop": 448,
+      "titleY": 0.0833,
+      "hudY": 0.3,
+      "titleLines": 2,
+      "bankRows": 8,
+      "bankFinalX": 40
     },
     "horizontal": {
       "width": 1920,
@@ -109,63 +144,62 @@
       "safeTop": 60,
       "safeBottom": 80,
       "safeSide": 120,
-      "sceneY": 0.3,
-      "titleY": 0.55,
-      "hudY": 0.72,
-      "titleLines": 1
+      "floorTop": 224,
+      "titleY": 0.13,
+      "hudY": 0.34,
+      "titleLines": 1,
+      "bankRows": 6,
+      "bankFinalX": 210
     }
   },
   "scene": {
-    "footprint": 11,
-    "wallHeight": 3,
-    "chestFootprint": 7,
-    "goldChance": 0.22
+    "walkSpeed": 14,
+    "parallaxFar": 0.4,
+    "parallaxNear": 0.75,
+    "nearWallRows": 6,
+    "bankCols": 6,
+    "vignette": 0.95,
+    "torchFlickerTicks": 3,
+    "dustPerStep": 4,
+    "vignetteCenterY": 0.72,
+    "vignetteInner": 0.42
   },
   "beats": {
-    "drop": {
+    "fade": {
       "enabled": true,
       "start": 0.0,
-      "end": 0.45,
-      "fallBlocks": 26,
-      "bounceTicks": 2,
-      "dust": 46,
-      "blockScale": 3
+      "end": 0.3
     },
-    "vault": {
+    "walk": {
       "enabled": true,
-      "start": 0.45,
-      "end": 1.2,
-      "ticksPerPlace": 2,
-      "blocksPerStep": 0,
-      "shakePx": 1
+      "start": 0.3,
+      "end": 1.8,
+      "bankEnterAt": 1.2
     },
-    "chest": {
+    "stop": {
       "enabled": true,
-      "start": 1.2,
-      "end": 2.0,
-      "lidFrames": 4,
-      "items": 9,
-      "spinFrames": 8,
-      "bobPx": 3
+      "start": 1.8,
+      "end": 2.3,
+      "turnFrames": 2,
+      "ingotDropTicks": 6,
+      "walkDownTicks": 6
     },
     "title": {
       "enabled": true,
-      "start": 2.0,
-      "end": 2.9,
+      "start": 2.3,
+      "end": 3.1,
       "ticksPerLetter": 1,
-      "fallBlocks": 9,
+      "fallBlocks": 5,
       "shadowOffset": 1
     },
     "hud": {
       "enabled": true,
-      "start": 2.9,
-      "end": 3.6,
-      "barWidth": 176,
-      "barHeight": 7
+      "start": 3.1,
+      "end": 3.65
     },
     "burst": {
       "enabled": true,
-      "start": 3.6,
+      "start": 3.65,
       "end": 4.0,
       "particles": 130,
       "flashTicks": 2
@@ -181,33 +215,33 @@
     "bitrate": "192k",
     "cues": [
       {
-        "file": "01_block_break.wav",
-        "at": 0.28,
-        "gain": 1.0
-      },
-      {
-        "file": "02_build.wav",
-        "at": 0.45,
+        "file": "01_footsteps.wav",
+        "at": 0.3,
         "gain": 0.9
       },
       {
-        "file": "03_chest_open.wav",
+        "file": "02_bank_reveal.wav",
         "at": 1.2,
+        "gain": 0.8
+      },
+      {
+        "file": "03_stop_ingot.wav",
+        "at": 1.95,
         "gain": 1.0
       },
       {
         "file": "04_title.wav",
-        "at": 1.98,
+        "at": 2.28,
         "gain": 1.0
       },
       {
-        "file": "05_levelup.wav",
-        "at": 2.9,
+        "file": "05_coins.wav",
+        "at": 3.1,
         "gain": 0.9
       },
       {
         "file": "06_explode.wav",
-        "at": 3.58,
+        "at": 3.63,
         "gain": 1.0
       }
     ]
@@ -222,7 +256,9 @@
       3.2,
       3.9
     ],
-    "checkSafeArea": true
+    "contactSheetAt": 0.6,
+    "checkSafeArea": true,
+    "checkColors": true
   },
   "encode": {
     "crf": 18,

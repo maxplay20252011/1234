@@ -202,6 +202,63 @@ async function renderStills(page) {
   return files;
 }
 
+/* ------------------ contact sheet del ciclo de caminata ---------------- *
+ * Los N ticks del ciclo, uno al lado del otro, para revisar la animación
+ * cuadro por cuadro sin abrir el video.                                   */
+async function renderContactSheet(page) {
+  const at = CFG.render.contactSheetAt ?? 0.6;
+  const b64 = await page.evaluate((at, zoom) => {
+    const I = window.INTRO;
+    const src = document.getElementById('stage');
+    const n = I.cycleTicks;                       // 10 ticks del ciclo
+    const cw = 80, ch = 96;                       // recorte alrededor del muñeco
+    const sx = Math.max(0, Math.round(I.charX - cw / 2));
+    const sy = Math.max(0, Math.round(I.floorTop - ch + 14));
+    const cols = 5, rows = Math.ceil(n / cols), pad = 4, lab = 12;
+    const cell = { w: cw * zoom, h: ch * zoom + lab };
+    const out = document.createElement('canvas');
+    out.width = cols * (cell.w + pad) + pad;
+    out.height = rows * (cell.h + pad) + pad;
+    const g = out.getContext('2d');
+    g.imageSmoothingEnabled = false;
+    g.fillStyle = I.config.palette.bg;
+    g.fillRect(0, 0, out.width, out.height);
+    for (let k = 0; k < n; k++) {
+      I.seek(at + k / I.ticksPerSecond);
+      const cxp = pad + (k % cols) * (cell.w + pad);
+      const cyp = pad + Math.floor(k / cols) * (cell.h + pad);
+      g.drawImage(src, sx, sy, cw, ch, cxp, cyp + lab, cell.w, cell.h - lab);
+      window.PixelFont.drawText(g, 'TICK ' + (Math.round(at * I.ticksPerSecond) + k), cxp + 2, cyp + 2, {
+        scale: 1, tracking: 1, color: I.config.palette.text,
+        shadowColor: I.config.palette.shadow, shadowOffset: 1
+      });
+      g.strokeStyle = I.config.palette.shadow;
+      g.lineWidth = 1;
+      g.strokeRect(cxp + 0.5, cyp + lab + 0.5, cell.w - 1, cell.h - lab - 1);
+    }
+    return out.toDataURL('image/png').split(',')[1];
+  }, at, 3);
+  const dir = path.join(OUT, 'preview');
+  await fsp.mkdir(dir, { recursive: true });
+  const file = path.join(dir, `walkcycle_${OPT.format}.png`);
+  await fsp.writeFile(file, Buffer.from(b64, 'base64'));
+  log(`  ciclo de caminata -> ${path.relative(ROOT, file)}`);
+  return path.relative(ROOT, file);
+}
+
+/* ---------------- control de paleta: máximo N colores a la vez --------- */
+async function checkColors(page) {
+  const tps = CFG.timeline.ticksPerSecond;
+  let worst = { count: 0, t: 0, colors: [] };
+  for (let k = 0; k <= Math.round(DURATION * tps); k++) {
+    const t = Math.min(k / tps, DURATION);
+    await seekTo(page, t);
+    const r = await page.evaluate(() => window.INTRO.colorCount());
+    if (r.count > worst.count) worst = { count: r.count, t: +t.toFixed(2), colors: r.colors };
+  }
+  return worst;
+}
+
 /* -------------------------- captura de frames -------------------------- */
 async function renderFrames(page, { alpha }) {
   const dir = path.join(OUT, 'frames', alpha ? `${TAG}_alpha` : TAG);
@@ -250,8 +307,10 @@ if (OPT.serve) {
   try {
     if (!OPT.alphaOnly) {
       const page = await openPage(browser, { alpha: false });
-      const info = await page.evaluate(() => ({ blocks: window.INTRO.blocks, tps: window.INTRO.ticksPerSecond }));
-      log(`  bóveda    ${info.blocks} bloques visibles\n`);
+      const info = await page.evaluate(() => ({
+        tps: window.INTRO.ticksPerSecond, poses: window.INTRO.poseCount, cyc: window.INTRO.cycleTicks
+      }));
+      log(`  caminata  ciclo de ${info.cyc} ticks · ${info.poses} poses discretas\n`);
 
       if (CFG.render.checkSafeArea) {
         log('· Verificando zona segura…');
@@ -262,8 +321,19 @@ if (OPT.serve) {
                        : `  ✓ nada de texto dentro de ${FMT.safeTop}px arriba / ${FMT.safeBottom}px abajo`);
       }
 
+      if (CFG.render.checkColors) {
+        log('· Control de paleta…');
+        const w = await checkColors(page);
+        const max = CFG.pixel.maxColors;
+        report.colors = { max: w.count, limit: max, at: w.t, ok: w.count <= max, list: w.colors };
+        log(w.count <= max
+          ? `  ✓ máximo ${w.count} colores en pantalla a la vez (límite ${max})`
+          : `  ⚠ ${w.count} colores en pantalla en t=${w.t}s — pasa el límite de ${max}`);
+      }
+
       log('· Stills de control…');
       report.stills = await renderStills(page);
+      report.walkSheet = await renderContactSheet(page);
 
       if (!OPT.stillsOnly) {
         log('· Capturando frames (opaco)…');
