@@ -1,0 +1,18 @@
+@import 'tailwindcss';
+
+/* Modo oscuro por defecto: la app se usa de noche frente a un televisor. */
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-neutral-950 text-neutral-100 antialiased;
+  /* Respeta el notch y la barra de gestos del celular. */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+
+/* Sin resaltado azul al tocar: se usa con una mano y molesta. */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
