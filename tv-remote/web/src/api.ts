@@ -1,4 +1,10 @@
-import type { ListDevicesResponse } from '@tv-remote/shared';
+import type {
+  App,
+  Input,
+  ListDevicesResponse,
+  PairingStatus,
+  RemoteKey,
+} from '@tv-remote/shared';
 
 export class ApiError extends Error {
   constructor(
@@ -55,4 +61,48 @@ export const api = {
 
   removeManualDevice: (ip: string) =>
     request<void>(`/api/devices/manual/${encodeURIComponent(ip)}`, { method: 'DELETE' }),
+
+  // ─── Control ──────────────────────────────────────────────────────────────
+
+  pairingStatus: (id: string) => request<PairingStatus>(`/api/devices/${id}/pairing`),
+
+  pair: (id: string, pin?: string) =>
+    request<PairingStatus>(`/api/devices/${id}/pair`, {
+      method: 'POST',
+      body: JSON.stringify(pin ? { pin } : {}),
+    }),
+
+  sendKey: (id: string, key: RemoteKey) =>
+    request<void>(`/api/devices/${id}/key`, { method: 'POST', body: JSON.stringify({ key }) }),
+
+  volumeStep: (id: string, delta: number) =>
+    request<void>(`/api/devices/${id}/volume/step`, {
+      method: 'POST',
+      body: JSON.stringify({ delta }),
+    }),
+
+  setVolume: (id: string, level: number) =>
+    request<void>(`/api/devices/${id}/volume`, {
+      method: 'POST',
+      body: JSON.stringify({ level }),
+    }),
+
+  setMute: (id: string, muted: boolean) =>
+    request<void>(`/api/devices/${id}/mute`, { method: 'POST', body: JSON.stringify({ muted }) }),
+
+  powerOn: (id: string) => request<void>(`/api/devices/${id}/power/on`, { method: 'POST' }),
+  powerOff: (id: string) => request<void>(`/api/devices/${id}/power/off`, { method: 'POST' }),
+
+  listInputs: (id: string) => request<{ inputs: Input[] }>(`/api/devices/${id}/inputs`),
+
+  setInput: (id: string, inputId: string) =>
+    request<void>(`/api/devices/${id}/input`, {
+      method: 'POST',
+      body: JSON.stringify({ inputId }),
+    }),
+
+  listApps: (id: string) => request<{ apps: App[] }>(`/api/devices/${id}/apps`),
+
+  launchApp: (id: string, appId: string) =>
+    request<void>(`/api/devices/${id}/app`, { method: 'POST', body: JSON.stringify({ appId }) }),
 };

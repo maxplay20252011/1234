@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.js';
+import { ToastProvider } from './useToasts.js';
 import './index.css';
 
 const root = document.getElementById('root');
@@ -8,6 +9,8 @@ if (!root) throw new Error('No se encontro el elemento #root');
 
 createRoot(root).render(
   <StrictMode>
-    <App />
+    <ToastProvider>
+      <App />
+    </ToastProvider>
   </StrictMode>,
 );

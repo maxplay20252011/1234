@@ -1,6 +1,13 @@
 import type { Device } from '@tv-remote/shared';
+import type { LiveState } from '../useLiveState.js';
 
-const ETIQUETAS_MARCA: Record<Device['brand'], string> = {
+/**
+ * Etiquetas por marca. La busqueda siempre cae en un valor por defecto: sin eso,
+ * una marca fuera del mapa (por ejemplo el televisor simulado) dibujaba un chip
+ * vacio en vez de un texto.
+ */
+const ETIQUETAS_MARCA: Record<string, string> = {
+  mock: 'Simulado',
   lg: 'LG webOS',
   samsung: 'Samsung Tizen',
   roku: 'Roku',
@@ -11,7 +18,8 @@ const ETIQUETAS_MARCA: Record<Device['brand'], string> = {
   unknown: 'Sin identificar',
 };
 
-const COLORES_MARCA: Record<Device['brand'], string> = {
+const COLORES_MARCA: Record<string, string> = {
+  mock: 'bg-fuchsia-500/15 text-fuchsia-300 ring-fuchsia-500/30',
   lg: 'bg-rose-500/15 text-rose-300 ring-rose-500/30',
   samsung: 'bg-sky-500/15 text-sky-300 ring-sky-500/30',
   roku: 'bg-violet-500/15 text-violet-300 ring-violet-500/30',
@@ -22,7 +30,17 @@ const COLORES_MARCA: Record<Device['brand'], string> = {
   unknown: 'bg-neutral-500/15 text-neutral-400 ring-neutral-500/30',
 };
 
-export function DeviceCard({ device }: { device: Device }): React.JSX.Element {
+export function DeviceCard({
+  device,
+  state,
+  onOpen,
+}: {
+  device: Device;
+  state: LiveState | undefined;
+  onOpen: () => void;
+}): React.JSX.Element {
+  const controlable = device.capabilities.length > 0;
+
   return (
     <article className="rounded-2xl bg-neutral-900 ring-1 ring-neutral-800 p-4">
       <header className="flex items-start justify-between gap-3">
@@ -48,9 +66,11 @@ export function DeviceCard({ device }: { device: Device }): React.JSX.Element {
 
       <div className="mt-3 flex flex-wrap gap-1.5">
         <span
-          className={`rounded-md px-2 py-0.5 text-xs font-medium ring-1 ${COLORES_MARCA[device.brand]}`}
+          className={`rounded-md px-2 py-0.5 text-xs font-medium ring-1 ${
+            COLORES_MARCA[device.brand] ?? COLORES_MARCA['unknown']
+          }`}
         >
-          {ETIQUETAS_MARCA[device.brand]}
+          {ETIQUETAS_MARCA[device.brand] ?? device.brand}
         </span>
         {device.sources.map((s) => (
           <span
@@ -83,11 +103,30 @@ export function DeviceCard({ device }: { device: Device }): React.JSX.Element {
         </p>
       )}
 
-      {/* Honestidad ante todo: sin adapter implementado no hay nada que controlar. */}
-      {device.capabilities.length === 0 && (
+      {/* Honestidad ante todo: sin adapter no hay nada que controlar, y se dice. */}
+      {controlable ? (
+        <>
+          {(state?.volume !== undefined || state?.powered !== undefined) && (
+            <p className="mt-2 text-sm text-neutral-400">
+              {state.powered === false
+                ? 'Apagado'
+                : state.muted
+                  ? 'Silenciado'
+                  : state.volume !== undefined
+                    ? `Volumen ${state.volume}`
+                    : 'Encendido'}
+            </p>
+          )}
+          <button
+            onClick={onOpen}
+            className="mt-3 w-full rounded-xl bg-sky-600 px-4 py-3 text-sm font-medium text-white active:bg-sky-700"
+          >
+            Controlar
+          </button>
+        </>
+      ) : (
         <p className="mt-3 rounded-lg bg-neutral-800/60 px-3 py-2 text-xs text-neutral-400">
-          Detectado, pero todavia sin control: el adapter de esta marca se implementa en la
-          proxima fase.
+          Detectado, pero todavía sin control: esta marca no tiene adapter implementado.
         </p>
       )}
     </article>
