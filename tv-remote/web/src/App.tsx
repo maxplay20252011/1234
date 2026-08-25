@@ -6,6 +6,7 @@ import { DeviceCard } from './components/DeviceCard.js';
 import { AddDeviceDialog } from './components/AddDeviceDialog.js';
 import { InstallHint } from './components/InstallHint.js';
 import { ControlScreen } from './components/ControlScreen.js';
+import { AutomationScreen } from './components/AutomationScreen.js';
 
 export function App(): React.JSX.Element {
   const [devices, setDevices] = useState<Device[]>([]);
@@ -14,6 +15,7 @@ export function App(): React.JSX.Element {
   const [cargando, setCargando] = useState(true);
   const [mostrarAlta, setMostrarAlta] = useState(false);
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
+  const [enAutomatizacion, setEnAutomatizacion] = useState(false);
 
   const live = useLiveState();
 
@@ -49,6 +51,10 @@ export function App(): React.JSX.Element {
       setError(err instanceof ApiError ? err.message : 'No se pudo iniciar el escaneo.');
     }
   };
+
+  if (enAutomatizacion) {
+    return <AutomationScreen devices={devices} onBack={() => setEnAutomatizacion(false)} />;
+  }
 
   const actual = devices.find((d) => d.id === seleccionado);
   if (actual) {
@@ -113,9 +119,18 @@ export function App(): React.JSX.Element {
           </div>
         )}
 
+        {devices.length > 0 && (
+          <button
+            onClick={() => setEnAutomatizacion(true)}
+            className="mt-4 w-full rounded-2xl bg-neutral-900 px-4 py-4 text-sm text-neutral-300 ring-1 ring-neutral-800 active:bg-neutral-800"
+          >
+            Grupos y escenas
+          </button>
+        )}
+
         <button
           onClick={() => setMostrarAlta(true)}
-          className="mt-4 w-full rounded-2xl border border-dashed border-neutral-800 px-4 py-4 text-sm text-neutral-400 active:bg-neutral-900"
+          className="mt-3 w-full rounded-2xl border border-dashed border-neutral-800 px-4 py-4 text-sm text-neutral-400 active:bg-neutral-900"
         >
           No aparece mi televisor: agregarlo por IP
         </button>

@@ -1,6 +1,11 @@
 import type {
   App,
   CastUrlRequest,
+  CreateGroupRequest,
+  CreateSceneRequest,
+  Group,
+  RunSceneResult,
+  Scene,
   Input,
   ListDevicesResponse,
   PairingStatus,
@@ -104,6 +109,10 @@ export const api = {
 
   pairingStatus: (id: string) => request<PairingStatus>(`/api/devices/${id}/pairing`),
 
+  /** Primer paso: el televisor muestra el codigo en pantalla. */
+  beginPairing: (id: string) =>
+    request<PairingStatus>(`/api/devices/${id}/pair/begin`, { method: 'POST' }),
+
   pair: (id: string, pin?: string) =>
     request<PairingStatus>(`/api/devices/${id}/pair`, {
       method: 'POST',
@@ -172,4 +181,34 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ fileId }),
     }),
+
+  // ─── Grupos y escenas ─────────────────────────────────────────────────────
+
+  groups: () => request<{ groups: Group[] }>('/api/groups'),
+
+  createGroup: (body: CreateGroupRequest) =>
+    request<Group>('/api/groups', { method: 'POST', body: JSON.stringify(body) }),
+
+  deleteGroup: (id: string) => request<void>(`/api/groups/${id}`, { method: 'DELETE' }),
+
+  groupKey: (id: string, key: RemoteKey) =>
+    request<{ results: { deviceId: string; ok: boolean; error?: string }[] }>(
+      `/api/groups/${id}/key`,
+      { method: 'POST', body: JSON.stringify({ key }) },
+    ),
+
+  groupPower: (id: string, encender: boolean) =>
+    request<{ results: { deviceId: string; ok: boolean; error?: string }[] }>(
+      `/api/groups/${id}/power/${encender ? 'on' : 'off'}`,
+      { method: 'POST' },
+    ),
+
+  scenes: () => request<{ scenes: Scene[] }>('/api/scenes'),
+
+  createScene: (body: CreateSceneRequest) =>
+    request<Scene>('/api/scenes', { method: 'POST', body: JSON.stringify(body) }),
+
+  deleteScene: (id: string) => request<void>(`/api/scenes/${id}`, { method: 'DELETE' }),
+
+  runScene: (id: string) => request<RunSceneResult>(`/api/scenes/${id}/run`, { method: 'POST' }),
 };
