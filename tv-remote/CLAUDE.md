@@ -5,14 +5,19 @@ usa; esto es para quien lo toca.
 
 ## Estado actual
 
-**Fase 1 terminada.** Descubrimiento, base de datos, CLI de diagnóstico, API y
-la pantalla que lista dispositivos. **No hay ningún adapter implementado
-todavía**, así que no se puede controlar ningún televisor.
+**Fases 1 y 2 terminadas.** Descubrimiento, base de datos, CLI, API, estado en
+vivo por WebSocket, el patrón adapter, el adapter de Samsung Tizen,
+Wake-on-LAN, cifrado de credenciales y la pantalla de control completa.
+
+**El adapter de Samsung NO está verificado contra hardware real.** Está escrito
+contra documentación de ingeniería inversa de la comunidad. Las partes puras
+tienen tests; el comportamiento contra un televisor hay que confirmarlo con
+`LOG_LEVEL=debug` la primera vez.
 
 | Fase | Alcance | Estado |
 |---|---|---|
 | 1 | Base, descubrimiento, `npm run discover`, `GET /api/devices`, UI de lista | ✅ |
-| 2 | `TvAdapter` + registry + adapter Samsung Tizen + Wake-on-LAN + UI de control | pendiente |
+| 2 | `TvAdapter` + registry + adapter Samsung Tizen + Wake-on-LAN + UI de control | ✅ sin probar en hardware |
 | 3 | Chromecast por castv2 (castear y volumen) | pendiente |
 | 4 | MediaServer con Range, cast de URL y archivo, subtítulos, códecs | pendiente |
 | 5 | `androidtvremote2` para el D-pad del Google TV, grupos, escenas, empaquetado | pendiente |
@@ -34,8 +39,10 @@ server/
   logger.ts        pino + protocolLog(), que escribe siempre en nivel debug.
   net/             Interfaces de red, cálculo de broadcast, lectura de ARP.
   discovery/       ssdp · mdns · upnp · probe · identify · service
+  adapters/        types (interfaz + registry) · errors · samsung/ · mock/
+  services/        wol · crypto · credentials.repo · control · state-hub
   db/              schema (migraciones) · conexión · repositorio
-  http/            Fastify, rutas y servido del build de la web.
+  http/            Fastify, rutas, canal WebSocket y servido del build.
   cli/discover.ts  La herramienta de diagnóstico.
 web/       React + Vite + Tailwind. Mobile-first, oscuro.
 ```
@@ -68,6 +75,23 @@ aparece mi TV".
 televisor "puede" subir el volumen sin código que lo respalde es exactamente el
 adapter falso que este proyecto no quiere. Lo llena el `AdapterRegistry`.
 
+**Los métodos opcionales del `TvAdapter` son opcionales de verdad.** No existe
+un `setVolume(level)` obligatorio, porque Roku no tiene volumen absoluto y en
+Samsung el mute es un interruptor, no un valor. Con una interfaz que los
+obligara, esos adapters tendrían que fingir mandando pasos a ciegas. En su
+lugar: `capabilities()` declara lo que el aparato probó poder hacer, el
+`ControlService` rechaza lo que no está con un mensaje claro, y la interfaz
+esconde el control en vez de mostrar uno roto.
+
+**Las capacidades se preguntan al aparato, no se deducen de la marca.** El
+volumen absoluto de Samsung solo existe si ESE televisor contesta
+`RenderingControl`, así que se sondea (`probeRenderingControl`) y recién ahí se
+declara. Dos Samsung del mismo año pueden diferir.
+
+**Todo mensaje de error que llega a la pantalla está en castellano y es
+concreto.** `ControlError` lleva un `userMessage` que la ruta devuelve tal cual.
+Nunca un "Error" pelado: si el televisor está apagado, hay que decir eso.
+
 ## Cómo agregar un adapter
 
 1. **Verificá el protocolo antes de escribir nada.** Documentación oficial si
@@ -89,7 +113,7 @@ Marcadas según su origen: **[doc]** hay documentación pública del fabricante;
 **[rev]** es ingeniería inversa de la comunidad, puede romperse con cualquier
 actualización de firmware.
 
-### Samsung Tizen — el objetivo de la Fase 2
+### Samsung Tizen — implementado, sin verificar en hardware
 - **[doc]** `GET http://<ip>:8001/api/v2/` responde sin autenticación y trae
   `modelName`, `wifiMac` y `TokenAuthSupport`. Es la mejor fuente de datos de
   la marca y ya está implementada en `probe.ts`.
@@ -109,6 +133,14 @@ actualización de firmware.
   pero no todos los modelos lo exponen: hay que detectarlo, no asumirlo.
 - **El encendido es solo por Wake-on-LAN.** Y la MAC de cable es distinta de la
   de Wi-Fi: si guardaste la de Wi-Fi, el WoL por cable no va a funcionar nunca.
+- **Sin selección directa de entrada HDMI.** No hay una tecla confiable entre
+  modelos, así que no se declara la capacidad `input`: se expone `KEY_SOURCE`,
+  que abre el menú de fuentes, y elige el usuario.
+- **La lista de apps puede venir vacía.** Se pide con `ed.installedApp.get` y
+  varios modelos 2020+ dejaron de responder. Si no contesta en dos segundos se
+  devuelve vacía y la interfaz lo dice, en vez de inventar una lista.
+- **El token nunca se loguea**, ni en `debug`. En la URL de conexión se
+  reemplaza por `***`.
 
 ### Chromecast y Google TV
 - Un Chromecast pelado y uno con Google TV **anuncian los dos** `_googlecast._tcp`
@@ -178,6 +210,17 @@ librería de imágenes al proyecto para algo que se corre una vez.
 
 **`navigator.vibrate` no existe en Safari iOS.** Cuando la Fase 2 agregue
 feedback háptico, hay que detectarlo antes de llamarlo.
+
+## Probar sin hardware
+
+```bash
+MOCK_DEVICE=1 npm start
+```
+
+Agrega un televisor simulado a la lista. El `MockAdapter` imita a propósito las
+incomodidades de uno real: pide emparejamiento, tarda en responder y el mute es
+un interruptor. Es lo que permite ejercitar el `ControlService`, las rutas y el
+estado en vivo de punta a punta, que es imposible con adapters reales en CI.
 
 ## Cosas que están fuera de alcance
 

@@ -5,11 +5,16 @@ televisores de la red desde el navegador del celular o de la computadora.
 
 **Sin nube, sin cuenta de usuario, sin internet.** Todo pasa dentro de tu red.
 
-> ### Estado: Fase 1 de 5
+> ### Estado: Fase 2 de 5
 >
-> Por ahora la aplicación **encuentra** los televisores y los muestra. Todavía
-> **no los controla**: el control se agrega en la Fase 2. Si estás probando
-> esto ahora, lo que tiene que funcionar es el descubrimiento.
+> La aplicación **encuentra** los televisores y ya **controla** los Samsung con
+> Tizen: encendido, volumen, silencio, cruceta y aplicaciones.
+>
+> **El control de Samsung todavía no se probó contra un televisor real**, así
+> que puede necesitar ajustes. Si algo no anda, mandá la salida de
+> `LOG_LEVEL=debug npm start`.
+>
+> El Chromecast se detecta pero todavía no se controla: eso es la Fase 3.
 
 ---
 
@@ -76,6 +81,41 @@ Abrí esa dirección en el navegador del celular. Esa es la aplicación.
 
 ---
 
+## Controlar un televisor
+
+En la lista, tocá **Controlar** en el televisor que quieras manejar.
+
+**La primera vez hay que emparejar.** Al tocar *Emparejar*, en la pantalla del
+televisor va a aparecer un aviso pidiendo permiso. Elegí **Permitir**. Tenés
+unos segundos para hacerlo.
+
+Si lo rechazaste sin querer, el aviso no vuelve a salir solo: entrá en el
+televisor a *Configuración → General → Administrador de dispositivos externos*
+y borrá la lista de dispositivos.
+
+Una vez emparejado queda guardado, **también después de reiniciar el servidor**.
+
+### Desde la computadora, con el teclado
+
+| Tecla | Hace |
+|---|---|
+| Flechas | Mover en el menú |
+| Enter | Aceptar |
+| Esc | Volver |
+| `+` y `−` | Volumen |
+| `M` | Silenciar |
+
+### Probar sin televisor
+
+```bash
+MOCK_DEVICE=1 npm start
+```
+
+Agrega un televisor de mentira a la lista, para ver cómo funciona todo sin
+tener que tocar el de verdad.
+
+---
+
 ## Solución de problemas
 
 ### No aparece mi televisor
@@ -124,8 +164,6 @@ Si el televisor está en otra red o detrás de un router, no hay MAC posible.
 
 ### No enciende por Wake-on-LAN
 
-*(Aplica a partir de la Fase 2.)*
-
 1. Hay que **habilitarlo en el televisor**. Buscá en su menú una opción llamada
    "Encender móvil", "Wake on LAN" o "Conexión de red en espera". Si está
    apagada, ningún programa del mundo va a poder encenderlo.
@@ -142,9 +180,22 @@ Casi siempre es el códec: los televisores son quisquillosos con HEVC de 10
 bits, con audio AC3 y con MKV que traen subtítulos incrustados. La aplicación
 detecta el códec y ofrece convertirlo si tenés `ffmpeg` instalado.
 
-### Se desconecta solo
+### Dice que no está emparejado
 
-*(Aplica a partir de la Fase 2.)*
+El televisor guarda una credencial la primera vez que aceptás el aviso. Se
+puede perder si reiniciaste el televisor de fábrica, si borraste la lista de
+dispositivos externos, o si cambiaste `ENCRYPTION_KEY` en el `.env` (en ese
+caso las credenciales guardadas dejan de poder leerse y hay que emparejar de
+nuevo). Tocá *Emparejar* otra vez.
+
+### El volumen sube y baja pero no puedo poner un número exacto
+
+Es normal en varios Samsung. El control remoto del televisor solo maneja pasos;
+el valor exacto va por otro camino que no todos los modelos abren. La
+aplicación lo detecta al conectarse y, si tu televisor no lo soporta, esconde
+la barra en vez de mostrar una que no funciona.
+
+### Se desconecta solo
 
 Es normal: cuando el televisor se apaga, cierra la conexión. La aplicación
 reconecta sola con esperas cada vez más largas y lo marca como "sin conexión"
