@@ -1,10 +1,20 @@
 import type {
   App,
+  CastUrlRequest,
   Input,
   ListDevicesResponse,
   PairingStatus,
   RemoteKey,
 } from '@tv-remote/shared';
+
+export type HistoryEntry = {
+  id: string;
+  deviceId: string;
+  title: string | null;
+  url: string;
+  kind: string;
+  playedAt: string;
+};
 
 export class ApiError extends Error {
   constructor(
@@ -105,4 +115,16 @@ export const api = {
 
   launchApp: (id: string, appId: string) =>
     request<void>(`/api/devices/${id}/app`, { method: 'POST', body: JSON.stringify({ appId }) }),
+
+  // ─── Casteo ───────────────────────────────────────────────────────────────
+
+  castUrl: (id: string, media: CastUrlRequest) =>
+    request<void>(`/api/devices/${id}/cast`, { method: 'POST', body: JSON.stringify(media) }),
+
+  stopCast: (id: string) => request<void>(`/api/devices/${id}/cast/stop`, { method: 'POST' }),
+
+  history: (id: string) => request<{ history: HistoryEntry[] }>(`/api/devices/${id}/history`),
+
+  clearHistory: (id: string) =>
+    request<void>(`/api/devices/${id}/history`, { method: 'DELETE' }),
 };

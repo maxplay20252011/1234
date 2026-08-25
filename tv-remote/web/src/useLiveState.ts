@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Device, ServerMessage } from '@tv-remote/shared';
+import type { Device, MediaState, ServerMessage } from '@tv-remote/shared';
 
 /**
  * El `| undefined` explicito es necesario con exactOptionalPropertyTypes: este
@@ -12,6 +12,7 @@ export type LiveState = {
   muted?: boolean | undefined;
   currentApp?: string | undefined;
   currentInput?: string | undefined;
+  media?: MediaState | undefined;
 };
 
 export type LiveData = {

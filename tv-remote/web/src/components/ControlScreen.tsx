@@ -7,6 +7,7 @@ import type { LiveState } from '../useLiveState.js';
 import { DPad } from './DPad.js';
 import { VolumeControl } from './VolumeControl.js';
 import { PairingPanel } from './PairingPanel.js';
+import { CastPanel } from './CastPanel.js';
 import { Power } from './icons.js';
 
 export function ControlScreen({
@@ -198,6 +199,13 @@ export function ControlScreen({
           />
         )}
 
+        {can('castUrl') && !can('power') && (
+          <p className="rounded-xl bg-neutral-900 px-4 py-3 text-xs text-neutral-400 ring-1 ring-neutral-800">
+            Este es un dispositivo de casteo, no el televisor: no se puede encender ni apagar la
+            pantalla desde acá. Al enviarle un video, el televisor suele encenderse solo por HDMI-CEC.
+          </p>
+        )}
+
         {estado.powered === false && (
           <p className="rounded-xl bg-neutral-900 px-4 py-3 text-sm text-neutral-400 ring-1 ring-neutral-800">
             El televisor figura apagado.
@@ -261,6 +269,30 @@ export function ControlScreen({
                 </button>
               ))}
             </div>
+          </section>
+        )}
+
+        {can('castUrl') && (
+          <CastPanel
+            deviceId={device.id}
+            media={estado.media}
+            /* No hace falta releer nada: el estado baja solo por WebSocket. */
+            onChanged={() => setOptimista({})}
+          />
+        )}
+
+        {/* Un Chromecast no tiene cruceta, pero si controla la reproduccion. */}
+        {can('castUrl') && !can('dpad') && estado.media?.playerState !== undefined && (
+          <section className="grid grid-cols-3 gap-2">
+            <button disabled={bloqueado} onClick={() => enviarTecla('play')} className={secundario}>
+              Reproducir
+            </button>
+            <button disabled={bloqueado} onClick={() => enviarTecla('pause')} className={secundario}>
+              Pausa
+            </button>
+            <button disabled={bloqueado} onClick={() => enviarTecla('stop')} className={secundario}>
+              Detener
+            </button>
           </section>
         )}
 
