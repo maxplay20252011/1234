@@ -83,6 +83,38 @@ export const LaunchAppRequestSchema = z.object({
 });
 export type LaunchAppRequest = z.infer<typeof LaunchAppRequestSchema>;
 
+/**
+ * Castear una URL remota.
+ *
+ * Tiene que ser un archivo de media directo (un .mp4, un .m3u8), no la pagina
+ * de un servicio: el receptor espera un stream, no HTML. Ver el README para el
+ * caso particular de YouTube.
+ */
+export const CastUrlRequestSchema = z.object({
+  url: z
+    .string()
+    .min(1, 'Falta la direccion del video.')
+    .refine(
+      (u) => /^https?:\/\//i.test(u),
+      'La direccion tiene que empezar con http:// o https://',
+    ),
+  title: z.string().max(200).optional(),
+  /** Si no se manda, se deduce de la extension. */
+  contentType: z.string().max(100).optional(),
+});
+export type CastUrlRequest = z.infer<typeof CastUrlRequestSchema>;
+
+/** Estado de la reproduccion en curso. */
+export const MediaStateSchema = z.object({
+  /** PLAYING | PAUSED | BUFFERING | IDLE, tal como lo informa el aparato. */
+  playerState: z.string().optional(),
+  title: z.string().optional(),
+  /** Segundos. */
+  position: z.number().optional(),
+  duration: z.number().optional(),
+});
+export type MediaState = z.infer<typeof MediaStateSchema>;
+
 // ─── Emparejamiento ──────────────────────────────────────────────────────────
 
 /**
@@ -125,6 +157,7 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
     muted: z.boolean().optional(),
     currentApp: z.string().optional(),
     currentInput: z.string().optional(),
+    media: MediaStateSchema.optional(),
     updatedAt: z.string(),
   }),
   z.object({ type: z.literal('scanning'), scanning: z.boolean() }),

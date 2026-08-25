@@ -1,4 +1,12 @@
-import type { App, Capability, Device, Input, PairingStatus, RemoteKey } from '@tv-remote/shared';
+import type {
+  App,
+  Capability,
+  CastUrlRequest,
+  Device,
+  Input,
+  PairingStatus,
+  RemoteKey,
+} from '@tv-remote/shared';
 import type { Credentials, DeviceState, TvAdapter } from '../types.js';
 import { NotPairedError } from '../errors.js';
 import { logger } from '../../logger.js';
@@ -49,7 +57,17 @@ export class MockAdapter implements TvAdapter {
   };
 
   async capabilities(_device: Device): Promise<Capability[]> {
-    return ['power', 'wakeOnLan', 'volume', 'volumeAbsolute', 'mute', 'input', 'dpad', 'launchApp'];
+    return [
+      'power',
+      'wakeOnLan',
+      'volume',
+      'volumeAbsolute',
+      'mute',
+      'input',
+      'dpad',
+      'launchApp',
+      'castUrl',
+    ];
   }
 
   async pairingStatus(device: Device, credentials?: Credentials): Promise<PairingStatus> {
@@ -154,6 +172,23 @@ export class MockAdapter implements TvAdapter {
     this.exigirEmparejado(credentials);
     await this.demora(500);
     this.state.currentApp = appId;
+  }
+
+  async castUrl(_device: Device, media: CastUrlRequest, credentials?: Credentials): Promise<void> {
+    this.exigirEmparejado(credentials);
+    await this.demora(700);
+    this.state.media = {
+      playerState: 'PLAYING',
+      title: media.title ?? 'Video',
+      position: 0,
+      duration: 212,
+    };
+  }
+
+  async stopCast(_device: Device, credentials?: Credentials): Promise<void> {
+    this.exigirEmparejado(credentials);
+    await this.demora(200);
+    delete this.state.media;
   }
 
   async getState(): Promise<DeviceState> {

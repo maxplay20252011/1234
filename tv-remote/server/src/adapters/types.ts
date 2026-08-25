@@ -1,4 +1,13 @@
-import type { App, Capability, Device, Input, PairingStatus, RemoteKey } from '@tv-remote/shared';
+import type {
+  App,
+  Capability,
+  CastUrlRequest,
+  Device,
+  Input,
+  MediaState,
+  PairingStatus,
+  RemoteKey,
+} from '@tv-remote/shared';
 
 /** Credenciales de emparejamiento. Se guardan cifradas, nunca en texto plano. */
 export type Credentials = {
@@ -13,6 +22,7 @@ export type DeviceState = {
   muted?: boolean;
   currentApp?: string;
   currentInput?: string;
+  media?: MediaState;
 };
 
 /**
@@ -59,6 +69,11 @@ export interface TvAdapter {
   setInput?(device: Device, inputId: string, credentials?: Credentials): Promise<void>;
   listApps?(device: Device, credentials?: Credentials): Promise<App[]>;
   launchApp?(device: Device, appId: string, deepLink?: string, credentials?: Credentials): Promise<void>;
+
+  /** Solo con capacidad 'castUrl'. La URL tiene que ser un stream directo. */
+  castUrl?(device: Device, media: CastUrlRequest, credentials?: Credentials): Promise<void>;
+  /** Corta lo que se este reproduciendo y libera el aparato. */
+  stopCast?(device: Device, credentials?: Credentials): Promise<void>;
 }
 
 export class AdapterRegistry {
