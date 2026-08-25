@@ -350,6 +350,11 @@ Cosas que costó encontrar y no conviene volver a romper:
   un token efímero distinto en cada envío: el mismo video generaba una entrada
   nueva cada vez, todas con tokens que al poco tiempo daban 403 al repetir. Se
   guarda una `ref` estable (el id del archivo) y se repite por ahí.
+- **`@tv-remote/shared` publica `dist`, no `src`.** Apuntando al TypeScript
+  fuente, `npm start` con el codigo compilado no arranca: Node no resuelve
+  `./device.js` dentro de `shared/src`. Solo funcionaba con `tsx`, que
+  transpila al vuelo, asi que el camino de produccion estaba roto sin que
+  ningun test lo notara. Por eso todos los scripts encadenan `build:shared`.
 - **`formatDuration` recorta a cero ANTES de calcular los milisegundos.** Al
   revés producía `0:00:00.-10000`, que deja el DIDL-Lite inválido y el televisor
   descarta el envío en silencio.

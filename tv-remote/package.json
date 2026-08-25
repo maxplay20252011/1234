@@ -13,13 +13,14 @@
     "web"
   ],
   "scripts": {
-    "discover": "npm run discover -w server --",
-    "dev": "npm run dev -w server",
-    "dev:web": "npm run dev -w web",
-    "build": "npm run build -w shared && npm run build -w web && npm run build -w server",
+    "discover": "npm run build:shared && npm run discover -w server --",
+    "dev": "npm run build:shared && npm run dev -w server",
+    "dev:web": "npm run build:shared && npm run dev -w web",
+    "build": "npm run build:shared && npm run build -w web && npm run build -w server",
     "start": "npm run start -w server",
-    "typecheck": "tsc --noEmit -p shared && tsc --noEmit -p server && tsc --noEmit -p web",
-    "test": "vitest run"
+    "typecheck": "npm run build:shared && tsc --noEmit -p server && tsc --noEmit -p web",
+    "test": "npm run build:shared && vitest run",
+    "build:shared": "npm run build -w shared"
   },
   "devDependencies": {
     "typescript": "^6.0.3",
