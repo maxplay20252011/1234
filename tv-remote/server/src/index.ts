@@ -14,13 +14,16 @@ import { deriveKey, loadOrCreateSecret } from './services/crypto.js';
 import { StateHub } from './services/state-hub.js';
 import { ControlService } from './services/control.js';
 import { MediaHistoryRepo } from './services/media-history.repo.js';
+import { MediaCaster } from './services/media-caster.js';
+import { MediaLibrary } from './media/library.js';
 
 async function main(): Promise<void> {
   const config = loadConfig();
   const db = openDatabase(config.DATA_DIR);
   const repo = new DevicesRepo(db);
 
-  const key = deriveKey(loadOrCreateSecret(config.DATA_DIR, config.ENCRYPTION_KEY));
+  const secret = loadOrCreateSecret(config.DATA_DIR, config.ENCRYPTION_KEY);
+  const key = deriveKey(secret);
   const credentials = new CredentialsRepo(db, key);
   const hub = new StateHub();
 
@@ -41,7 +44,21 @@ async function main(): Promise<void> {
   if (config.MOCK_DEVICE) registry.register(new MockAdapter());
 
   const history = new MediaHistoryRepo(db);
-  const control = new ControlService(repo, credentials, registry, hub, history);
+
+  // Carpetas de video. Solo se sirve lo que este adentro: es el limite de lo
+  // que queda expuesto a la red local.
+  const mediaRoots = config.MEDIA_DIRS.split(',')
+    .map((d) => d.trim())
+    .filter((d) => d.length > 0);
+  const library = new MediaLibrary(mediaRoots);
+  const caster = new MediaCaster(
+    library,
+    secret,
+    config.PORT,
+    config.MEDIA_LINK_TTL_SECONDS,
+  );
+
+  const control = new ControlService(repo, credentials, registry, hub, history, caster);
 
   const discovery = new DiscoveryService(
     {
@@ -70,7 +87,7 @@ async function main(): Promise<void> {
 
   discovery.on('scanning', (scanning) => hub.scanning(scanning));
 
-  const app = await buildServer(config, repo, discovery, control, hub, history);
+  const app = await buildServer(config, repo, discovery, control, hub, history, library, secret);
   await app.listen({ host: config.HOST, port: config.PORT });
 
   const lan = primaryLanAddress();
@@ -82,6 +99,13 @@ async function main(): Promise<void> {
   }
   if (config.MOCK_DEVICE) {
     logger.warn('MOCK_DEVICE activo: hay un televisor simulado en la lista. No es real.');
+  }
+  if (library.configured) {
+    logger.info({ carpetas: mediaRoots }, 'Carpetas de video habilitadas');
+  } else {
+    logger.info(
+      'Sin carpetas de video configuradas. Para enviar archivos de tu disco, agrega MEDIA_DIRS al archivo .env',
+    );
   }
   if (config.HOST === '0.0.0.0' && listLanInterfaces().length > 0) {
     logger.info(

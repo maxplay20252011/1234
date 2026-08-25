@@ -13,6 +13,7 @@ import type { DevicesRepo } from '../db/devices.repo.js';
 import type { CredentialsRepo } from './credentials.repo.js';
 import type { StateHub } from './state-hub.js';
 import type { MediaHistoryRepo } from './media-history.repo.js';
+import type { MediaCaster, PreparedMedia } from './media-caster.js';
 import { logger } from '../logger.js';
 
 /**
@@ -34,6 +35,7 @@ export class ControlService {
     private readonly registry: AdapterRegistry,
     private readonly hub: StateHub,
     private readonly history: MediaHistoryRepo,
+    private readonly caster: MediaCaster,
   ) {}
 
   /** Refresca en la base lo que el adapter declara que este aparato puede hacer. */
@@ -168,6 +170,44 @@ export class ControlService {
     // Al aparato le lleva un momento empezar: preguntarle enseguida devuelve
     // que todavia no hay nada cargado.
     this.refreshStateSoon(deviceId, 1200);
+  }
+
+  /**
+   * Envia un archivo del disco del servidor.
+   *
+   * El televisor no lee ese disco: lo que se le manda es una URL de nuestro
+   * propio MediaServer, y el archivo viaja por HTTP desde la red local.
+   */
+  async castFile(deviceId: string, fileId: string): Promise<PreparedMedia> {
+    const { device, adapter, creds } = this.resolve(deviceId);
+    this.requireCapability(device, 'castUrl', 'reproducir contenido');
+    if (!adapter.castUrl) throw new NotSupportedError('reproducir contenido', device.brand);
+
+    const preparado = await this.caster.prepare(fileId);
+    if (!preparado) {
+      throw new ControlError(
+        `No se pudo preparar el archivo ${fileId}`,
+        'No se encontro ese archivo, o el servidor no pudo determinar su direccion en la red. Proba elegirlo de nuevo.',
+        'media_not_found',
+        404,
+      );
+    }
+
+    await adapter.castUrl(
+      device,
+      { url: preparado.url, title: preparado.title, contentType: preparado.contentType },
+      creds,
+    );
+
+    // La referencia es el id del archivo, no la URL: la URL caduca.
+    this.history.add(deviceId, { url: preparado.url, title: preparado.title }, 'file', fileId);
+    this.refreshStateSoon(deviceId, 1500);
+    return preparado;
+  }
+
+  /** Analiza un archivo sin enviarlo, para avisar antes de que cueste CPU. */
+  async inspectFile(fileId: string): Promise<PreparedMedia | undefined> {
+    return this.caster.prepare(fileId);
   }
 
   async stopCast(deviceId: string): Promise<void> {

@@ -15,6 +15,16 @@ const EnvSchema = z.object({
    * interfaz sin hardware: MOCK_DEVICE=1 npm start
    */
   MOCK_DEVICE: z.coerce.boolean().default(false),
+
+  /**
+   * Carpetas con tus videos, separadas por coma. Solo se sirve lo que este
+   * adentro: es el limite de lo que queda expuesto a la red.
+   * Ejemplo: MEDIA_DIRS=/home/juan/Videos,/mnt/peliculas
+   */
+  MEDIA_DIRS: z.string().default(''),
+
+  /** Cuanto vive un enlace de video, en segundos. Por defecto 6 horas. */
+  MEDIA_LINK_TTL_SECONDS: z.coerce.number().int().min(60).default(21600),
 });
 
 export type Config = z.infer<typeof EnvSchema>;

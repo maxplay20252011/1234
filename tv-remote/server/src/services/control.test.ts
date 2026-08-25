@@ -7,6 +7,8 @@ import { deriveKey } from './crypto.js';
 import { StateHub } from './state-hub.js';
 import { ControlService } from './control.js';
 import { MediaHistoryRepo } from './media-history.repo.js';
+import { MediaCaster } from './media-caster.js';
+import { MediaLibrary } from '../media/library.js';
 import { AdapterRegistry } from '../adapters/types.js';
 import { MockAdapter, buildMockDevice } from '../adapters/mock/index.js';
 import { ControlError } from '../adapters/errors.js';
@@ -29,6 +31,8 @@ function montar() {
   registry.register(mock);
 
   const history = new MediaHistoryRepo(db);
+  // Sin carpetas configuradas: estos tests no tocan archivos del disco.
+  const caster = new MediaCaster(new MediaLibrary([]), 'clave-de-prueba', 8099, 3600);
 
   const device = buildMockDevice();
   devices.upsert(device);
@@ -39,7 +43,7 @@ function montar() {
     credentials,
     hub,
     history,
-    control: new ControlService(devices, credentials, registry, hub, history),
+    control: new ControlService(devices, credentials, registry, hub, history, caster),
     deviceId: device.id,
   };
 }
@@ -129,6 +133,30 @@ describe('ControlService', () => {
     expect(recibidos).toContainEqual(
       expect.objectContaining({ type: 'state', deviceId: ctx.deviceId, volume: 33 }),
     );
+  });
+});
+
+describe('MediaHistoryRepo', () => {
+  it('no acumula una entrada por cada envio del mismo archivo', () => {
+    // Regresion: se deduplicaba por URL, y la URL de un archivo local lleva un
+    // token efimero distinto cada vez. El mismo video generaba una entrada
+    // nueva por reproduccion, todas con tokens que despues daban 403.
+    const ctx = montar();
+    ctx.history.add(ctx.deviceId, { url: 'http://ip/media/abc?t=token1' }, 'file', 'abc');
+    ctx.history.add(ctx.deviceId, { url: 'http://ip/media/abc?t=token2' }, 'file', 'abc');
+
+    const lista = ctx.history.list(ctx.deviceId);
+    expect(lista).toHaveLength(1);
+    // La referencia es estable; la URL guardada se refresca a la ultima.
+    expect(lista[0]?.ref).toBe('abc');
+    expect(lista[0]?.url).toContain('token2');
+  });
+
+  it('separa una URL remota de un archivo aunque compartan texto', () => {
+    const ctx = montar();
+    ctx.history.add(ctx.deviceId, { url: 'http://x/a.mp4' }, 'url');
+    ctx.history.add(ctx.deviceId, { url: 'http://x/a.mp4' }, 'file', 'id-del-archivo');
+    expect(ctx.history.list(ctx.deviceId)).toHaveLength(2);
   });
 });
 

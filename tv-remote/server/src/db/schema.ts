@@ -82,4 +82,19 @@ export const MIGRATIONS: readonly string[] = [
   );
   CREATE INDEX IF NOT EXISTS idx_media_history_played ON media_history(played_at DESC);
   `,
+
+  // 2 ─ Referencia estable en el historial.
+  //
+  // Antes se deduplicaba por `url`, pero la URL de un archivo local lleva un
+  // token efimero distinto en cada envio: el mismo video generaba una entrada
+  // nueva cada vez, y las guardadas quedaban con tokens vencidos que al
+  // reproducir de nuevo daban 403.
+  //
+  // `ref` guarda algo estable: la URL para contenido remoto, el id del archivo
+  // para contenido local.
+  `
+  ALTER TABLE media_history ADD COLUMN ref TEXT;
+  UPDATE media_history SET ref = url WHERE ref IS NULL;
+  CREATE INDEX IF NOT EXISTS idx_media_history_ref ON media_history(device_id, kind, ref);
+  `,
 ];

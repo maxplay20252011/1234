@@ -145,6 +145,19 @@ export function registerControlRoutes(
     ejecutar(reply, () => control.stopCast(req.params.id)),
   );
 
+  app.post<{ Params: ParamsConId; Body: { fileId?: unknown } }>(
+    '/api/devices/:id/cast/file',
+    async (req, reply) => {
+      const fileId = req.body?.fileId;
+      if (typeof fileId !== 'string' || fileId.length === 0) {
+        return reply
+          .code(400)
+          .send({ error: 'invalid_request', message: 'Falta indicar que archivo enviar.' });
+      }
+      return ejecutar(reply, () => control.castFile(req.params.id, fileId));
+    },
+  );
+
   app.get<{ Params: ParamsConId }>('/api/devices/:id/history', async (req, reply) =>
     ejecutar(reply, async () => ({ history: history.list(req.params.id) })),
   );
