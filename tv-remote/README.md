@@ -5,17 +5,17 @@ televisores de la red desde el navegador del celular o de la computadora.
 
 **Sin nube, sin cuenta de usuario, sin internet.** Todo pasa dentro de tu red.
 
-> ### Estado: Fase 3 de 5
+> ### Estado: Fase 4 de 5
 >
 > La aplicación **encuentra** los televisores, **controla** los Samsung con
-> Tizen (encendido, volumen, cruceta, aplicaciones) y **envía videos** al
-> Chromecast y al Google TV.
+> Tizen, y **envía videos** —tanto de internet como de tu propia
+> computadora— al Chromecast, al Google TV y al Samsung.
 >
 > **Nada de esto se probó todavía contra un aparato real**, así que puede
 > necesitar ajustes. Si algo no anda, mandá la salida de
 > `LOG_LEVEL=debug npm start`.
 >
-> Falta enviar archivos de tu propio disco: eso es la Fase 4.
+> Falta la cruceta del Google TV, los grupos y las escenas: eso es la Fase 5.
 
 ---
 
@@ -108,7 +108,42 @@ terminan en `.mp4`. Un enlace de YouTube, de Netflix o de cualquier servicio
 Lo que enviaste queda en un historial abajo, para volver a poner algo con un
 solo toque.
 
-> Enviar archivos de tu propia computadora todavía no está: es la Fase 4.
+### Enviar un video de tu propia computadora
+
+Primero hay que decirle dónde están tus videos. Abrí el archivo `.env` y agregá
+la carpeta:
+
+```
+MEDIA_DIRS=/home/tu-usuario/Videos
+```
+
+En Windows sería algo como `MEDIA_DIRS=C:\Users\TuNombre\Videos`. Podés poner
+varias separadas por coma. **Solo se comparte lo que esté dentro de esas
+carpetas**, nada más del disco.
+
+Reiniciá el servidor y va a aparecer el botón *"Elegir un video de mi
+computadora"*. Ahí navegás las carpetas y elegís.
+
+**Antes de enviar, la aplicación analiza el archivo** y te dice si va a poder
+reproducirse tal cual o si hay que convertirlo. Si encuentra un subtítulo al
+lado del video (un `.srt` con el mismo nombre), lo usa solo.
+
+### Sobre adelantar el video
+
+- Si el archivo se envía **tal cual**, podés adelantar y retroceder con
+  precisión.
+- Si hay que **convertirlo**, adelantar va a ser aproximado y la barra del
+  televisor puede quedar desfasada. No es un defecto que se pueda arreglar: el
+  video se genera sobre la marcha y no hay posiciones fijas que pedir.
+
+### Si no tenés ffmpeg instalado
+
+No pasa nada: los archivos se envían tal cual y la aplicación te avisa que no
+pudo analizarlos. Lo que perdés es la conversión automática de los archivos
+incompatibles.
+
+Para instalarlo: en Windows con `winget install ffmpeg`, en Mac con
+`brew install ffmpeg`, en Linux con `sudo apt install ffmpeg`.
 
 ### Sobre el Chromecast
 
@@ -216,13 +251,29 @@ nuevo). Tocá *Emparejar* otra vez.
 
 ### El video no arranca
 
-Casi siempre es porque la dirección no es un archivo de video. Comprobalo
-pegándola en el navegador: si se abre una página, no sirve; tiene que empezar a
-descargarse o a reproducirse un video solo.
+**Si pegaste una dirección de internet:** casi siempre es porque no es un
+archivo de video. Comprobalo pegándola en el navegador: si se abre una página,
+no sirve.
 
-Si es un archivo válido y aun así falla, puede ser el códec: los televisores son
-quisquillosos con HEVC de 10 bits y con audio AC3. La conversión automática
-llega en la Fase 4.
+**Si es un archivo de tu computadora:** mirá lo que dice el análisis antes de
+enviarlo. Si avisa que hay que convertirlo y no tenés ffmpeg instalado, el
+televisor va a recibir algo que no puede reproducir.
+
+Los casos típicos son video HEVC de 10 bits (no se ve nada) y audio AC3 (se ve
+la imagen pero no hay sonido).
+
+### Dice que el enlace caducó
+
+Los enlaces a tus archivos vencen a las 6 horas, para no dejar el disco
+compartido en la red indefinidamente. Volvé a enviar el video desde la
+aplicación. Si querés que duren más, cambiá `MEDIA_LINK_TTL_SECONDS` en el
+`.env`.
+
+### No aparece el botón de elegir un video
+
+Falta configurar `MEDIA_DIRS` en el archivo `.env` y reiniciar el servidor. El
+botón no aparece si no hay ninguna carpeta configurada: mostrarlo sabiendo que
+va a fallar sería peor.
 
 ### El volumen sube y baja pero no puedo poner un número exacto
 
@@ -328,6 +379,8 @@ Los más útiles:
 | `PORT` | Puerto de la aplicación. Por defecto `8099`. |
 | `PROBE_TIMEOUT_MS` | Subilo si tu red es lenta y algún televisor no llega a contestar. |
 | `AUTH_PIN` | Si lo completás, pide un PIN para entrar. Vacío = sin contraseña. |
+| `MEDIA_DIRS` | Carpetas con tus videos, separadas por coma. Sin esto no podés enviar archivos de tu computadora. |
+| `MEDIA_LINK_TTL_SECONDS` | Cuánto vive un enlace a un video. Por defecto 6 horas. |
 | `LOG_LEVEL` | `debug` para ver el tráfico de protocolo. |
 
 ## Seguridad
@@ -336,6 +389,10 @@ Los más útiles:
   Lo único que lo expondría sería abrir el puerto en el router: **no lo hagas.**
 - Los tokens de emparejamiento de los televisores se guardan **cifrados**.
 - El archivo `.env` y la carpeta `data/` están fuera del control de versiones.
+- **Solo se comparten las carpetas que pongas en `MEDIA_DIRS`.** No se puede
+  salir de ellas, ni con `..` ni con enlaces simbólicos.
+- Los enlaces a tus videos **caducan** (6 horas por defecto), así que el disco
+  no queda compartido para siempre.
 
 ## Qué falta
 

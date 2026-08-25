@@ -5,10 +5,11 @@ usa; esto es para quien lo toca.
 
 ## Estado actual
 
-**Fases 1, 2 y 3 terminadas.** Descubrimiento, base de datos, CLI, API, estado en
+**Fases 1 a 4 terminadas.** Descubrimiento, base de datos, CLI, API, estado en
 vivo por WebSocket, el patrón adapter, el adapter de Samsung Tizen,
 el adapter castv2 para dispositivos Cast, Wake-on-LAN, cifrado de credenciales,
-casteo de URL con historial y la pantalla de control completa.
+casteo de URL y de archivos locales con historial, MediaServer con rangos HTTP,
+subtítulos, detección de códecs y la pantalla de control completa.
 
 **Ni el adapter de Samsung ni el de Cast están verificados contra hardware
 real.** Los dos están escritos contra documentación de ingeniería inversa de la
@@ -21,7 +22,7 @@ hay que confirmarlo con `LOG_LEVEL=debug` la primera vez.
 | 1 | Base, descubrimiento, `npm run discover`, `GET /api/devices`, UI de lista | ✅ |
 | 2 | `TvAdapter` + registry + adapter Samsung Tizen + Wake-on-LAN + UI de control | ✅ sin probar en hardware |
 | 3 | Chromecast por castv2 (castear y volumen) | ✅ sin probar en hardware |
-| 4 | MediaServer con Range, archivo local, subtítulos, códecs | pendiente |
+| 4 | MediaServer con Range, archivo local, subtítulos, códecs | ✅ sin probar en hardware |
 | 5 | `androidtvremote2` para el D-pad del Google TV, grupos, escenas, empaquetado | pendiente |
 
 La instalación en pantalla de inicio de iOS ya está hecha, adelantada de la
@@ -41,8 +42,10 @@ server/
   logger.ts        pino + protocolLog(), que escribe siempre en nivel debug.
   net/             Interfaces de red, cálculo de broadcast, lectura de ARP.
   discovery/       ssdp · mdns · upnp · probe · identify · service
-  adapters/        types (interfaz + registry) · errors · samsung/ · chromecast/ · mock/
-  services/        wol · crypto · credentials.repo · control · state-hub · media-history
+  adapters/        types · errors · samsung/ · chromecast/ · dlna/ · mock/
+  media/           range · subtitles · mime · tokens · library · probe · server
+  services/        wol · crypto · credentials.repo · control · state-hub
+                   media-history · media-caster
   db/              schema (migraciones) · conexión · repositorio
   http/            Fastify, rutas, canal WebSocket y servido del build.
   cli/discover.ts  La herramienta de diagnóstico.
@@ -238,6 +241,44 @@ librería de imágenes al proyecto para algo que se corre una vez.
 **`navigator.vibrate` no existe en Safari iOS.** Cuando la Fase 2 agregue
 feedback háptico, hay que detectarlo antes de llamarlo.
 
+## El MediaServer y por qué adelantar el video no siempre es exacto
+
+El televisor **no lee el disco del servidor**. Lo que se le manda es una URL de
+nuestro propio `MediaServer`, y el archivo viaja por HTTP desde la red local.
+Por eso la URL se arma con la IP real de la LAN: con `localhost` el televisor se
+estaría buscando a sí mismo.
+
+Hay dos caminos, y la diferencia importa:
+
+| Camino | Cuándo | Adelantar el video |
+|---|---|---|
+| **Directo** | El archivo ya es compatible | **Exacto.** Rangos HTTP reales, 206 con los bytes pedidos |
+| **Conversión** | Códec o envase incompatibles | **Aproximado.** Se relanza `ffmpeg` desde otro punto |
+
+La conversión no puede dar seek exacto y no es un defecto que se pueda arreglar:
+el contenido se genera sobre la marcha, no hay un archivo con posiciones
+conocidas contra el cual responder un rango. La barra del televisor queda
+desfasada. Se eligió esto sobre la alternativa, que era no poder reproducir el
+archivo en absoluto.
+
+Detalles que cuesta descubrir solo:
+
+- **`Range` no es opcional.** Sin él muchos televisores ni arrancan: piden los
+  primeros bytes para leer la cabecera, y si les llega el archivo entero se
+  cuelgan. Cubierto por tests unitarios y de integración HTTP.
+- **La cabecera `contentFeatures.dlna.org` con `DLNA.ORG_OP=01`** es lo que
+  declara que se admite búsqueda por bytes. Sin ella, varios Samsung reproducen
+  pero no dejan adelantar.
+- **Fastify genera un HEAD automático por cada GET**, y ese ejecuta el manejador
+  entero descartando el cuerpo: leería el archivo completo para no mandarlo. Va
+  `exposeHeadRoute: false` y un HEAD propio.
+- **La comprobación de rutas se hace sobre la ruta REAL** (`realpath`), no sobre
+  la pedida: un enlace simbólico dentro de la carpeta permitida podría apuntar a
+  cualquier parte del disco. Y se compara con el separador final, porque
+  `/videos-privados` no está dentro de `/videos` aunque el texto empiece igual.
+- **Los enlaces caducan.** Protegen de dejar el disco expuesto para siempre, no
+  de alguien dentro de la red mientras el enlace vive.
+
 ## Trampas ya pisadas
 
 Cosas que costó encontrar y no conviene volver a romper:
@@ -252,6 +293,13 @@ Cosas que costó encontrar y no conviene volver a romper:
   van en SVG; no usar caracteres Unicode para flechas.
 - **`exactOptionalPropertyTypes` está activo.** Un campo ausente y uno en
   `undefined` no son lo mismo: omitir la propiedad, no asignarle `undefined`.
+- **El historial NO puede deduplicar por URL.** La URL de un archivo local lleva
+  un token efímero distinto en cada envío: el mismo video generaba una entrada
+  nueva cada vez, todas con tokens que al poco tiempo daban 403 al repetir. Se
+  guarda una `ref` estable (el id del archivo) y se repite por ahí.
+- **`formatDuration` recorta a cero ANTES de calcular los milisegundos.** Al
+  revés producía `0:00:00.-10000`, que deja el DIDL-Lite inválido y el televisor
+  descarta el envío en silencio.
 
 ## Probar sin hardware
 
