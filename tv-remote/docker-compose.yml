@@ -1,0 +1,40 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  IMPORTANTE, LEER ANTES DE USAR
+#
+#  network_mode: host NO es opcional y no se puede cambiar por "ports:".
+#  El descubrimiento de televisores usa multicast (SSDP y mDNS), y el multicast
+#  no atraviesa la red puente que Docker usa por defecto: el contenedor
+#  arrancaria bien y no encontraria absolutamente nada.
+#
+#  Y por el mismo motivo:
+#
+#  ESTO NO FUNCIONA EN DOCKER DESKTOP PARA WINDOWS NI PARA MAC.
+#
+#  En esos sistemas Docker corre dentro de una maquina virtual y network_mode:
+#  host se refiere a la red de esa maquina virtual, no a la de tu computadora.
+#  Si estas en Windows o Mac, corre el proyecto de forma nativa:
+#
+#      npm install && npm run build && npm start
+#
+#  Docker sirve para Linux, para una Raspberry Pi o para un NAS.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  tv-remote:
+    build: .
+    container_name: tv-remote
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      # Con network_mode: host, el puerto sale directo en tu red local.
+      PORT: 8099
+      # Descomenta y ajusta para poder enviar videos de tu disco.
+      # Tiene que coincidir con lo que montes abajo en volumes.
+      # MEDIA_DIRS: /videos
+      LOG_LEVEL: info
+    volumes:
+      # Base de datos y credenciales de emparejamiento. Si borras esto, hay que
+      # volver a emparejar los televisores.
+      - ./data:/app/data
+      # Tus videos, en solo lectura: el servidor nunca necesita escribirlos.
+      # - /ruta/a/tus/videos:/videos:ro
