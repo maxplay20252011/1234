@@ -17,6 +17,16 @@
  *   7 payload_binary    bytes
  */
 
+import {
+  ProtoWriter,
+  encodeVarint,
+  decodeVarint,
+  readFields,
+  WIRE_LENGTH_DELIMITED,
+} from '../../protobuf/index.js';
+
+export { encodeVarint, decodeVarint };
+
 export type CastMessage = {
   sourceId: string;
   destinationId: string;
@@ -24,61 +34,15 @@ export type CastMessage = {
   payloadUtf8: string;
 };
 
-const WIRE_VARINT = 0;
-const WIRE_LENGTH_DELIMITED = 2;
-
-export function encodeVarint(value: number): Buffer {
-  // Siete bits utiles por byte; el octavo indica que sigue otro byte.
-  const bytes: number[] = [];
-  let v = value;
-  do {
-    let byte = v & 0x7f;
-    v >>>= 7;
-    if (v > 0) byte |= 0x80;
-    bytes.push(byte);
-  } while (v > 0);
-  return Buffer.from(bytes);
-}
-
-export function decodeVarint(buf: Buffer, offset: number): { value: number; bytesRead: number } {
-  let value = 0;
-  let shift = 0;
-  let leidos = 0;
-
-  for (;;) {
-    if (offset + leidos >= buf.length) throw new Error('Varint incompleto');
-    const byte = buf[offset + leidos] as number;
-    leidos += 1;
-    value += (byte & 0x7f) * 2 ** shift;
-    if ((byte & 0x80) === 0) break;
-    shift += 7;
-    if (shift > 35) throw new Error('Varint demasiado largo');
-  }
-  return { value, bytesRead: leidos };
-}
-
-function tag(fieldNumber: number, wireType: number): Buffer {
-  return encodeVarint((fieldNumber << 3) | wireType);
-}
-
-function stringField(fieldNumber: number, text: string): Buffer {
-  const datos = Buffer.from(text, 'utf8');
-  return Buffer.concat([tag(fieldNumber, WIRE_LENGTH_DELIMITED), encodeVarint(datos.length), datos]);
-}
-
-function varintField(fieldNumber: number, value: number): Buffer {
-  return Buffer.concat([tag(fieldNumber, WIRE_VARINT), encodeVarint(value)]);
-}
-
 export function encodeCastMessage(msg: CastMessage): Buffer {
-  return Buffer.concat([
-    varintField(1, 0), // protocol_version: CASTV2_1_0
-    stringField(2, msg.sourceId),
-    stringField(3, msg.destinationId),
-    stringField(4, msg.namespace),
-    varintField(5, 0), // payload_type: STRING
-    stringField(6, msg.payloadUtf8),
-  ]);
+  return new ProtoWriter()
+    .varint(1, 0) // protocol_version: CASTV2_1_0
+    .string(2, msg.sourceId)
+    .string(3, msg.destinationId)
+    .string(4, msg.namespace)
+    .varint(5, 0) // payload_type: STRING
+    .string(6, msg.payloadUtf8)
+    .build();
 }
 
 /**
@@ -89,46 +53,27 @@ export function encodeCastMessage(msg: CastMessage): Buffer {
  * como protobuf esta pensado para evolucionar.
  */
 export function decodeCastMessage(buf: Buffer): CastMessage {
-  let offset = 0;
   const msg: CastMessage = { sourceId: '', destinationId: '', namespace: '', payloadUtf8: '' };
 
-  while (offset < buf.length) {
-    const t = decodeVarint(buf, offset);
-    offset += t.bytesRead;
-    const fieldNumber = t.value >>> 3;
-    const wireType = t.value & 0x07;
-
-    if (wireType === WIRE_VARINT) {
-      offset += decodeVarint(buf, offset).bytesRead;
-      continue;
+  for (const campo of readFields(buf)) {
+    if (campo.wire !== WIRE_LENGTH_DELIMITED) continue;
+    const texto = campo.value.toString('utf8');
+    switch (campo.field) {
+      case 2:
+        msg.sourceId = texto;
+        break;
+      case 3:
+        msg.destinationId = texto;
+        break;
+      case 4:
+        msg.namespace = texto;
+        break;
+      case 6:
+        msg.payloadUtf8 = texto;
+        break;
+      default:
+        break;
     }
-
-    if (wireType === WIRE_LENGTH_DELIMITED) {
-      const largo = decodeVarint(buf, offset);
-      offset += largo.bytesRead;
-      const contenido = buf.subarray(offset, offset + largo.value);
-      offset += largo.value;
-
-      switch (fieldNumber) {
-        case 2:
-          msg.sourceId = contenido.toString('utf8');
-          break;
-        case 3:
-          msg.destinationId = contenido.toString('utf8');
-          break;
-        case 4:
-          msg.namespace = contenido.toString('utf8');
-          break;
-        case 6:
-          msg.payloadUtf8 = contenido.toString('utf8');
-          break;
-        default:
-          break;
-      }
-      continue;
-    }
-
-    throw new Error(`Tipo de campo protobuf no soportado: ${wireType}`);
   }
 
   return msg;
