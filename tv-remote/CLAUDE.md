@@ -15,7 +15,10 @@ todavía**, así que no se puede controlar ningún televisor.
 | 2 | `TvAdapter` + registry + adapter Samsung Tizen + Wake-on-LAN + UI de control | pendiente |
 | 3 | Chromecast por castv2 (castear y volumen) | pendiente |
 | 4 | MediaServer con Range, cast de URL y archivo, subtítulos, códecs | pendiente |
-| 5 | `androidtvremote2` para el D-pad del Google TV, grupos, escenas, PWA, empaquetado | pendiente |
+| 5 | `androidtvremote2` para el D-pad del Google TV, grupos, escenas, empaquetado | pendiente |
+
+La instalación en pantalla de inicio de iOS ya está hecha, adelantada de la
+Fase 5 a pedido. Ver abajo por qué no llega a ser una PWA completa.
 
 LG webOS, Roku y Vizio se detectan pero no tienen adapter: no hay hardware de
 esas marcas para validarlos, y un adapter sin verificar contra el aparato real
@@ -147,6 +150,34 @@ broadcast de la subred, a los puertos **7 y 9**, repetido unas tres veces.
 Muchos LG y Samsung modernos **ignoran el paquete por Wi-Fi y solo despiertan
 por cable**. Si aun así no anda, es una opción del televisor, no un bug: se
 llama "Encender móvil", "Wake on LAN" o "Conexión de red en espera".
+
+## iOS: instalable sí, PWA completa no
+
+Los service workers exigen contexto seguro (HTTPS). Una dirección de LAN como
+`http://192.168.1.10:8099` no lo es, así que **no se puede registrar un service
+worker ni ofrecer instalación estándar**. No es evitable desde el código: es la
+política del navegador.
+
+Lo que sí funciona sobre HTTP plano es el mecanismo propio de Apple, anterior a
+las PWA, y es lo que está implementado en `web/index.html`:
+`apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`,
+`apple-mobile-web-app-title` y `apple-touch-icon`. Con eso, "Agregar a pantalla
+de inicio" deja un ícono real que abre a pantalla completa.
+
+iOS nunca ofrece instalar por su cuenta (no existe `beforeinstallprompt`), así
+que `InstallHint.tsx` muestra el aviso a mano, solo en iOS y solo fuera del modo
+standalone.
+
+Si en algún momento se quiere la PWA completa, el camino es `mkcert` más
+instalar la CA en cada dispositivo. Es un paso manual por celular: no conviene
+como opción por defecto.
+
+Los íconos se generan con `node tools/generate-icons.mjs`, que rasteriza y
+codifica PNG a mano con `node:zlib`. Es a propósito: no vale la pena sumar una
+librería de imágenes al proyecto para algo que se corre una vez.
+
+**`navigator.vibrate` no existe en Safari iOS.** Cuando la Fase 2 agregue
+feedback háptico, hay que detectarlo antes de llamarlo.
 
 ## Cosas que están fuera de alcance
 

@@ -27,11 +27,11 @@ node --version
 
 Tiene que responder algo como `v20.11.0` o mayor.
 
-### El servidor no puede ser un iPhone ni un iPad
+### Sobre el iPhone
 
-iOS no permite correr un servidor: no hay Node, las apps se suspenden al
-bloquear la pantalla, y desde iOS 14 el sistema bloquea el multicast que
-necesita el descubrimiento. **El iPhone es el control remoto, no el servidor.**
+**El iPhone es el control remoto, no el servidor.** Desde el celular abrís la
+aplicación en Safari y la usás; lo que no puede es *alojarla*. Más abajo hay una
+[sección entera sobre esto](#desde-el-iphone).
 
 ---
 
@@ -158,6 +158,74 @@ LOG_LEVEL=debug npm start
 
 Muestra el tráfico crudo de todos los protocolos. Es mucho texto, pero es lo
 que sirve para entender por qué un televisor no responde.
+
+---
+
+## Desde el iPhone
+
+La aplicación está pensada para usarse desde el celular, y en iPhone funciona
+sin instalar nada: abrís la dirección en Safari y listo.
+
+### Dejarla como una app en la pantalla de inicio
+
+1. Abrí `http://192.168.1.10:8099` (la dirección que te imprime la terminal) en
+   **Safari**. Tiene que ser Safari; desde Chrome en iPhone no se puede.
+2. Tocá el botón **Compartir** (el cuadradito con la flecha hacia arriba).
+3. Bajá y elegí **Agregar a pantalla de inicio**.
+
+Queda un ícono igual al de cualquier app, y al abrirlo arranca a pantalla
+completa, sin la barra de Safari. La aplicación te muestra este recordatorio
+sola la primera vez que entrás desde un iPhone.
+
+### Por qué no es una PWA completa
+
+Una PWA "de verdad" —la que funciona sin conexión— necesita un *service
+worker*, y los navegadores solo los permiten en contexto seguro, o sea HTTPS.
+Una dirección de red local como `http://192.168.1.10:8099` no lo es, así que
+esa parte no se puede sobre HTTP plano. **No es una limitación de esta
+aplicación, es la política de todos los navegadores.**
+
+Lo que sí funciona sobre HTTP es el ícono y el modo pantalla completa, porque
+Apple lo resuelve con un mecanismo propio anterior a las PWA. En la práctica se
+ve y se abre igual que una app.
+
+Si más adelante querés la PWA completa, hay que generar un certificado propio
+con `mkcert` e instalarlo en cada celular. Se puede, pero es un paso manual por
+dispositivo.
+
+### El vibrado no funciona en iPhone
+
+Safari en iOS no soporta `navigator.vibrate`. El feedback al tocar los botones
+va a andar en Android y no en iPhone. No hay forma de evitarlo desde una
+página web.
+
+### Y si no quiero depender de que la notebook esté prendida
+
+El servidor tiene que correr en algo encendido y conectado a la misma red. No
+puede ser el iPhone: iOS no tiene Node, suspende las apps al bloquear la
+pantalla, y desde iOS 14 bloquea el multicast que necesita el descubrimiento.
+Las alternativas reales, de más barata a más cómoda:
+
+| Opción | Costo | Comentario |
+|---|---|---|
+| **Un Android viejo con Termux** | gratis | Node corre nativo y el multicast funciona. Lo dejás enchufado y listo. |
+| **Raspberry Pi Zero 2 W** | ~USD 20 | Alcanza y sobra para esto. |
+| **Raspberry Pi 4 o 5** | ~USD 50-80 | Más margen, y te sirve para otras cosas. |
+| **Un NAS que ya tengas** | gratis | Con Docker en `network_mode: host`. |
+
+### Mientras tanto, hoy, sin nada de esto
+
+Para tu hardware concreto ya existen apps de iPhone que controlan cada aparato
+por separado, gratis y sin servidor:
+
+- **Google Home** controla el Chromecast con Google TV, con D-pad incluido.
+- **SmartThings** controla el televisor Samsung.
+- Si tu Samsung es 2018 o posterior, probablemente soporte **AirPlay 2**, así
+  que podés mandarle video desde el iPhone directo, sin app de por medio.
+
+Son tres cosas distintas en vez de una sola, que es justamente lo que este
+proyecto viene a resolver. Pero si lo que necesitás es control desde el iPhone
+*ya*, están ahí.
 
 ---
 

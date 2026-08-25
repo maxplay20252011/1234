@@ -3,6 +3,7 @@ import type { Device } from '@tv-remote/shared';
 import { api, ApiError } from './api.js';
 import { DeviceCard } from './components/DeviceCard.js';
 import { AddDeviceDialog } from './components/AddDeviceDialog.js';
+import { InstallHint } from './components/InstallHint.js';
 
 export function App(): React.JSX.Element {
   const [devices, setDevices] = useState<Device[]>([]);
@@ -69,6 +70,8 @@ export function App(): React.JSX.Element {
       </header>
 
       <main className="mx-auto max-w-2xl px-4 py-4">
+        <InstallHint />
+
         {error && (
           <div className="mb-4 rounded-xl bg-rose-500/10 px-4 py-3 text-sm text-rose-300 ring-1 ring-rose-500/25">
             {error}

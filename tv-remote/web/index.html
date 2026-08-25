@@ -5,6 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0a0a0b" />
     <title>Control de TVs</title>
+
+    <!--
+      Instalacion en iPhone.
+
+      Estas cuatro etiquetas son de Apple y son anteriores a las PWA: funcionan
+      sobre HTTP plano, sin certificado y sin service worker. Con ellas,
+      "Compartir -> Anadir a pantalla de inicio" deja un icono real que abre a
+      pantalla completa, sin la barra de Safari.
+
+      Los service workers, en cambio, exigen contexto seguro (HTTPS), asi que
+      la instalacion como PWA completa NO es posible sobre http://192.168.x.x.
+      Ver la seccion de iPhone en el README.
+    -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="TVs" />
+    <link rel="apple-touch-icon" href="/icon-180.png" />
+
+    <!-- Android y escritorio -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
   </head>
   <body>
     <div id="root"></div>
