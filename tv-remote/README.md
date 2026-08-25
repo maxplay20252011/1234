@@ -5,16 +5,17 @@ televisores de la red desde el navegador del celular o de la computadora.
 
 **Sin nube, sin cuenta de usuario, sin internet.** Todo pasa dentro de tu red.
 
-> ### Estado: Fase 2 de 5
+> ### Estado: Fase 3 de 5
 >
-> La aplicación **encuentra** los televisores y ya **controla** los Samsung con
-> Tizen: encendido, volumen, silencio, cruceta y aplicaciones.
+> La aplicación **encuentra** los televisores, **controla** los Samsung con
+> Tizen (encendido, volumen, cruceta, aplicaciones) y **envía videos** al
+> Chromecast y al Google TV.
 >
-> **El control de Samsung todavía no se probó contra un televisor real**, así
-> que puede necesitar ajustes. Si algo no anda, mandá la salida de
+> **Nada de esto se probó todavía contra un aparato real**, así que puede
+> necesitar ajustes. Si algo no anda, mandá la salida de
 > `LOG_LEVEL=debug npm start`.
 >
-> El Chromecast se detecta pero todavía no se controla: eso es la Fase 3.
+> Falta enviar archivos de tu propio disco: eso es la Fase 4.
 
 ---
 
@@ -94,6 +95,31 @@ televisor a *Configuración → General → Administrador de dispositivos extern
 y borrá la lista de dispositivos.
 
 Una vez emparejado queda guardado, **también después de reiniciar el servidor**.
+
+### Enviar un video al televisor
+
+En la pantalla de control, abajo de todo, está **Enviar contenido**. Pegás la
+dirección de un video y toca *Reproducir en el televisor*.
+
+**Tiene que ser un enlace directo a un archivo de video** — de esos que
+terminan en `.mp4`. Un enlace de YouTube, de Netflix o de cualquier servicio
+**no funciona**: esos son páginas web, no videos, y el aparato espera un video.
+
+Lo que enviaste queda en un historial abajo, para volver a poner algo con un
+solo toque.
+
+> Enviar archivos de tu propia computadora todavía no está: es la Fase 4.
+
+### Sobre el Chromecast
+
+El Chromecast **no es el televisor**, así que no se puede encender ni apagar la
+pantalla desde la aplicación. Lo que sí pasa: al enviarle un video, el televisor
+normalmente se enciende solo por HDMI-CEC. O sea que enviar algo *es* el
+encendido.
+
+Tampoco tiene cruceta: un Chromecast pelado no tiene botones que emular. Si el
+tuyo es un **Chromecast con Google TV**, la cruceta va a llegar en la Fase 5,
+por un protocolo distinto.
 
 ### Desde la computadora, con el teclado
 
@@ -187,6 +213,16 @@ puede perder si reiniciaste el televisor de fábrica, si borraste la lista de
 dispositivos externos, o si cambiaste `ENCRYPTION_KEY` en el `.env` (en ese
 caso las credenciales guardadas dejan de poder leerse y hay que emparejar de
 nuevo). Tocá *Emparejar* otra vez.
+
+### El video no arranca
+
+Casi siempre es porque la dirección no es un archivo de video. Comprobalo
+pegándola en el navegador: si se abre una página, no sirve; tiene que empezar a
+descargarse o a reproducirse un video solo.
+
+Si es un archivo válido y aun así falla, puede ser el códec: los televisores son
+quisquillosos con HEVC de 10 bits y con audio AC3. La conversión automática
+llega en la Fase 4.
 
 ### El volumen sube y baja pero no puedo poner un número exacto
 

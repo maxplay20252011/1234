@@ -5,21 +5,23 @@ usa; esto es para quien lo toca.
 
 ## Estado actual
 
-**Fases 1 y 2 terminadas.** Descubrimiento, base de datos, CLI, API, estado en
+**Fases 1, 2 y 3 terminadas.** Descubrimiento, base de datos, CLI, API, estado en
 vivo por WebSocket, el patrón adapter, el adapter de Samsung Tizen,
-Wake-on-LAN, cifrado de credenciales y la pantalla de control completa.
+el adapter castv2 para dispositivos Cast, Wake-on-LAN, cifrado de credenciales,
+casteo de URL con historial y la pantalla de control completa.
 
-**El adapter de Samsung NO está verificado contra hardware real.** Está escrito
-contra documentación de ingeniería inversa de la comunidad. Las partes puras
-tienen tests; el comportamiento contra un televisor hay que confirmarlo con
-`LOG_LEVEL=debug` la primera vez.
+**Ni el adapter de Samsung ni el de Cast están verificados contra hardware
+real.** Los dos están escritos contra documentación de ingeniería inversa de la
+comunidad. Las partes puras tienen tests, y el cliente castv2 se ejercita entero
+contra un aparato falso sobre TLS; el comportamiento contra un aparato de verdad
+hay que confirmarlo con `LOG_LEVEL=debug` la primera vez.
 
 | Fase | Alcance | Estado |
 |---|---|---|
 | 1 | Base, descubrimiento, `npm run discover`, `GET /api/devices`, UI de lista | ✅ |
 | 2 | `TvAdapter` + registry + adapter Samsung Tizen + Wake-on-LAN + UI de control | ✅ sin probar en hardware |
-| 3 | Chromecast por castv2 (castear y volumen) | pendiente |
-| 4 | MediaServer con Range, cast de URL y archivo, subtítulos, códecs | pendiente |
+| 3 | Chromecast por castv2 (castear y volumen) | ✅ sin probar en hardware |
+| 4 | MediaServer con Range, archivo local, subtítulos, códecs | pendiente |
 | 5 | `androidtvremote2` para el D-pad del Google TV, grupos, escenas, empaquetado | pendiente |
 
 La instalación en pantalla de inicio de iOS ya está hecha, adelantada de la
@@ -39,8 +41,8 @@ server/
   logger.ts        pino + protocolLog(), que escribe siempre en nivel debug.
   net/             Interfaces de red, cálculo de broadcast, lectura de ARP.
   discovery/       ssdp · mdns · upnp · probe · identify · service
-  adapters/        types (interfaz + registry) · errors · samsung/ · mock/
-  services/        wol · crypto · credentials.repo · control · state-hub
+  adapters/        types (interfaz + registry) · errors · samsung/ · chromecast/ · mock/
+  services/        wol · crypto · credentials.repo · control · state-hub · media-history
   db/              schema (migraciones) · conexión · repositorio
   http/            Fastify, rutas, canal WebSocket y servido del build.
   cli/discover.ts  La herramienta de diagnóstico.
@@ -157,6 +159,31 @@ actualización de firmware.
   stream directo, no una página. La app de Google usa el protocolo Lounge, que
   es privado. Ver la discusión en el README.
 
+### Chromecast y Google TV — implementado, sin verificar en hardware
+
+Lo de arriba sobre distinguirlos por mDNS sigue valiendo. Además:
+
+- **El adapter se registra para `chromecast` Y para `androidtv`.** Un Chromecast
+  con Google TV es las dos cosas: habla castv2 para reproducir y volumen, y
+  `androidtvremote2` para la cruceta y el encendido (Fase 5). Sin registrarlo
+  para las dos marcas, el aparato del usuario quedaría detectado pero sin
+  control.
+- **El protobuf está implementado a mano** (`protobuf.ts`), sin `protobufjs`. El
+  `CastMessage` tiene siete campos de tipos básicos y su definición no cambia
+  desde que existe el protocolo.
+- **Dos cosas que el protocolo exige y son fáciles de pasar por alto:** hay que
+  mandar `CONNECT` antes que nada *y de nuevo por cada destino nuevo* (la
+  aplicación cargada tiene su propio `transportId`), y hay que mandar `PING`
+  cada pocos segundos o el aparato corta sin avisar.
+- **El volumen va de 0 a 1, no de 0 a 100.** La conversión está en un solo lugar
+  (`setVolumePayload`) para que el resto del sistema siga hablando en
+  porcentaje como todas las demás marcas.
+- **No hay "subir un paso":** hay que leer el valor y escribir el nuevo.
+- **castv2 no permite enumerar las aplicaciones instaladas.** `listApps()`
+  devuelve vacío, que es la verdad.
+- **`LOAD` necesita metadata válida.** Sin ella, algunos receptores rechazan la
+  carga sin explicar por qué.
+
 ### LG webOS — sin hardware, sin adapter
 - **[rev]** SSAP por WebSocket en el 3000 (`ws://`) o el 3001 (`wss://`).
 - El handshake devuelve un `client-key` que hay que persistir; sin él, cada
@@ -210,6 +237,21 @@ librería de imágenes al proyecto para algo que se corre una vez.
 
 **`navigator.vibrate` no existe en Safari iOS.** Cuando la Fase 2 agregue
 feedback háptico, hay que detectarlo antes de llamarlo.
+
+## Trampas ya pisadas
+
+Cosas que costó encontrar y no conviene volver a romper:
+
+- **El `StateHub` compara campo por campo para no difundir de más, así que un
+  campo nuevo hay que agregarlo a la comparación.** Cuando se sumó `media`, la
+  comparación no lo miraba: cambiar de video se descartaba como "sin novedad" y
+  la interfaz mostraba el título anterior para siempre. Hay tests de regresión.
+- **La posición de reproducción se compara redondeada al segundo.** Llega con
+  decimales y, sin redondear, cada lectura parece un cambio y difunde sin parar.
+- **`◀` y `▶` tienen forma de emoji por defecto y `▲`/`▼` no.** Todos los íconos
+  van en SVG; no usar caracteres Unicode para flechas.
+- **`exactOptionalPropertyTypes` está activo.** Un campo ausente y uno en
+  `undefined` no son lo mismo: omitir la propiedad, no asignarle `undefined`.
 
 ## Probar sin hardware
 
