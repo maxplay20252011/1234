@@ -7,12 +7,40 @@ import type {
   RemoteKey,
 } from '@tv-remote/shared';
 
+export type MediaEntry = {
+  id: string;
+  name: string;
+  relativePath: string;
+  size: number;
+  contentType: string;
+  isDirectory: boolean;
+};
+
+export type Compatibility = {
+  plan: 'direct' | 'remux' | 'transcode' | 'unknown';
+  reasons: string[];
+  warning?: string;
+};
+
+export type FileCheck = {
+  title: string;
+  contentType: string;
+  durationSeconds?: number;
+  compatibility: Compatibility;
+  hasSubtitles: boolean;
+};
+
+export type LibraryStatus = { configured: boolean; roots: string[]; ffmpeg: boolean };
+
 export type HistoryEntry = {
   id: string;
   deviceId: string;
   title: string | null;
   url: string;
+  /** 'url' para contenido remoto, 'file' para un archivo del servidor. */
   kind: string;
+  /** Referencia estable con la que se vuelve a reproducir. */
+  ref: string;
   playedAt: string;
 };
 
@@ -127,4 +155,21 @@ export const api = {
 
   clearHistory: (id: string) =>
     request<void>(`/api/devices/${id}/history`, { method: 'DELETE' }),
+
+  // ─── Biblioteca de archivos ───────────────────────────────────────────────
+
+  libraryStatus: () => request<LibraryStatus>('/api/library/status'),
+
+  browse: (path?: string) =>
+    request<{ path: string; entries: MediaEntry[] }>(
+      `/api/library${path ? `?path=${encodeURIComponent(path)}` : ''}`,
+    ),
+
+  checkFile: (fileId: string) => request<FileCheck>(`/api/library/${fileId}/check`),
+
+  castFile: (deviceId: string, fileId: string) =>
+    request<void>(`/api/devices/${deviceId}/cast/file`, {
+      method: 'POST',
+      body: JSON.stringify({ fileId }),
+    }),
 };

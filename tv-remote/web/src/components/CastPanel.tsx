@@ -3,6 +3,7 @@ import type { MediaState } from '@tv-remote/shared';
 import { api, ApiError, type HistoryEntry } from '../api.js';
 import { useToast } from '../useToasts.js';
 import { tap } from '../haptics.js';
+import { FileBrowser } from './FileBrowser.js';
 
 /**
  * Enviar contenido al televisor.
@@ -23,7 +24,18 @@ export function CastPanel({
   const [url, setUrl] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [historial, setHistorial] = useState<HistoryEntry[]>([]);
+  const [explorando, setExplorando] = useState(false);
+  const [bibliotecaLista, setBibliotecaLista] = useState(false);
   const toast = useToast();
+
+  useEffect(() => {
+    // Si no hay carpetas configuradas, el boton de elegir archivo no aparece:
+    // ofrecer algo que va a fallar es peor que no ofrecerlo.
+    void api
+      .libraryStatus()
+      .then((s) => setBibliotecaLista(s.configured))
+      .catch(() => setBibliotecaLista(false));
+  }, []);
 
   const cargarHistorial = useCallback(async (): Promise<void> => {
     try {
@@ -49,6 +61,19 @@ export function CastPanel({
       void cargarHistorial();
     } catch (err) {
       toast(err instanceof ApiError ? err.message : 'No se pudo enviar el video.');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  const repetirArchivo = async (fileId: string): Promise<void> => {
+    setEnviando(true);
+    try {
+      await api.castFile(deviceId, fileId);
+      onChanged();
+      void cargarHistorial();
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : 'No se pudo reproducir ese archivo.');
     } finally {
       setEnviando(false);
     }
@@ -127,6 +152,29 @@ export function CastPanel({
         </p>
       </form>
 
+      {bibliotecaLista && (
+        <button
+          onClick={() => {
+            tap();
+            setExplorando(true);
+          }}
+          className="w-full rounded-xl border border-dashed border-neutral-800 px-4 py-3 text-sm text-neutral-300 active:bg-neutral-900"
+        >
+          Elegir un video de mi computadora
+        </button>
+      )}
+
+      {explorando && (
+        <FileBrowser
+          deviceId={deviceId}
+          onClose={() => setExplorando(false)}
+          onCasted={() => {
+            onChanged();
+            void cargarHistorial();
+          }}
+        />
+      )}
+
       {historial.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -145,7 +193,9 @@ export function CastPanel({
               key={h.id}
               onClick={() => {
                 tap();
-                void castear(h.url);
+                // Un archivo local se repite por su id: la URL guardada lleva un
+                // token que ya caduco y daria 403.
+                void (h.kind === 'file' ? repetirArchivo(h.ref) : castear(h.ref));
               }}
               className="w-full truncate rounded-xl bg-neutral-900 px-4 py-2.5 text-left text-xs text-neutral-300 ring-1 ring-neutral-800 active:bg-neutral-800"
             >
