@@ -6,6 +6,7 @@ import { CredentialsRepo } from './credentials.repo.js';
 import { deriveKey } from './crypto.js';
 import { StateHub } from './state-hub.js';
 import { ControlService } from './control.js';
+import { MediaHistoryRepo } from './media-history.repo.js';
 import { AdapterRegistry } from '../adapters/types.js';
 import { MockAdapter, buildMockDevice } from '../adapters/mock/index.js';
 import { ControlError } from '../adapters/errors.js';
@@ -27,6 +28,8 @@ function montar() {
   const mock = new MockAdapter();
   registry.register(mock);
 
+  const history = new MediaHistoryRepo(db);
+
   const device = buildMockDevice();
   devices.upsert(device);
 
@@ -35,7 +38,8 @@ function montar() {
     devices,
     credentials,
     hub,
-    control: new ControlService(devices, credentials, registry, hub),
+    history,
+    control: new ControlService(devices, credentials, registry, hub, history),
     deviceId: device.id,
   };
 }
@@ -139,5 +143,34 @@ describe('StateHub', () => {
     hub.update('d1', { volume: 11 });
 
     expect(recibidos).toHaveLength(2);
+  });
+
+  it('difunde el cambio de video aunque no cambie nada mas', () => {
+    // Regresion: la comparacion no miraba `media`, asi que cambiar de video se
+    // descartaba como "sin novedad" y la interfaz seguia mostrando el titulo
+    // anterior para siempre.
+    const hub = new StateHub();
+    const recibidos: unknown[] = [];
+
+    hub.update('d1', { volume: 10, media: { playerState: 'PLAYING', title: 'Primero' } });
+    hub.on('message', (m) => recibidos.push(m));
+    hub.update('d1', { volume: 10, media: { playerState: 'PLAYING', title: 'Segundo' } });
+
+    expect(recibidos).toContainEqual(
+      expect.objectContaining({ media: expect.objectContaining({ title: 'Segundo' }) }),
+    );
+  });
+
+  it('no difunde por variaciones de menos de un segundo en la posicion', () => {
+    // La posicion llega con decimales; sin redondear, cada lectura pareceria un
+    // cambio y difundiria sin parar.
+    const hub = new StateHub();
+    hub.update('d1', { media: { playerState: 'PLAYING', position: 10.1 } });
+
+    const recibidos: unknown[] = [];
+    hub.on('message', (m) => recibidos.push(m));
+    hub.update('d1', { media: { playerState: 'PLAYING', position: 10.4 } });
+
+    expect(recibidos).toHaveLength(0);
   });
 });

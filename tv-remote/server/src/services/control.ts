@@ -1,9 +1,18 @@
-import type { App, Capability, Device, Input, PairingStatus, RemoteKey } from '@tv-remote/shared';
+import type {
+  App,
+  Capability,
+  CastUrlRequest,
+  Device,
+  Input,
+  PairingStatus,
+  RemoteKey,
+} from '@tv-remote/shared';
 import type { AdapterRegistry, DeviceState, TvAdapter } from '../adapters/types.js';
 import { ControlError, NotSupportedError } from '../adapters/errors.js';
 import type { DevicesRepo } from '../db/devices.repo.js';
 import type { CredentialsRepo } from './credentials.repo.js';
 import type { StateHub } from './state-hub.js';
+import type { MediaHistoryRepo } from './media-history.repo.js';
 import { logger } from '../logger.js';
 
 /**
@@ -24,6 +33,7 @@ export class ControlService {
     private readonly credentials: CredentialsRepo,
     private readonly registry: AdapterRegistry,
     private readonly hub: StateHub,
+    private readonly history: MediaHistoryRepo,
   ) {}
 
   /** Refresca en la base lo que el adapter declara que este aparato puede hacer. */
@@ -147,6 +157,24 @@ export class ControlService {
     if (!adapter.launchApp) throw new NotSupportedError('abrir aplicaciones', device.brand);
     await adapter.launchApp(device, appId, deepLink, creds);
     this.hub.update(deviceId, { currentApp: appId });
+  }
+
+  async castUrl(deviceId: string, media: CastUrlRequest): Promise<void> {
+    const { device, adapter, creds } = this.resolve(deviceId);
+    this.requireCapability(device, 'castUrl', 'reproducir contenido');
+    if (!adapter.castUrl) throw new NotSupportedError('reproducir contenido', device.brand);
+    await adapter.castUrl(device, media, creds);
+    this.history.add(deviceId, media);
+    // Al aparato le lleva un momento empezar: preguntarle enseguida devuelve
+    // que todavia no hay nada cargado.
+    this.refreshStateSoon(deviceId, 1200);
+  }
+
+  async stopCast(deviceId: string): Promise<void> {
+    const { device, adapter, creds } = this.resolve(deviceId);
+    if (!adapter.stopCast) throw new NotSupportedError('cortar la reproduccion', device.brand);
+    await adapter.stopCast(device, creds);
+    this.refreshStateSoon(deviceId);
   }
 
   async refreshState(deviceId: string): Promise<DeviceState> {

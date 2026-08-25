@@ -59,6 +59,28 @@ function sinCambios(a: DeviceState, b: DeviceState): boolean {
     a.volume === b.volume &&
     a.muted === b.muted &&
     a.currentApp === b.currentApp &&
-    a.currentInput === b.currentInput
+    a.currentInput === b.currentInput &&
+    mismoMedia(a.media, b.media)
+  );
+}
+
+/**
+ * Comparacion del estado de reproduccion.
+ *
+ * Va aparte porque `media` es un objeto y no se puede comparar con ===. Cuando
+ * este campo faltaba en la comparacion, cambiar de video no emitia nada: la
+ * interfaz seguia mostrando el titulo anterior indefinidamente.
+ *
+ * La posicion se compara redondeada al segundo: llega con decimales y, sin
+ * redondear, cada actualizacion se veria como un cambio y difundiria sin parar.
+ */
+function mismoMedia(a: DeviceState['media'], b: DeviceState['media']): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    a.playerState === b.playerState &&
+    a.title === b.title &&
+    a.duration === b.duration &&
+    Math.round(a.position ?? 0) === Math.round(b.position ?? 0)
   );
 }
