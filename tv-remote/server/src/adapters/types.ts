@@ -50,6 +50,13 @@ export interface TvAdapter {
   /** Estado del emparejamiento, para que la interfaz sepa que instrucciones dar. */
   pairingStatus(device: Device, credentials?: Credentials): Promise<PairingStatus>;
 
+  /**
+   * Arranca el emparejamiento cuando hace falta un paso previo: por ejemplo,
+   * conectar para que el televisor muestre un codigo en pantalla. Despues se
+   * llama a pair() con ese codigo.
+   */
+  beginPairing?(device: Device): Promise<PairingStatus>;
+
   /** Empareja. Devuelve las credenciales a persistir cifradas. */
   pair?(device: Device, pin?: string): Promise<Credentials>;
 

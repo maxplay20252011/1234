@@ -9,6 +9,8 @@ import { AdapterRegistry } from './adapters/types.js';
 import { SamsungAdapter } from './adapters/samsung/index.js';
 import { MockAdapter, buildMockDevice } from './adapters/mock/index.js';
 import { ChromecastAdapter } from './adapters/chromecast/index.js';
+import { AndroidTvAdapter } from './adapters/androidtv/index.js';
+import { CompositeAdapter } from './adapters/composite.js';
 import { CredentialsRepo } from './services/credentials.repo.js';
 import { deriveKey, loadOrCreateSecret } from './services/crypto.js';
 import { StateHub } from './services/state-hub.js';
@@ -16,6 +18,8 @@ import { ControlService } from './services/control.js';
 import { MediaHistoryRepo } from './services/media-history.repo.js';
 import { MediaCaster } from './services/media-caster.js';
 import { MediaLibrary } from './media/library.js';
+import { GroupsRepo, ScenesRepo } from './services/automation.repo.js';
+import { SceneRunner } from './services/scene-runner.js';
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -36,11 +40,14 @@ async function main(): Promise<void> {
       if (device) credentials.save(deviceId, device.brand, { token });
     }),
   );
-  // El mismo adapter para las dos marcas: un Chromecast con Google TV habla
-  // castv2 igual que uno pelado. Lo que lo distingue es que ADEMAS habla
-  // androidtvremote2, que es la cruceta y el encendido de la Fase 5.
   registry.register(new ChromecastAdapter('chromecast'));
-  registry.register(new ChromecastAdapter('androidtv'));
+
+  // Un Chromecast con Google TV habla los DOS protocolos: castv2 para
+  // reproducir y volumen, androidtvremote2 para cruceta y encendido. Ninguno
+  // solo alcanza, asi que se combinan en un adapter que los presenta como uno.
+  registry.register(
+    new CompositeAdapter('androidtv', new AndroidTvAdapter(), new ChromecastAdapter('androidtv')),
+  );
   if (config.MOCK_DEVICE) registry.register(new MockAdapter());
 
   const history = new MediaHistoryRepo(db);
@@ -59,6 +66,10 @@ async function main(): Promise<void> {
   );
 
   const control = new ControlService(repo, credentials, registry, hub, history, caster);
+
+  const groups = new GroupsRepo(db);
+  const scenes = new ScenesRepo(db);
+  const runner = new SceneRunner(control);
 
   const discovery = new DiscoveryService(
     {
@@ -87,7 +98,11 @@ async function main(): Promise<void> {
 
   discovery.on('scanning', (scanning) => hub.scanning(scanning));
 
-  const app = await buildServer(config, repo, discovery, control, hub, history, library, secret);
+  const app = await buildServer(config, repo, discovery, control, hub, history, library, secret, {
+    groups,
+    scenes,
+    runner,
+  });
   await app.listen({ host: config.HOST, port: config.PORT });
 
   const lan = primaryLanAddress();
