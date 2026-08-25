@@ -10,6 +10,11 @@ const EnvSchema = z.object({
   ENCRYPTION_KEY: z.string().default(''),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info'),
   DATA_DIR: z.string().default('data'),
+  /**
+   * Agrega un televisor simulado a la lista. Sirve para probar toda la
+   * interfaz sin hardware: MOCK_DEVICE=1 npm start
+   */
+  MOCK_DEVICE: z.coerce.boolean().default(false),
 });
 
 export type Config = z.infer<typeof EnvSchema>;
