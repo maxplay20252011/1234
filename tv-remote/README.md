@@ -5,17 +5,16 @@ televisores de la red desde el navegador del celular o de la computadora.
 
 **Sin nube, sin cuenta de usuario, sin internet.** Todo pasa dentro de tu red.
 
-> ### Estado: Fase 4 de 5
+> ### Estado: las cinco fases terminadas
 >
-> La aplicación **encuentra** los televisores, **controla** los Samsung con
-> Tizen, y **envía videos** —tanto de internet como de tu propia
-> computadora— al Chromecast, al Google TV y al Samsung.
+> La aplicación encuentra los televisores, los controla, envía videos (de
+> internet o de tu computadora), y permite agrupar y automatizar.
 >
 > **Nada de esto se probó todavía contra un aparato real**, así que puede
 > necesitar ajustes. Si algo no anda, mandá la salida de
 > `LOG_LEVEL=debug npm start`.
 >
-> Falta la cruceta del Google TV, los grupos y las escenas: eso es la Fase 5.
+> Lo más propenso a necesitar ajustes es el emparejamiento del Google TV.
 
 ---
 
@@ -43,13 +42,39 @@ aplicación en Safari y la usás; lo que no puede es *alojarla*. Más abajo hay 
 
 ## Instalación
 
+**En Linux o Mac**, desde la carpeta del proyecto:
+
 ```bash
-cd tv-remote
-npm install
-cp .env.example .env
+./install.sh
 ```
 
-Eso es todo. No hace falta editar el `.env` para empezar.
+**En Windows**, desde PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+El script comprueba que tengas todo, instala lo que falta y deja el proyecto
+listo. Si preferís hacerlo a mano:
+
+```bash
+npm install
+cp .env.example .env
+npm run build
+```
+
+### Con Docker
+
+Solo en **Linux, Raspberry Pi o NAS**:
+
+```bash
+docker compose up -d
+```
+
+**No funciona en Docker Desktop para Windows ni para Mac.** Ahí Docker corre
+dentro de una máquina virtual y el descubrimiento de televisores, que usa
+multicast, no llega a tu red real. En esos sistemas hay que usar la instalación
+normal. El `docker-compose.yml` explica el detalle.
 
 ## Usarlo
 
@@ -145,16 +170,53 @@ incompatibles.
 Para instalarlo: en Windows con `winget install ffmpeg`, en Mac con
 `brew install ffmpeg`, en Linux con `sudo apt install ffmpeg`.
 
-### Sobre el Chromecast
+### Grupos y escenas
 
-El Chromecast **no es el televisor**, así que no se puede encender ni apagar la
-pantalla desde la aplicación. Lo que sí pasa: al enviarle un video, el televisor
-normalmente se enciende solo por HDMI-CEC. O sea que enviar algo *es* el
-encendido.
+En la pantalla principal, el botón **Grupos y escenas**.
 
-Tampoco tiene cruceta: un Chromecast pelado no tiene botones que emular. Si el
-tuyo es un **Chromecast con Google TV**, la cruceta va a llegar en la Fase 5,
-por un protocolo distinto.
+Un **grupo** junta televisores de un ambiente para manejarlos juntos: encender
+todos, bajarles el volumen a todos.
+
+Una **escena** encadena acciones con esperas. Por ejemplo, *Modo peli*:
+
+1. Encender el televisor del living
+2. **Esperar 8 segundos**
+3. Poner HDMI 2
+4. Volumen 15
+
+Las esperas son necesarias, no un capricho: un televisor recién encendido
+ignora los comandos durante varios segundos, así que sin la espera los pasos 3
+y 4 no harían nada.
+
+Si un paso falla, la escena **sigue con los demás** y después te dice cuáles no
+salieron. Si el televisor del cuarto no responde, el del living igual se
+enciende.
+
+### Sobre el Chromecast con Google TV
+
+Si tu Chromecast trae control remoto (el modelo de 2020 en adelante), además de
+enviarle videos podés usarlo como control: cruceta, encendido y volumen.
+
+**Hay que emparejarlo, y es distinto al Samsung:** al tocar *Emparejar*, el
+televisor muestra un **código de 6 caracteres** en pantalla y vos lo escribís en
+el celular.
+
+> Esta parte es la más delicada de toda la aplicación. Google no publica ese
+> protocolo. Si el emparejamiento falla, mandame la salida de
+> `LOG_LEVEL=debug npm start` — el log dice exactamente en qué paso se cortó.
+
+Abrir aplicaciones (Netflix, YouTube) desde el Google TV **no está**: no se pudo
+verificar cómo se hace y preferimos que falle claro antes que hacer un botón que
+no haga nada.
+
+### Sobre el Chromecast sin control
+
+Un Chromecast sin control remoto **no es el televisor**, así que no se puede
+encender ni apagar la pantalla desde la aplicación. Lo que sí pasa: al enviarle
+un video, el televisor normalmente se enciende solo por HDMI-CEC. O sea que
+enviar algo *es* el encendido.
+
+Tampoco tiene cruceta: no tiene botones que emular.
 
 ### Desde la computadora, con el teclado
 
@@ -287,6 +349,18 @@ la barra en vez de mostrar una que no funciona.
 Es normal: cuando el televisor se apaga, cierra la conexión. La aplicación
 reconecta sola con esperas cada vez más largas y lo marca como "sin conexión"
 mientras tanto.
+
+### El Google TV no se empareja
+
+1. El código son **6 caracteres** y puede tener letras (de la A a la F). Fijate
+   bien: un 0 y una O se confunden.
+2. Si tarda mucho, el código vence. Volvé a tocar *Emparejar* para que muestre
+   uno nuevo.
+3. En el televisor, revisá que las conexiones de aplicaciones estén permitidas.
+
+Si nada de eso alcanza, es probable que sea un problema de la aplicación y no
+tuyo: mandame la salida de `LOG_LEVEL=debug npm start` mientras intentás
+emparejar.
 
 ### Quiero ver qué está pasando en detalle
 

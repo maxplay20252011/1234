@@ -5,17 +5,21 @@ usa; esto es para quien lo toca.
 
 ## Estado actual
 
-**Fases 1 a 4 terminadas.** Descubrimiento, base de datos, CLI, API, estado en
+**Las cinco fases terminadas.** Descubrimiento, base de datos, CLI, API, estado en
 vivo por WebSocket, el patrón adapter, el adapter de Samsung Tizen,
 el adapter castv2 para dispositivos Cast, Wake-on-LAN, cifrado de credenciales,
 casteo de URL y de archivos locales con historial, MediaServer con rangos HTTP,
-subtítulos, detección de códecs y la pantalla de control completa.
+subtítulos, detección de códecs, el adapter de Android TV, grupos, escenas y el
+empaquetado.
 
-**Ni el adapter de Samsung ni el de Cast están verificados contra hardware
-real.** Los dos están escritos contra documentación de ingeniería inversa de la
-comunidad. Las partes puras tienen tests, y el cliente castv2 se ejercita entero
-contra un aparato falso sobre TLS; el comportamiento contra un aparato de verdad
-hay que confirmarlo con `LOG_LEVEL=debug` la primera vez.
+**Ningún adapter está verificado contra hardware real.** Todos están escritos
+contra documentación de ingeniería inversa de la comunidad. Las partes puras
+tienen tests, el cliente castv2 se ejercita entero contra un aparato falso sobre
+TLS y el certificado de Android TV se valida contra `crypto.X509Certificate`;
+el comportamiento contra un aparato de verdad hay que confirmarlo con
+`LOG_LEVEL=debug` la primera vez.
+
+**El más frágil, por lejos, es `androidtvremote2`.** Ver su sección abajo.
 
 | Fase | Alcance | Estado |
 |---|---|---|
@@ -23,7 +27,7 @@ hay que confirmarlo con `LOG_LEVEL=debug` la primera vez.
 | 2 | `TvAdapter` + registry + adapter Samsung Tizen + Wake-on-LAN + UI de control | ✅ sin probar en hardware |
 | 3 | Chromecast por castv2 (castear y volumen) | ✅ sin probar en hardware |
 | 4 | MediaServer con Range, archivo local, subtítulos, códecs | ✅ sin probar en hardware |
-| 5 | `androidtvremote2` para el D-pad del Google TV, grupos, escenas, empaquetado | pendiente |
+| 5 | `androidtvremote2`, grupos, escenas, empaquetado | ✅ sin probar en hardware |
 
 La instalación en pantalla de inicio de iOS ya está hecha, adelantada de la
 Fase 5 a pedido. Ver abajo por qué no llega a ser una PWA completa.
@@ -42,10 +46,12 @@ server/
   logger.ts        pino + protocolLog(), que escribe siempre en nivel debug.
   net/             Interfaces de red, cálculo de broadcast, lectura de ARP.
   discovery/       ssdp · mdns · upnp · probe · identify · service
-  adapters/        types · errors · samsung/ · chromecast/ · dlna/ · mock/
+  protobuf/        codificacion compartida por castv2 y androidtvremote2
+  adapters/        types · errors · composite · samsung/ · chromecast/
+                   androidtv/ · dlna/ · mock/
   media/           range · subtitles · mime · tokens · library · probe · server
   services/        wol · crypto · credentials.repo · control · state-hub
-                   media-history · media-caster
+                   media-history · media-caster · automation.repo · scene-runner
   db/              schema (migraciones) · conexión · repositorio
   http/            Fastify, rutas, canal WebSocket y servido del build.
   cli/discover.ts  La herramienta de diagnóstico.
@@ -187,6 +193,40 @@ Lo de arriba sobre distinguirlos por mDNS sigue valiendo. Además:
 - **`LOAD` necesita metadata válida.** Sin ella, algunos receptores rechazan la
   carga sin explicar por qué.
 
+### Android TV y Google TV — lo más frágil del proyecto
+
+Es lo que le da cruceta, encendido y volumen a un Chromecast con Google TV.
+
+- **El adapter de Google TV es un `CompositeAdapter`.** Un Chromecast con Google
+  TV habla los DOS protocolos: castv2 para reproducir y volumen,
+  `androidtvremote2` para cruceta y encendido. Ninguno solo alcanza, y el
+  registro mapea una marca a un adapter, así que se combinan.
+- **Hace falta un certificado de cliente.** Durante el emparejamiento el
+  televisor lo guarda y después solo acepta conexiones que lo presenten: el
+  certificado *es* la credencial. Se genera en Node puro (`certificate.ts` +
+  `asn1.ts`) porque Node no tiene API para crear certificados, y las
+  alternativas eran node-forge (dependencia grande) o exigir openssl (que en
+  Windows normalmente no está). El resultado se valida en los tests
+  reparseándolo con `crypto.X509Certificate`.
+- **El enmarcado usa varint, no cuatro bytes como castv2.** Confundirlos
+  desincroniza el flujo desde el primer mensaje.
+- **Los códigos de tecla son constantes públicas de `android.view.KeyEvent`**,
+  no ingeniería inversa: es la parte más sólida del adapter.
+
+**Si el emparejamiento falla, el orden de sospecha es:**
+
+1. `computePairingSecret` en `protocol.ts`. El orden de las claves y que los
+   módulos vayan sin el cero de signo de DER son los dos detalles que se prestan
+   a error. Hay una comprobación local (`checksumMatches`) que dice si el
+   cálculo está bien *antes* de mandárselo al televisor: si da `false` con un
+   código bien tipeado, el problema está ahí.
+2. Los números de campo de `PairingMessage`.
+
+**`launchApp` está como `NotImplementedError` a propósito.** Va por
+`RemoteAppLinkLaunchRequest`, cuyo número de campo no se pudo verificar, y
+mandar uno equivocado no da error: el televisor ignora el mensaje y parece que
+la app "no abrió". Preferible fallar claro.
+
 ### LG webOS — sin hardware, sin adapter
 - **[rev]** SSAP por WebSocket en el 3000 (`ws://`) o el 3001 (`wss://`).
 - El handshake devuelve un `client-key` que hay que persistir; sin él, cada
@@ -278,6 +318,19 @@ Detalles que cuesta descubrir solo:
   `/videos-privados` no está dentro de `/videos` aunque el texto empiece igual.
 - **Los enlaces caducan.** Protegen de dejar el disco expuesto para siempre, no
   de alguien dentro de la red mientras el enlace vive.
+
+## Grupos y escenas
+
+- **Los pasos de una escena van en orden y en serie, nunca en paralelo.** Una
+  escena "encender, esperar 8 segundos, poner HDMI2" no significa nada si los
+  pasos se pisan. Las esperas no son un adorno: un televisor recién encendido
+  ignora los comandos durante varios segundos.
+- **Un paso que falla NO corta la escena.** Si el televisor del cuarto no
+  responde, el del living igual tiene que encenderse. Al final se informa qué
+  salió bien y qué no.
+- **Las acciones sobre un grupo sí van en paralelo**, porque son aparatos
+  distintos sin orden entre ellos, y con `allSettled` para que uno apagado no
+  impida actuar sobre el resto.
 
 ## Trampas ya pisadas
 
