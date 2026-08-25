@@ -51,6 +51,19 @@ export class ControlService {
     return adapter.pairingStatus(device, this.credentials.get(deviceId));
   }
 
+  /**
+   * Arranca el emparejamiento en las marcas que necesitan un paso previo (por
+   * ejemplo, conectar para que el televisor muestre un codigo en pantalla).
+   */
+  async beginPairing(deviceId: string): Promise<PairingStatus> {
+    const { device, adapter } = this.resolve(deviceId);
+    if (!adapter.beginPairing) return adapter.pairingStatus(device, this.credentials.get(deviceId));
+
+    const status = await adapter.beginPairing(device);
+    this.hub.pairing(status);
+    return status;
+  }
+
   async pair(deviceId: string, pin?: string): Promise<PairingStatus> {
     const { device, adapter } = this.resolve(deviceId);
     if (!adapter.pair) {

@@ -70,6 +70,10 @@ export function registerControlRoutes(
     ejecutar(reply, () => control.pairingStatus(req.params.id)),
   );
 
+  app.post<{ Params: ParamsConId }>('/api/devices/:id/pair/begin', async (req, reply) =>
+    ejecutar(reply, () => control.beginPairing(req.params.id)),
+  );
+
   app.post<{ Params: ParamsConId }>('/api/devices/:id/pair', async (req, reply) => {
     const body = parse(PairRequestSchema, req.body ?? {}, reply);
     if (!body) return reply;

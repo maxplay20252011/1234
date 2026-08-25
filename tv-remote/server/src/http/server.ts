@@ -16,6 +16,9 @@ import type { MediaHistoryRepo } from '../services/media-history.repo.js';
 import type { MediaLibrary } from '../media/library.js';
 import { registerMediaRoutes } from '../media/server.js';
 import { registerLibraryRoutes } from './routes/media.js';
+import { registerAutomationRoutes } from './routes/automation.js';
+import type { GroupsRepo, ScenesRepo } from '../services/automation.repo.js';
+import type { SceneRunner } from '../services/scene-runner.js';
 import { logger } from '../logger.js';
 
 export async function buildServer(
@@ -27,6 +30,7 @@ export async function buildServer(
   history: MediaHistoryRepo,
   library: MediaLibrary,
   mediaSecret: string,
+  automation: { groups: GroupsRepo; scenes: ScenesRepo; runner: SceneRunner },
 ): Promise<FastifyInstance> {
   const app = Fastify({
     // El tipo Logger de pino es mas estricto que FastifyBaseLogger (exige
@@ -42,6 +46,7 @@ export async function buildServer(
   registerStateSocket(app, hub);
   registerLibraryRoutes(app, library, control);
   registerMediaRoutes(app, { library, secret: mediaSecret });
+  registerAutomationRoutes(app, automation.groups, automation.scenes, automation.runner, control);
 
   // En produccion el backend sirve el build de la interfaz, asi todo vive en un
   // unico puerto y el usuario tiene una sola direccion que recordar.
