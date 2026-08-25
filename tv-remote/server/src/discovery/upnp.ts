@@ -1,6 +1,12 @@
 import { XMLParser } from 'fast-xml-parser';
 import { logger, protocolLog } from '../logger.js';
 
+export type UpnpService = {
+  type: string;
+  /** URL absoluta, ya resuelta contra la direccion del descriptor. */
+  controlUrl: string;
+};
+
 export type UpnpDescription = {
   friendlyName?: string;
   manufacturer?: string;
@@ -10,6 +16,8 @@ export type UpnpDescription = {
   deviceType?: string;
   /** MAC, cuando el fabricante la incluye (Samsung lo hace en algunos modelos). */
   macAddress?: string;
+  /** Servicios que expone. AVTransport es el que reproduce archivos. */
+  services?: UpnpService[];
 };
 
 const parser = new XMLParser({
@@ -38,14 +46,14 @@ export async function fetchUpnpDescription(
     if (!res.ok) return undefined;
     const xml = await res.text();
     protocolLog('upnp', 'rx', location, xml.slice(0, 2000));
-    return parseUpnpDescription(xml);
+    return parseUpnpDescription(xml, location);
   } catch (err) {
     logger.debug({ err, location }, 'No se pudo leer la descripcion UPnP');
     return undefined;
   }
 }
 
-export function parseUpnpDescription(xml: string): UpnpDescription | undefined {
+export function parseUpnpDescription(xml: string, location?: string): UpnpDescription | undefined {
   let doc: unknown;
   try {
     doc = parser.parse(xml);
@@ -79,7 +87,53 @@ export function parseUpnpDescription(xml: string): UpnpDescription | undefined {
   if (deviceType) out.deviceType = deviceType;
   if (macAddress) out.macAddress = macAddress;
 
+  const services = parseServiceList(doc, location);
+  if (services.length > 0) out.services = services;
+
   return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/**
+ * Extrae los servicios del descriptor.
+ *
+ * El controlURL viene relativo a la direccion del propio descriptor, asi que
+ * hay que resolverlo contra ella. Usarlo tal cual es el error clasico que hace
+ * que AVTransport devuelva 404 sin explicacion.
+ */
+export function parseServiceList(doc: unknown, location?: string): UpnpService[] {
+  const encontrados: UpnpService[] = [];
+
+  const recorrer = (nodo: unknown): void => {
+    if (Array.isArray(nodo)) {
+      for (const item of nodo) recorrer(item);
+      return;
+    }
+    if (typeof nodo !== 'object' || nodo === null) return;
+
+    const obj = nodo as Record<string, unknown>;
+    const tipo = obj['serviceType'];
+    const control = obj['controlURL'];
+    if (typeof tipo === 'string' && typeof control === 'string') {
+      encontrados.push({
+        type: tipo,
+        controlUrl: location ? new URL(control, location).toString() : control,
+      });
+    }
+    for (const valor of Object.values(obj)) recorrer(valor);
+  };
+
+  recorrer(doc);
+  return encontrados;
+}
+
+/** Busca el controlURL de un servicio por nombre, p.ej. 'AVTransport'. */
+export function findServiceControlUrl(
+  description: UpnpDescription | undefined,
+  serviceName: string,
+): string | undefined {
+  return description?.services?.find((s) =>
+    s.type.toLowerCase().includes(`:${serviceName.toLowerCase()}:`),
+  )?.controlUrl;
 }
 
 /** Busca el primer nodo <device> del arbol, sin importar cuan anidado este. */

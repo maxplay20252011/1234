@@ -1,5 +1,12 @@
 import WebSocket from 'ws';
-import type { App, Capability, Device, PairingStatus, RemoteKey } from '@tv-remote/shared';
+import type {
+  App,
+  Capability,
+  CastUrlRequest,
+  Device,
+  PairingStatus,
+  RemoteKey,
+} from '@tv-remote/shared';
 import type { Credentials, DeviceState, TvAdapter } from '../types.js';
 import {
   DeviceOfflineError,
@@ -18,6 +25,9 @@ import {
   parseSamsungMessage,
 } from './protocol.js';
 import * as rc from './upnp-volume.js';
+import { AvTransportClient } from '../dlna/avtransport.js';
+import { buildDidlLite } from '../dlna/didl.js';
+import { fetchUpnpDescription, findServiceControlUrl } from '../../discovery/upnp.js';
 
 /** Nombre que ve el usuario en el aviso de autorizacion del televisor. */
 const APP_NAME = 'Control de TVs';
@@ -54,6 +64,8 @@ export class SamsungAdapter implements TvAdapter {
   private readonly conexiones = new Map<string, Conexion>();
   /** Cache de si este televisor contesta RenderingControl, para no re-sondear. */
   private readonly soportaVolumenAbsoluto = new Map<string, boolean>();
+  /** Cache del controlURL de AVTransport. null = ya se busco y no lo tiene. */
+  private readonly avTransport = new Map<string, string | null>();
 
   constructor(private readonly onToken: (deviceId: string, token: string) => void) {}
 
@@ -76,7 +88,47 @@ export class SamsungAdapter implements TvAdapter {
     }
     if (absoluto) caps.push('volumeAbsolute', 'mute');
 
+    // Reproducir archivos va por DLNA, no por el canal de control remoto. Solo
+    // se declara si el televisor expone de verdad el servicio AVTransport.
+    if ((await this.controlUrlAvTransport(device)) !== null) caps.push('castUrl', 'castFile');
+
     return caps;
+  }
+
+  /**
+   * Busca el controlURL de AVTransport en el descriptor UPnP del televisor.
+   *
+   * El descriptor se anuncia en la cabecera LOCATION de SSDP, que el
+   * descubrimiento ya guardo. Si no hay ninguna, se prueba la ruta habitual de
+   * Samsung, pero solo se acepta si el televisor contesta de verdad: probarla no
+   * es asumir que existe.
+   */
+  private async controlUrlAvTransport(device: Device): Promise<string | null> {
+    const cacheado = this.avTransport.get(device.id);
+    if (cacheado !== undefined) return cacheado;
+
+    const ssdp = device.raw?.['ssdp'];
+    const locations: string[] = Array.isArray(ssdp)
+      ? ssdp
+          .map((r) => (typeof r === 'object' && r !== null ? (r as Record<string, unknown>)['location'] : undefined))
+          .filter((l): l is string => typeof l === 'string')
+      : [];
+    // Ruta habitual del renderizador de Samsung, como ultimo intento.
+    locations.push(`http://${device.ip}:9197/dmr`);
+
+    for (const location of [...new Set(locations)]) {
+      const descripcion = await fetchUpnpDescription(location, 3000);
+      const url = findServiceControlUrl(descripcion, 'AVTransport');
+      if (url) {
+        logger.debug({ deviceId: device.id, url }, 'AVTransport encontrado');
+        this.avTransport.set(device.id, url);
+        return url;
+      }
+    }
+
+    logger.debug({ deviceId: device.id }, 'Este televisor no expone AVTransport');
+    this.avTransport.set(device.id, null);
+    return null;
   }
 
   async pairingStatus(device: Device, credentials?: Credentials): Promise<PairingStatus> {
@@ -188,6 +240,53 @@ export class SamsungAdapter implements TvAdapter {
     await wake(device.mac);
   }
 
+  /**
+   * Envia una URL al televisor por DLNA.
+   *
+   * El televisor va a buscar el archivo por su cuenta a la direccion que le
+   * pasamos, asi que tiene que ser una IP de la red local alcanzable desde el
+   * televisor: nunca localhost.
+   */
+  async castUrl(device: Device, media: CastUrlRequest): Promise<void> {
+    const controlUrl = await this.controlUrlAvTransport(device);
+    if (!controlUrl) {
+      throw new NotSupportedError('reproducir contenido enviado', 'Este televisor');
+    }
+
+    const cliente = new AvTransportClient(controlUrl);
+    const didl = buildDidlLite({
+      title: media.title ?? 'Video',
+      url: media.url,
+      contentType: media.contentType ?? 'video/mp4',
+    });
+
+    if (!(await cliente.setUri(media.url, didl))) {
+      throw new ControlError(
+        'El televisor rechazo SetAVTransportURI',
+        'El televisor no acepto el video. Fijate que el archivo sea accesible desde la red y que el formato sea compatible.',
+        'set_uri_failed',
+      );
+    }
+
+    // Algunos modelos necesitan un respiro entre cargar y reproducir: mandar
+    // Play inmediatamente devuelve error de "transicion no permitida".
+    await esperar(400);
+
+    if (!(await cliente.play())) {
+      throw new ControlError(
+        'El televisor rechazo Play',
+        'El video se cargo pero el televisor no lo empezo a reproducir. Proba darle play con el control del televisor.',
+        'play_failed',
+      );
+    }
+  }
+
+  async stopCast(device: Device): Promise<void> {
+    const controlUrl = await this.controlUrlAvTransport(device);
+    if (!controlUrl) return;
+    await new AvTransportClient(controlUrl).stop();
+  }
+
   async getState(device: Device, _credentials?: Credentials): Promise<DeviceState> {
     // Si /api/v2/ contesta, el televisor esta encendido o en espera con red.
     const info = await probeSamsung(device.ip, 1500);
@@ -197,6 +296,23 @@ export class SamsungAdapter implements TvAdapter {
       const [volume, muted] = await Promise.all([rc.getVolume(device.ip), rc.getMute(device.ip)]);
       if (volume !== undefined) state.volume = volume;
       if (muted !== undefined) state.muted = muted;
+    }
+
+    const controlUrl = this.avTransport.get(device.id);
+    if (controlUrl) {
+      const cliente = new AvTransportClient(controlUrl);
+      const [posicion, transporte] = await Promise.all([
+        cliente.positionInfo(),
+        cliente.transportState(),
+      ]);
+      if (transporte && transporte !== 'NO_MEDIA_PRESENT') {
+        state.media = {
+          playerState: traducirEstadoTransporte(transporte),
+          ...(posicion.title !== undefined ? { title: posicion.title } : {}),
+          ...(posicion.position !== undefined ? { position: posicion.position } : {}),
+          ...(posicion.duration !== undefined ? { duration: posicion.duration } : {}),
+        };
+      }
     }
     return state;
   }
@@ -389,4 +505,16 @@ export class SamsungAdapter implements TvAdapter {
 
 function esperar(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+/** UPnP usa sus propios nombres de estado; se unifican con los de castv2. */
+function traducirEstadoTransporte(estado: string): string {
+  const equivalencias: Record<string, string> = {
+    PLAYING: 'PLAYING',
+    PAUSED_PLAYBACK: 'PAUSED',
+    TRANSITIONING: 'BUFFERING',
+    STOPPED: 'IDLE',
+    NO_MEDIA_PRESENT: 'IDLE',
+  };
+  return equivalencias[estado] ?? estado;
 }
