@@ -12,6 +12,7 @@ import { registerControlRoutes } from './routes/control.js';
 import { registerStateSocket } from './ws.js';
 import type { ControlService } from '../services/control.js';
 import type { StateHub } from '../services/state-hub.js';
+import type { MediaHistoryRepo } from '../services/media-history.repo.js';
 import { logger } from '../logger.js';
 
 export async function buildServer(
@@ -20,6 +21,7 @@ export async function buildServer(
   discovery: DiscoveryService,
   control: ControlService,
   hub: StateHub,
+  history: MediaHistoryRepo,
 ): Promise<FastifyInstance> {
   const app = Fastify({
     // El tipo Logger de pino es mas estricto que FastifyBaseLogger (exige
@@ -31,7 +33,7 @@ export async function buildServer(
 
   await app.register(fastifyWebsocket);
   registerDeviceRoutes(app, repo, discovery);
-  registerControlRoutes(app, control);
+  registerControlRoutes(app, control, history);
   registerStateSocket(app, hub);
 
   // En produccion el backend sirve el build de la interfaz, asi todo vive en un

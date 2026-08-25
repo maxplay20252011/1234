@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import {
+  CastUrlRequestSchema,
   LaunchAppRequestSchema,
   PairRequestSchema,
   SendKeyRequestSchema,
@@ -10,10 +11,15 @@ import {
 import type { z } from 'zod';
 import { ControlError } from '../../adapters/errors.js';
 import type { ControlService } from '../../services/control.js';
+import type { MediaHistoryRepo } from '../../services/media-history.repo.js';
 
 type ParamsConId = { id: string };
 
-export function registerControlRoutes(app: FastifyInstance, control: ControlService): void {
+export function registerControlRoutes(
+  app: FastifyInstance,
+  control: ControlService,
+  history: MediaHistoryRepo,
+): void {
   /**
    * Envoltorio comun de todas las acciones.
    *
@@ -125,5 +131,26 @@ export function registerControlRoutes(app: FastifyInstance, control: ControlServ
     const body = parse(LaunchAppRequestSchema, req.body, reply);
     if (!body) return reply;
     return ejecutar(reply, () => control.launchApp(req.params.id, body.appId, body.deepLink));
+  });
+
+  // ─── Casteo ────────────────────────────────────────────────────────────────
+
+  app.post<{ Params: ParamsConId }>('/api/devices/:id/cast', async (req, reply) => {
+    const body = parse(CastUrlRequestSchema, req.body, reply);
+    if (!body) return reply;
+    return ejecutar(reply, () => control.castUrl(req.params.id, body));
+  });
+
+  app.post<{ Params: ParamsConId }>('/api/devices/:id/cast/stop', async (req, reply) =>
+    ejecutar(reply, () => control.stopCast(req.params.id)),
+  );
+
+  app.get<{ Params: ParamsConId }>('/api/devices/:id/history', async (req, reply) =>
+    ejecutar(reply, async () => ({ history: history.list(req.params.id) })),
+  );
+
+  app.delete<{ Params: ParamsConId }>('/api/devices/:id/history', async (req, reply) => {
+    history.clear(req.params.id);
+    return reply.code(204).send();
   });
 }

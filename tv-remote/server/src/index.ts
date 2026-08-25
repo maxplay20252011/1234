@@ -8,10 +8,12 @@ import { listLanInterfaces, primaryLanAddress } from './net/interfaces.js';
 import { AdapterRegistry } from './adapters/types.js';
 import { SamsungAdapter } from './adapters/samsung/index.js';
 import { MockAdapter, buildMockDevice } from './adapters/mock/index.js';
+import { ChromecastAdapter } from './adapters/chromecast/index.js';
 import { CredentialsRepo } from './services/credentials.repo.js';
 import { deriveKey, loadOrCreateSecret } from './services/crypto.js';
 import { StateHub } from './services/state-hub.js';
 import { ControlService } from './services/control.js';
+import { MediaHistoryRepo } from './services/media-history.repo.js';
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -31,9 +33,15 @@ async function main(): Promise<void> {
       if (device) credentials.save(deviceId, device.brand, { token });
     }),
   );
+  // El mismo adapter para las dos marcas: un Chromecast con Google TV habla
+  // castv2 igual que uno pelado. Lo que lo distingue es que ADEMAS habla
+  // androidtvremote2, que es la cruceta y el encendido de la Fase 5.
+  registry.register(new ChromecastAdapter('chromecast'));
+  registry.register(new ChromecastAdapter('androidtv'));
   if (config.MOCK_DEVICE) registry.register(new MockAdapter());
 
-  const control = new ControlService(repo, credentials, registry, hub);
+  const history = new MediaHistoryRepo(db);
+  const control = new ControlService(repo, credentials, registry, hub, history);
 
   const discovery = new DiscoveryService(
     {
@@ -62,7 +70,7 @@ async function main(): Promise<void> {
 
   discovery.on('scanning', (scanning) => hub.scanning(scanning));
 
-  const app = await buildServer(config, repo, discovery, control, hub);
+  const app = await buildServer(config, repo, discovery, control, hub, history);
   await app.listen({ host: config.HOST, port: config.PORT });
 
   const lan = primaryLanAddress();
