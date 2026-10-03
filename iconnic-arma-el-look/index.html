@@ -88,7 +88,7 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
 /* ---------- avatar setup ---------- */
 .setup-head{display:flex;flex-direction:column;gap:6px}
 .setup-head h2{font-size:34px;font-style:italic}
-.setup-body{display:grid;grid-template-columns:44% 1fr;gap:16px;flex:1;min-height:0;padding-top:16px}
+.setup-body{display:grid;grid-template-columns:40% 1fr;gap:16px;flex:1;min-height:0;padding-top:16px}
 .setup-body .espejo{height:100%;min-height:260px;max-height:460px}
 .setup-opts{display:flex;flex-direction:column;gap:18px;min-width:0}
 .swatches{display:grid;grid-template-columns:repeat(3,44px);gap:10px}
@@ -99,6 +99,19 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
 .sil svg{height:58px;width:auto}
 .sil[aria-checked="true"]{border-color:var(--ink);color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
 .note{font-size:13px;color:var(--muted);margin:0}
+.swatches.pelos{grid-template-columns:repeat(4,34px);gap:10px}
+.swatch.sm{width:34px;height:34px}
+.peinados{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.peinados .sil svg{height:46px}
+.sheet{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:14px}
+.cs{margin:0;position:relative;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px;align-items:center}
+.cs-n{position:absolute;top:4px;left:6px;font-size:11px;color:var(--muted);font-weight:600}
+.cs-flat svg,.cs-flat img{width:100%;height:auto;aspect-ratio:1;display:block}
+.cs-on{background:var(--blush);border-radius:6px}
+.cs-on svg{width:100%;height:auto;display:block}
+.cs-nm{grid-column:1/-1;font-size:12px;text-align:center}
+.sheet.anon .cs-nm{visibility:hidden}
+.prenda img{width:70px;height:62px;object-fit:contain}
 
 /* ---------- ronda ---------- */
 #s-ronda{padding-block:10px 0;overflow:hidden}
@@ -230,6 +243,14 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
           <p class="eyebrow" id="lbl-sil" style="margin:0 0 8px">Silueta</p>
           <div class="siluetas" role="radiogroup" aria-labelledby="lbl-sil" id="siluetas"></div>
         </div>
+        <div>
+          <p class="eyebrow" id="lbl-peinado" style="margin:0 0 8px">Peinado</p>
+          <div class="peinados" role="radiogroup" aria-labelledby="lbl-peinado" id="peinados"></div>
+        </div>
+        <div>
+          <p class="eyebrow" id="lbl-pelo" style="margin:0 0 8px">Color de pelo</p>
+          <div class="swatches pelos" role="radiogroup" aria-labelledby="lbl-pelo" id="pelos"></div>
+        </div>
         <p class="note">Es solo estética: no cambia tu puntaje.</p>
       </div>
     </div>
@@ -296,6 +317,19 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
     </div>
   </section>
 
+  <!-- HOJA DE CONTACTO (?debug o #debug) -->
+  <section class="screen" id="s-debug" hidden aria-labelledby="t-debug">
+    <div class="res-head"><span class="eyebrow num" id="debug-n"></span><span class="wordmark">ICON</span></div>
+    <h2 id="t-debug" style="font-size:30px;font-style:italic;margin-top:12px">Hoja de contacto</h2>
+    <p class="note" style="margin:6px 0 12px">Cada prenda en flat-lay (placard) y puesta. Ocultá los nombres para la prueba de reconocimiento.</p>
+    <label class="toggle" for="chk-nombres">
+      <span><b>Ocultar nombres</b><small>Mostrá la hoja y pedí que identifiquen cada número</small></span>
+      <span class="switch"><input type="checkbox" id="chk-nombres" aria-label="Ocultar nombres de las prendas"><span></span></span>
+    </label>
+    <div class="sheet" id="sheet"></div>
+    <button class="btn btn-ghost" id="btn-debug-salir" style="margin-top:16px" aria-label="Volver al juego">Volver al juego</button>
+  </section>
+
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </div>
 <canvas id="confeti" aria-hidden="true"></canvas>
@@ -340,8 +374,6 @@ const CATEGORIAS = [
 const CAPA = { bottom: 1, top: 2, vestido: 2, abrigo: 3, calzado: 4, bolso: 5, joyeria: 6 };
 const MAX_JOYERIA = 2;
 
-const PIELES = ["#F5DCCB", "#EBC3A3", "#D6A07A", "#B07C57", "#8A5739", "#5E3B27"];
-const SILUETAS = [{ id: "A", escala: 1 }, { id: "B", escala: 1.1 }, { id: "C", escala: 1.22 }];
 
 const TXT = {
   formalidad: ["", "Súper relajado", "Casual", "Smart casual", "Formal", "Gala"],
@@ -350,203 +382,649 @@ const TXT = {
 };
 
 /* =====================================================================
-   2) DIBUJO (helpers SVG). Todas las prendas se dibujan en el sistema
-      de coordenadas del avatar: viewBox 0 0 200 460, eje de simetría x=100.
+   2) ILUSTRACIÓN
+   Todo se dibuja a partir de ANCHORS (puntos del cuerpo). Cada prenda es una
+   función (anclajes, color, prenda) → { p: [siluetas], d: [detalles], capas? }.
+   La misma función dibuja la prenda puesta (cuerpo en pose) y en flat-lay
+   (cuerpo FLAT: simétrico, mangas y piernas estiradas). El calzado tiene
+   además un dibujo de perfil para el placard.
    ===================================================================== */
+const CONTORNO = "#2B2040";
+const PIELES = ["#F5DCCB", "#EBC3A3", "#D6A07A", "#B07C57", "#8A5739", "#5E3B27"];
+const PELOS = [{ nombre: "Negro", hex: "#2A1E1B" }, { nombre: "Castaño", hex: "#5E3B26" }, { nombre: "Rubio", hex: "#C9A26B" }, { nombre: "Cobrizo", hex: "#93421F" }];
+// Siluetas: factor de ancho por zona (hombros, busto, cintura, cadera, rodilla, tobillo).
+const SILUETAS = [
+  { id: "A", k: { sh: 1, bu: 1, wa: 1, hi: 1, ro: 1, to: 1 } },
+  { id: "B", k: { sh: 1.04, bu: 1.1, wa: 1.13, hi: 1.12, ro: 1.12, to: 1.05 } },
+  { id: "C", k: { sh: 1.08, bu: 1.2, wa: 1.3, hi: 1.25, ro: 1.25, to: 1.1 } },
+];
+const BASE_HEX = "#D7CACD"; // ropa interior neutra
+
+/* ---------- color y geometría ---------- */
 function shade(hex, amt) {
   const n = parseInt(hex.slice(1), 16), f = amt < 0 ? 0 : 255, t = Math.abs(amt);
   const ch = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.round(v + (f - v) * t));
   return "#" + ch.map(v => v.toString(16).padStart(2, "0")).join("");
 }
-const mir = d => d.replace(/(-?\d*\.?\d+),(-?\d*\.?\d+)/g, (m, x, y) => +(200 - x).toFixed(2) + "," + y);
-const P = (d, c, a = "") => `<path d="${d}" fill="${c}" stroke="${shade(c, -0.32)}" stroke-width=".7" stroke-linejoin="round" ${a}/>`;
-const PP = (d, c, a) => P(d, c, a) + P(mir(d), c, a);
-const L = (d, c, w = 0.8, a = "") => `<path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" ${a}/>`;
-const LL = (d, c, w, a) => L(d, c, w, a) + L(mir(d), c, w, a);
-const C = (x, y, r, c, a = "") => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" ${a}/>`;
-const CC = (x, y, r, c, a) => C(x, y, r, c, a) + C(200 - x, y, r, c, a);
-const BRILLO = 'opacity=".45"';
+function mix(a, b, t) {
+  const A = parseInt(a.slice(1), 16), B = parseInt(b.slice(1), 16);
+  return "#" + [16, 8, 0].map(s => Math.round(((A >> s) & 255) * (1 - t) + ((B >> s) & 255) * t).toString(16).padStart(2, "0")).join("");
+}
+const f1 = n => Math.round(n * 10) / 10;
+const pt = p => f1(p[0]) + "," + f1(p[1]);
+const lerp = (a, b, t) => a + (b - a) * t;
+const lp = (p, q, t) => [lerp(p[0], q[0], t), lerp(p[1], q[1], t)];
+const PARES = /(-?\d*\.?\d+),(-?\d*\.?\d+)/g; // los paths a mano usan solo M L C Z con pares "x,y"
+const mir = d => d.replace(PARES, (m, x, y) => f1(200 - x) + "," + y);
+/** Transforma un path local: espejo opcional, rotación (grados) y traslado. */
+function xf(d, t) {
+  const r = (t.rot || 0) * Math.PI / 180, c = Math.cos(r), s = Math.sin(r);
+  return d.replace(PARES, (m, X, Y) => { let px = +X; const py = +Y; if (t.flip) px = -px; return f1(t.x + px * c - py * s) + "," + f1(t.y + px * s + py * c); });
+}
+const circ = (x, y, r) => { const k = r * 0.5523; return `M${pt([x - r, y])} C${pt([x - r, y - k])} ${pt([x - k, y - r])} ${pt([x, y - r])} C${pt([x + k, y - r])} ${pt([x + r, y - k])} ${pt([x + r, y])} C${pt([x + r, y + k])} ${pt([x + k, y + r])} ${pt([x, y + r])} C${pt([x - k, y + r])} ${pt([x - r, y + k])} ${pt([x - r, y])} Z`; };
+/** Contorno cerrado suave (Catmull-Rom). Un punto [x,y,1] es una esquina. */
+function shape(pts) {
+  const n = pts.length; let s = pts.findIndex(p => p[2]); if (s < 0) s = 0;
+  const P = pts.slice(s).concat(pts.slice(0, s));
+  let d = "M" + pt(P[0]);
+  for (let i = 0; i < n; i++) {
+    const p1 = P[i], p2 = P[(i + 1) % n], p0 = p1[2] ? p1 : P[(i - 1 + n) % n], p3 = p2[2] ? p2 : P[(i + 2) % n];
+    d += " C" + pt([p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6]) + " " + pt([p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6]) + " " + pt(p2);
+  }
+  return d + " Z";
+}
+/** Línea abierta suave. */
+function curva(P) {
+  let d = "M" + pt(P[0]);
+  for (let i = 0; i < P.length - 1; i++) {
+    const p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(P.length - 1, i + 2)];
+    d += " C" + pt([p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6]) + " " + pt([p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6]) + " " + pt(p2);
+  }
+  return d;
+}
+/** Remuestrea un miembro {pts, w} entre las fracciones t0 y t1 de su largo. */
+function resample(def, t0, t1, k = 6) {
+  const P = def.pts, W = def.w, Lc = [0];
+  for (let i = 1; i < P.length; i++) Lc.push(Lc[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]));
+  const tot = Lc[Lc.length - 1], pts = [], w = [];
+  for (let j = 0; j <= k; j++) {
+    const d = (t0 + (t1 - t0) * j / k) * tot; let i = 1;
+    while (i < P.length - 1 && Lc[i] < d) i++;
+    const u = Math.min(1, Math.max(0, (d - Lc[i - 1]) / ((Lc[i] - Lc[i - 1]) || 1)));
+    pts.push(lp(P[i - 1], P[i], u)); w.push(lerp(W[i - 1], W[i], u));
+  }
+  return { pts, w };
+}
+function bordes(def, ex = () => 0) {
+  const P = def.pts, n = P.length, L = [], R = [], dirs = [];
+  P.forEach((p, i) => {
+    const a = P[Math.max(0, i - 1)], b = P[Math.min(n - 1, i + 1)];
+    let dx = b[0] - a[0], dy = b[1] - a[1]; const m = Math.hypot(dx, dy) || 1; dx /= m; dy /= m;
+    const w = (def.w[i] + ex(i / (n - 1))) / 2;
+    dirs.push([dx, dy]); L.push([p[0] - dy * w, p[1] + dx * w]); R.push([p[0] + dy * w, p[1] - dx * w]);
+  });
+  return { L, R, dirs };
+}
+/** Miembro con volumen (brazo, pierna, manga, botamanga). extra = holgura total (número o función de 0..1). */
+function limb(def, o = {}) {
+  const P = def.pts, n = P.length, ex = typeof o.extra === "function" ? o.extra : () => o.extra || 0;
+  const { L, R, dirs } = bordes(def, ex);
+  const wE = (def.w[n - 1] + ex(1)) / 2, wI = (def.w[0] + ex(0)) / 2, finP = o.capFin === "flat", iniP = o.capIni === "flat";
+  const pts = L.map((p, i) => ((i === n - 1 && finP) || (i === 0 && iniP) ? [...p, 1] : p));
+  if (!finP) pts.push([P[n - 1][0] + dirs[n - 1][0] * wE * 0.85, P[n - 1][1] + dirs[n - 1][1] * wE * 0.85]);
+  for (let i = n - 1; i >= 0; i--) pts.push((i === n - 1 && finP) || (i === 0 && iniP) ? [...R[i], 1] : R[i]);
+  if (!iniP) pts.push([P[0][0] - dirs[0][0] * wI * 0.85, P[0][1] - dirs[0][1] * wI * 0.85]);
+  return shape(pts);
+}
+/** Puntos izquierdo y derecho de un miembro a la fracción t. */
+function cruce(def, t, extra = 0) { const r = resample(def, Math.max(0, t - 0.03), t, 1), b = bordes(r, () => extra); return [b.L[1], b.R[1]]; }
 
-const G = {
-  torso: (hem, cuello = "redondo") => {
-    const n = cuello === "v" ? "L100,104 L93,84" : cuello === "recto" ? "L93,84" : "C104,90 96,90 93,84";
-    return `M93,84 C84,87 74,89 69,95 C72,110 75,118 75,124 C75,140 78,158 78,${hem} L122,${hem} C122,158 125,140 125,124 C125,118 128,110 131,95 C126,89 116,87 107,84 ${n} Z`;
+/* ---------- ANCHORS: cuerpo base (silueta A) en pose de croquis ----------
+   Contrapposto: el peso va en la pierna izquierda de la pantalla (cadera más alta,
+   hombro más bajo); la otra pierna se flexiona con la rodilla hacia adentro.
+   Unas 8,5 cabezas de alto. Los brazos y piernas son {pts: eje, w: ancho}. */
+const ANCHORS = {
+  tilt: 3,
+  cabeza: [100, 44], orejas: { l: [83.6, 45], r: [116.4, 45] }, ojos: { l: [93, 44], r: [107, 44] }, boca: [100, 57],
+  cuello: { top: [100, 58], base: [100, 86], l: [92.6, 83], r: [107.4, 82] },
+  hombros: { l: [71.5, 95], r: [128.5, 92] },
+  axilas: { l: [74.5, 116], r: [125.5, 113] },
+  busto: { l: [77, 129], r: [123, 126] },
+  cintura: { l: [82, 168], r: [118, 166] },
+  cadera: { l: [71, 204], r: [127, 210] },
+  entrepierna: [98.5, 240],
+  brazos: {
+    l: { pts: [[74, 101], [69, 130], [64.5, 160], [64, 188], [67, 213]], w: [15, 12.5, 10, 9, 7] },   // codo = pts[2], muñeca = pts[4]
+    r: { pts: [[126, 98], [131.5, 127], [137.5, 156], [140, 184], [137, 209]], w: [15, 12.5, 10, 9, 7] },
   },
-  mangaCorta: "M69,95 C63,99 61,108 60,118 L58,128 L70,130 L74,120 Z",
-  mangaLarga: "M69,95 C62,98 60,108 60,120 L56,165 L53,215 L65,217 L68,166 L74,124 Z",
-  mangaAbrigo: "M66,96 C59,100 57,110 57,122 L53,166 L50,214 L65,217 L69,168 L73,128 Z",
+  piernas: {
+    l: { pts: [[84.5, 214], [86.5, 280], [88, 318], [89, 350], [92, 399]], w: [27, 20, 14, 14.5, 8.5] },  // rodilla = pts[2], tobillo = pts[4]
+    r: { pts: [[113, 218], [112, 281], [110, 321], [113, 353], [118, 396]], w: [27, 20, 14, 14.5, 8.5] },
+  },
+  pies: { l: { rot: 6, flip: false }, r: { rot: -10, flip: true } },
 };
+/* Cuerpo "flat-lay": simétrico, sin inclinación, mangas abiertas y piernas rectas. */
+const FLAT = (() => {
+  const A = JSON.parse(JSON.stringify(ANCHORS));
+  A.tilt = 0; A.flat = true;
+  A.cadera.l = [71, 207];
+  ["cuello", "hombros", "axilas", "busto", "cintura", "cadera"].forEach(k => { A[k].r = [200 - A[k].l[0], A[k].l[1]]; });
+  A.entrepierna = [100, 240];
+  A.brazos.l.pts = [[74, 101], [63, 126], [52, 151], [44, 175], [38, 199]];
+  A.piernas.l.pts = [[85, 214], [86, 280], [87, 318], [88, 350], [89, 399]];
+  A.brazos.r.pts = A.brazos.l.pts.map(p => [200 - p[0], p[1]]);
+  A.piernas.r.pts = A.piernas.l.pts.map(p => [200 - p[0], p[1]]);
+  A.pies = { l: { rot: 0, flip: false }, r: { rot: 0, flip: true } };
+  return A;
+})();
 
-const D = {
+function escalar(A, k) {
+  const tabla = [[88, 1], [95, k.sh], [127, k.bu], [167, k.wa], [207, k.hi], [318, k.ro], [400, k.to]];
+  const kAt = y => {
+    if (y <= tabla[0][0]) return 1;
+    for (let i = 1; i < tabla.length; i++) if (y <= tabla[i][0]) return lerp(tabla[i - 1][1], tabla[i][1], (y - tabla[i - 1][0]) / (tabla[i][0] - tabla[i - 1][0]));
+    return tabla[tabla.length - 1][1];
+  };
+  const sx = p => { p[0] = 100 + (p[0] - 100) * kAt(p[1]); };
+  ["hombros", "axilas", "busto", "cintura", "cadera"].forEach(n => { sx(A[n].l); sx(A[n].r); });
+  sx(A.entrepierna);
+  ["brazos", "piernas"].forEach(n => ["l", "r"].forEach(s => { const d = A[n][s]; d.w = d.w.map((w, i) => w * kAt(d.pts[i][1])); d.pts.forEach(sx); }));
+}
+/** Agrega medidas derivadas: alturas clave (Y) y el perfil lateral del cuerpo. */
+function derivar(base, sil) {
+  const A = JSON.parse(JSON.stringify(base));
+  if (sil) escalar(A, sil.k);
+  const m = o => (o.l[1] + o.r[1]) / 2;
+  A.Y = { sh: m(A.hombros), ax: m(A.axilas), bu: m(A.busto), wa: m(A.cintura), hi: m(A.cadera), cr: A.entrepierna[1],
+    ro: (A.piernas.l.pts[2][1] + A.piernas.r.pts[2][1]) / 2, to: (A.piernas.l.pts[4][1] + A.piernas.r.pts[4][1]) / 2 };
+  const bl = bordes(A.piernas.l), br = bordes(A.piernas.r);
+  A.perfil = {
+    l: [A.hombros.l, A.axilas.l, A.busto.l, A.cintura.l, A.cadera.l, ...bl.L.slice(1)],
+    r: [A.hombros.r, A.axilas.r, A.busto.r, A.cintura.r, A.cadera.r, ...br.R.slice(1)],
+  };
+  return A;
+}
+const CUERPOS = SILUETAS.map(s => derivar(ANCHORS, s));
+const FLAT_D = derivar(FLAT);
+
+function sideX(A, s, y) {
+  const P = A.perfil[s];
+  if (y <= P[0][1]) return P[0][0];
+  for (let i = 1; i < P.length; i++) if (y <= P[i][1]) return lerp(P[i - 1][0], P[i][0], (y - P[i - 1][1]) / (P[i][1] - P[i - 1][1]));
+  return P[P.length - 1][0];
+}
+const ext = (A, s, y, e) => [sideX(A, s, y) + (s === "l" ? -e : e), y];
+const cX = (A, y) => (sideX(A, "l", y) + sideX(A, "r", y)) / 2;
+const lado = (A, s, y0, y1, e, k = 5) => Array.from({ length: k + 1 }, (_, i) => ext(A, s, lerp(y0, y1, i / k), e));
+const LADOS = ["l", "r"];
+
+/* ---------- moldes reutilizables ---------- */
+function torsoPts(A, o) {
+  const e = o.ease ?? 2, Y = A.Y, cu = o.cuello || "redondo", t = A.tilt * 0.4;
+  const nl = A.cuello.l, nr = A.cuello.r, nb = A.cuello.base, shl = A.hombros.l, shr = A.hombros.r, cx = nb[0];
+  const sinHombro = ["recto", "tirantes", "hombrosAfuera"].includes(cu);
+  const bajo = sinHombro && cu !== "hombrosAfuera" ? 4 : 0;
+  const L = lado(A, "l", A.axilas.l[1] + bajo, o.hem - t, e, 6);
+  const R = lado(A, "r", A.axilas.r[1] + bajo, o.hem + t, e, 6).reverse();
+  L[L.length - 1].push(1); R[0].push(1);
+  const mid = [cX(A, o.hem), o.hem + (o.hemCurva ?? 1.5)]; if (o.hemPico) mid.push(1);
+  let top;
+  if (cu === "hombrosAfuera") {
+    top = [[A.axilas.r[0] + e, A.axilas.r[1] - 6], [cx, Y.ax - 3], [A.axilas.l[0] - e, A.axilas.l[1] - 6]];
+  } else if (sinHombro) {
+    const yT = Y.bu - (o.alto ?? 11), escote = cu === "recto" ? 0 : 1;
+    top = [[A.busto.r[0] - 4, yT - 1, 1], [cx + 9, yT - 2.5], [cx, yT + (escote ? 3.5 : 2), escote], [cx - 9, yT - 2.5], [A.busto.l[0] + 4, yT - 1, 1]];
+  } else {
+    const sm = !!o.sinMangas;
+    const hR = sm ? lp(nr, shr, 0.58) : [shr[0] + e, shr[1] - 0.8], hL = sm ? lp(nl, shl, 0.58) : [shl[0] - e, shl[1] - 0.8];
+    const mR = lp(nr, shr, sm ? 0.3 : 0.5), mL = lp(nl, shl, sm ? 0.3 : 0.5); mR[1] -= 1.2; mL[1] -= 1.2;
+    const cuellos = {
+      redondo: [[nr[0] + 1.5, nr[1] - 0.6], [cx, nb[1] + 4.5], [nl[0] - 1.5, nl[1] - 0.6]],
+      u: [[nr[0] + 3.5, nr[1] + 0.5], [cx, nb[1] + 15], [nl[0] - 3.5, nl[1] + 0.5]],
+      v: [[nr[0] + 2, nr[1] - 0.5, 1], [cx, Y.bu - 4, 1], [nl[0] - 2, nl[1] - 0.5, 1]],
+      alto: [[nr[0] + 0.6, nr[1] - 1.2], [cx, nb[1] + 1.5], [nl[0] - 0.6, nl[1] - 1.2]],
+      camisa: [[nr[0] + 1, nr[1] - 1.2, 1], [cx, nb[1] + 11, 1], [nl[0] - 1, nl[1] - 1.2, 1]],
+    };
+    const sisaR = sm ? [[A.axilas.r[0] - 1.5, A.axilas.r[1] - 7]] : [], sisaL = sm ? [[A.axilas.l[0] + 1.5, A.axilas.l[1] - 7]] : [];
+    top = [...sisaR, [...hR, 1], mR, ...cuellos[cu], mL, [...hL, 1], ...sisaL];
+  }
+  return [...L, mid, ...R, ...top];
+}
+const mangas = (A, t, extra) => LADOS.map(s => limb(resample(A.brazos[s], 0, t, 7), { extra, capFin: "flat" }));
+const punos = (A, t0, t1, extra) => LADOS.map(s => limb(resample(A.brazos[s], t0, t1, 2), { extra, capFin: "flat", capIni: "flat" }));
+/** La falda acompaña la inclinación de la cadera. */
+function faldaPts(A, o) {
+  const e = o.ease ?? 2, yw = A.Y.wa + (o.tiro ?? 0), fl = o.flare ?? 10, t = A.tilt;
+  const lado2 = (s, h) => Array.from({ length: 8 }, (_, i) => { const u = i / 7; return ext(A, s, lerp(yw, h, u), e + fl * Math.pow(u, 1.5)); });
+  const L = lado2("l", o.hem - t), R = lado2("r", o.hem + t).reverse();
+  L[0].push(1); L[7].push(1); R[0].push(1); R[7].push(1);
+  const hem = [];
+  if (o.zig) { const n = 14; for (let i = 1; i < n; i++) { const p = lp(L[7], R[0], i / n); hem.push([p[0], p[1] + (i % 2 ? 3 : 0), 1]); } }
+  else { const p = lp(L[7], R[0], 0.5); hem.push([p[0], p[1] + 2.5]); }
+  return [...L, ...hem, ...R, [cX(A, yw), yw + 0.6]];
+}
+function pantalonP(A, o) {
+  const e = o.ease ?? 1.5, Y = A.Y, yw = Y.wa + (o.tiro ?? 2), cr = A.entrepierna;
+  const pelvis = shape([[...ext(A, "l", yw - A.tilt * 0.3, e), 1], ext(A, "l", (yw + Y.hi) / 2, e), ext(A, "l", Y.hi, e), ext(A, "l", Y.hi + 16, e),
+    [cr[0], cr[1] + 2], ext(A, "r", Y.hi + 16, e), ext(A, "r", Y.hi, e), ext(A, "r", (yw + Y.hi) / 2, e), [...ext(A, "r", yw + A.tilt * 0.3, e), 1], [cX(A, yw), yw + 0.4]]);
+  const piernas = LADOS.map(s => limb(resample(A.piernas[s], 0.05, o.t ?? 0.965, 8), { extra: u => e * 2 + (o.flare ? o.flare(u) : 0), capFin: "flat" }));
+  return [pelvis, ...piernas];
+}
+/** Delantero de abrigo abierto. En flat-lay se cierra. */
+function panelPts(A, s, o) {
+  const e = o.ease ?? 4, g = s === "l" ? -1 : 1, Y = A.Y, n = A.cuello[s], sh = A.hombros[s];
+  const gap = A.flat ? (o.gapFlat ?? -1.5) : (o.gap ?? 5), hem = o.hem + g * A.tilt * 0.8, qb = o.quiebre ?? Y.bu + 12;
+  const side = lado(A, s, A.axilas[s][1], hem, e, 7); side[7].push(1);
+  const front = Array.from({ length: 6 }, (_, i) => { const y = lerp(hem, qb, i / 5); return [cX(A, y) + g * gap, y]; });
+  front[0].push(1); front[5].push(1);
+  const m = lp(n, sh, 0.5); m[1] -= 1.2;
+  return { pts: [[n[0] + g * 0.5, n[1] - 1.5, 1], m, [sh[0] + g * e, sh[1] - 1, 1], ...side, ...front], quiebre: front[5], cuello: n };
+}
+
+/* ---------- detalles ---------- */
+const entrepierna = (A, c, t) => { const a = cruce(A.piernas.l, t, 0)[1], b = cruce(A.piernas.r, t, 0)[0]; return ln(curva([[A.entrepierna[0], A.entrepierna[1]], lp(a, b, 0.5)]), shade(c, -0.4), 1.3); };
+const ln = (d, c, w = 0.9, x = "") => `<path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" ${x}/>`;
+const dot = (p, r, c, x = "") => `<circle cx="${f1(p[0])}" cy="${f1(p[1])}" r="${r}" fill="${c}" ${x}/>`;
+const fillD = (d, c, w = 1) => `<path d="${d}" fill="${c}" stroke="${CONTORNO}" stroke-width="${w}" stroke-linejoin="round"/>`;
+const tira = (d, c, w = 1.9) => ln(d, CONTORNO, w + 1.2) + ln(d, c, w);
+function pliegues(A, c, q) {
+  const k = shade(c, -0.32), out = [];
+  if (q.codos) LADOS.forEach(s => { const [x, y] = A.brazos[s].pts[2], g = s === "l" ? 1 : -1;
+    out.push(ln(curva([[x + g * 0.5, y - 5], [x + g * 3, y - 2.5], [x + g * 5.5, y - 3.5]]), k, 0.8), ln(curva([[x + g * 1, y + 0.5], [x + g * 3.5, y + 2.5], [x + g * 5.5, y + 1]]), k, 0.7)); });
+  if (q.cintura) LADOS.forEach(s => { const g = s === "l" ? 1 : -1, y = A.Y.wa + (q.dy || 0), x = sideX(A, s, y) + g * 1.5;
+    out.push(ln(curva([[x, y - 3], [x + g * 5, y - 1], [x + g * 10, y - 2.5]]), k, 0.8)); });
+  if (q.rodillas) LADOS.forEach(s => { const [x, y] = A.piernas[s].pts[2];
+    out.push(ln(curva([[x - 4, y - 3], [x, y - 1.5], [x + 4, y - 3]]), k, 0.7), ln(curva([[x - 3, y + 3], [x + 0.5, y + 4.5], [x + 3.5, y + 3]]), k, 0.6)); });
+  return out;
+}
+const rayasV = (c, w = 1.3, paso = 5) => { let s = ""; for (let x = 30; x <= 170; x += paso) s += ln(`M${x},60 L${x},440`, c, w); return s; };
+const lunaresP = (c, r = 2) => { let s = ""; for (let y = 70, f = 0; y < 440; y += 9, f++) for (let x = 20 + (f % 2) * 5; x < 180; x += 10) s += dot([x, y], r, c); return s; };
+
+/* ---------- calzado: pie local (pie izquierdo, punta hacia -x, tobillo en 0,0) ---------- */
+const PIE_PLANO = "M-4.6,-2 C-5,5 -7.5,11 -11.5,16 C-14,19 -14.5,22.5 -11.5,23.2 L-1.5,23 C2.5,23 5.2,20 5.2,15 C5.2,9 4.8,4 4.6,-2 Z";
+const PIE_TACO = "M-4.6,-2 C-5,6 -6.5,13 -9,19 C-10.5,23 -9.5,26 -6.5,25.5 L-4.5,25 C-2,20 1.5,14 4.6,9 C5,5 4.8,1 4.6,-2 Z";
+const pieT = (A, s) => { const a = A.piernas[s].pts[4]; return { x: a[0], y: a[1], rot: A.pies[s].rot, flip: A.pies[s].flip }; };
+/** Calzado puesto en 3/4: up = capellada (color), suela = capa aparte, det = detalles. */
+function calzadoPuesto(A, c, o) {
+  const p = [], d = [], suela = [];
+  LADOS.forEach(s => {
+    const t = pieT(A, s);
+    o.up.forEach(u => p.push(xf(u, t)));
+    (o.suela || []).forEach(u => suela.push(xf(u, t)));
+    (o.det || []).forEach(([u, col, w]) => d.push(ln(xf(u, t), col, w)));
+    (o.tiras || []).forEach(([u, col, w]) => d.push(tira(xf(u, t), col, w)));
+  });
+  return { p, d, capas: suela.length ? [{ p: suela, c: o.suelaHex || shade(c, -0.35), d: [] }] : [] };
+}
+
+/* ---------- PRENDAS (dibujo → función) ---------- */
+const DIBUJOS = {
   /* ---- tops ---- */
-  remera: c => P(G.torso(178), c) + PP(G.mangaCorta, c) + L("M80,173 L120,173", shade(c, -0.18)),
-  blusa: c => P(G.torso(182, "v"), c) + PP(G.mangaLarga, c) + PP("M53,208 L65,210 L65,217 L53,215 Z", shade(c, -0.08))
-    + LL("M86,112 C90,130 87,152 90,172", "#fff", 1.4, BRILLO),
-  camisa: (c, raya) => P(G.torso(184, "recto"), c) + PP(G.mangaLarga, c)
-    + [82, 88, 94, 106, 112, 118].map(x => L(`M${x},97 L${x},182`, raya, 1.5)).join("")
-    + L("M100,92 L100,184", shade(c, -0.3), 0.8) + [104, 122, 140, 158].map(y => C(100, y, 1.3, "#fff", `stroke="${shade(c, -0.4)}" stroke-width=".5"`)).join("")
-    + PP("M93,84 L100,95 L88,96 Z", shade(c, 0.25)),
-  musculosa: c => P("M90,84 C88,92 82,96 76,100 C76,130 78,158 78,176 L122,176 C122,158 124,130 124,100 C118,96 112,92 110,84 C106,92 94,92 90,84 Z", c)
-    + L("M80,171 L120,171", shade(c, -0.2)) + LL("M88,120 C90,140 89,155 91,168", shade(c, -0.15), 0.7),
-  sweater: c => P(G.torso(188), c) + PP(G.mangaLarga, c) + P("M78,180 L122,180 L122,188 L78,188 Z", shade(c, -0.12))
-    + PP("M53,207 L65,209 L65,217 L53,215 Z", shade(c, -0.12)) + L("M93,84 C96,91 104,91 107,84", shade(c, -0.25), 2.2)
-    + LL("M92,96 Q95,104 92,112 Q89,120 92,128 Q95,136 92,144 Q89,152 92,160 Q95,168 92,176", shade(c, -0.22), 1.2)
-    + LL("M84,98 Q86,106 84,114 Q82,122 84,130 Q86,138 84,146 Q82,154 84,162 Q86,170 84,178", shade(c, -0.18), 1),
-  corset: c => P("M75,106 C88,114 112,114 125,106 C124,130 122,150 121,173 C112,178 88,178 79,173 C78,150 76,130 75,106 Z", c)
-    + [86, 93, 107, 114].map(x => L(`M${x},114 L${x},174`, shade(c, 0.22), 0.8)).join("")
-    + L("M98,116 L102,122 L98,128 L102,134 L98,140 L102,146 L98,152 L102,158 L98,164", shade(c, 0.5), 0.8),
-  deportivo: c => P("M88,86 C86,96 80,100 76,104 C76,120 77,134 78,140 L122,140 C123,134 124,120 124,104 C120,100 114,96 112,86 C106,95 94,95 88,86 Z", c)
-    + P("M78,132 L122,132 L122,140 L78,140 Z", shade(c, -0.25)) + LL("M88,88 C92,104 92,118 90,130", shade(c, 0.3), 1),
-  polera: c => P(G.torso(184), c) + PP(G.mangaLarga, c) + P("M92,69 L108,69 L109,89 L91,89 Z", shade(c, -0.08))
-    + [95, 100, 105].map(x => L(`M${x},71 L${x},87`, shade(c, -0.3), 0.6)).join(""),
-  volados: c => P("M72,104 C90,110 110,110 128,104 L125,124 C124,140 122,160 122,176 L78,176 C78,160 76,140 75,124 Z", c)
-    + P("M64,99 C88,108 112,108 136,99 L137,113 Q131,118 125,113 Q119,119 112,114 Q106,120 100,115 Q94,120 88,114 Q81,119 75,113 Q69,118 63,113 Z", shade(c, 0.12))
-    + L("M80,171 L120,171", shade(c, -0.15)),
+  remera: (A, c) => { const hem = A.Y.wa + 18, k = shade(c, -0.28);
+    return { p: [shape(torsoPts(A, { hem, ease: 2.5 })), ...mangas(A, 0.26, 4.5)],
+      d: [ln(curva([[A.cuello.r[0] + 1.5, A.cuello.r[1] + 2.2], [A.cuello.base[0], A.cuello.base[1] + 7], [A.cuello.l[0] - 1.5, A.cuello.l[1] + 2.2]]), k, 0.9),
+        ln(curva([ext(A, "l", hem - 4.5 - A.tilt * 0.4, 1), [cX(A, hem), hem - 3], ext(A, "r", hem - 4.5 + A.tilt * 0.4, 1)]), k, 0.7, 'stroke-dasharray="1.6 1.6"'),
+        ...LADOS.map(s => { const [a, b] = cruce(A.brazos[s], 0.22, 4.5); return ln(curva([a, b]), k, 0.7, 'stroke-dasharray="1.6 1.6"'); }),
+        ...pliegues(A, c, { cintura: 1 })] }; },
+  blusa: (A, c) => { const hem = A.Y.wa + 20, lt = shade(c, 0.6);
+    return { p: [shape(torsoPts(A, { hem, ease: 3, cuello: "v" })), ...mangas(A, 0.9, u => 5 + u * 5), ...punos(A, 0.88, 0.97, 3.5)],
+      d: [ln(curva([ext(A, "l", A.Y.bu, -6), ext(A, "l", A.Y.wa, -7), ext(A, "l", A.Y.wa + 15, -6)]), lt, 1.6, 'opacity=".55"'),
+        ...LADOS.map(s => { const [a, b] = cruce(A.brazos[s], 0.88, 3.5); return ln(curva([a, b]), shade(c, -0.3), 0.8); }),
+        ...LADOS.map(s => ln(curva(resample(A.brazos[s], 0.15, 0.8, 4).pts.map(p => [p[0] + (s === "l" ? -2 : 2), p[1]])), lt, 1.2, 'opacity=".45"')),
+        ...pliegues(A, c, { codos: 1, cintura: 1 })] }; },
+  camisa: (A, c, it) => { const hem = A.Y.wa + 24, nb = A.cuello.base, nl = A.cuello.l, nr = A.cuello.r, k = shade(c, -0.35);
+    return { p: [shape(torsoPts(A, { hem, ease: 2.5, cuello: "camisa", hemCurva: 4 })), ...mangas(A, 0.9, 4), ...punos(A, 0.88, 0.97, 4.5)],
+      d: [rayasV(it.detalleHex || shade(c, -0.4), 1.3, 5),
+        ln(curva([[nb[0], nb[1] + 11], [cX(A, A.Y.bu), A.Y.bu], [cX(A, hem), hem + 3]]), k, 0.9),
+        ...[0.2, 0.42, 0.64, 0.86].map(u => { const y = lerp(nb[1] + 14, hem, u); return dot([cX(A, y) + 1.5, y], 1.3, "#FBFAF7", `stroke="${k}" stroke-width=".5"`); }),
+        fillD(shape([[nl[0] - 0.5, nl[1] - 2.5, 1], [nb[0] - 0.5, nb[1] + 11, 1], [nl[0] - 9, nb[1] + 7, 1]]), c),
+        fillD(shape([[nr[0] + 0.5, nr[1] - 2.5, 1], [nb[0] + 0.5, nb[1] + 11, 1], [nr[0] + 9, nb[1] + 6, 1]]), c),
+        ...pliegues(A, c, { codos: 1, cintura: 1 })] }; },
+  musculosa: (A, c) => { const hem = A.Y.wa + 16, k = shade(c, -0.3);
+    return { p: [shape(torsoPts(A, { hem, ease: 2, cuello: "u", sinMangas: 1 }))],
+      d: [ln(curva([[A.cuello.r[0] + 3.5, A.cuello.r[1] + 3], [A.cuello.base[0], A.cuello.base[1] + 17], [A.cuello.l[0] - 3.5, A.cuello.l[1] + 3]]), k, 0.8),
+        ...[-6, 0, 6].map(dx => ln(curva([[cX(A, A.Y.bu) + dx, A.Y.bu + 4], [cX(A, A.Y.wa) + dx * 1.1, A.Y.wa], [cX(A, hem) + dx * 1.2, hem - 2]]), shade(c, -0.12), 0.6)),
+        ...pliegues(A, c, { cintura: 1 })] }; },
+  sweater: (A, c) => { const hem = A.Y.wa + 28, k = shade(c, -0.3), Y = A.Y; let rib = "";
+    for (let x = 40; x <= 160; x += 2.6) rib += ln(`M${f1(x)},${f1(hem - 8)} L${f1(x)},${f1(hem + 6)}`, k, 0.6);
+    const ocho = dx => ln(curva(Array.from({ length: 11 }, (_, i) => { const y = lerp(Y.ax, hem - 10, i / 10); return [cX(A, y) + dx + (i % 2 ? 2.4 : -2.4), y]; })), k, 1.1);
+    return { p: [shape(torsoPts(A, { hem, ease: 4 })), ...mangas(A, 0.9, u => 6 + u * 2), ...punos(A, 0.88, 0.98, 4)],
+      d: [rib, ocho(-9), ocho(9), ocho(0), ln(curva([[A.cuello.r[0] + 1.5, A.cuello.r[1] + 1.5], [A.cuello.base[0], A.cuello.base[1] + 6], [A.cuello.l[0] - 1.5, A.cuello.l[1] + 1.5]]), k, 2.2),
+        ...LADOS.map(s => { const [a, b] = cruce(A.brazos[s], 0.88, 4); return ln(curva([a, b]), k, 0.8); }), ...pliegues(A, c, { codos: 1 })] }; },
+  corset: (A, c) => { const hem = A.Y.wa + 10, lt = shade(c, 0.35), Y = A.Y, yT = Y.bu - 9;
+    return { p: [shape(torsoPts(A, { hem, ease: 1, cuello: "recto", alto: 9, hemPico: 1, hemCurva: 6 }))],
+      d: [...[-14, -7, 7, 14].map(dx => ln(curva([[cX(A, yT + 2) + dx * 1.05, yT + 2], [cX(A, Y.wa) + dx * 0.8, Y.wa], [cX(A, hem) + dx * 0.9, hem]]), lt, 0.7)),
+        ln(curva(Array.from({ length: 10 }, (_, i) => { const y = lerp(yT + 4, hem - 2, i / 9); return [cX(A, y) + (i % 2 ? 2 : -2), y]; })), shade(c, 0.6), 0.8),
+        ln(curva([[A.busto.l[0] + 4, yT + 1.5], [cX(A, yT), yT + 4], [A.busto.r[0] - 4, yT + 1.5]]), lt, 0.8)] }; },
+  deportivo: (A, c) => { const hem = A.Y.bu + 15, k = shade(c, -0.3);
+    return { p: [shape(torsoPts(A, { hem, ease: 1, cuello: "u", sinMangas: 1, hemCurva: 0.5 }))],
+      d: [ln(curva([ext(A, "l", hem - 3 - A.tilt * 0.4, -0.5), [cX(A, hem), hem - 2.5], ext(A, "r", hem - 3 + A.tilt * 0.4, -0.5)]), k, 4),
+        ...LADOS.map(s => ln(curva([lp(A.cuello[s], A.hombros[s], 0.45), [lerp(A.busto[s][0], 100, 0.25), A.Y.bu - 4], [lerp(A.busto[s][0], 100, 0.15), hem - 5]]), shade(c, 0.35), 1))] }; },
+  polera: (A, c) => { const hem = A.Y.wa + 24, k = shade(c, -0.32), nb = A.cuello.base; let rib = "";
+    for (let x = 90; x <= 110; x += 2.5) rib += ln(`M${x},62 L${x},${nb[1]}`, k, 0.6);
+    return { p: [shape(torsoPts(A, { hem, ease: 3, cuello: "alto" })), ...mangas(A, 0.97, 4.5), limb({ pts: [[A.cuello.top[0], 62], [nb[0], nb[1] + 1]], w: [17.5, 19] }, { capIni: "flat", capFin: "flat" })],
+      d: [rib, ...pliegues(A, c, { codos: 1, cintura: 1 })] }; },
+  volados: (A, c) => { const hem = A.Y.wa + 18, aL = cruce(A.brazos.l, 0.24, 7), aR = cruce(A.brazos.r, 0.24, 7), cx = A.cuello.base[0], k = shade(c, -0.3);
+    const fondo = []; const n = 11; for (let i = 0; i <= n; i++) { const p = lp(aR[1], aL[0], i / n); fondo.push([p[0], p[1] + (i % 2 ? 4 : 0), i % 2 ? 0 : 1]); }
+    const volado = shape([[aL[0][0] - 1, aL[0][1] - 13], [cx, A.Y.ax - 6], [aR[1][0] + 1, aR[1][1] - 13], ...fondo]);
+    return { p: [shape(torsoPts(A, { hem, ease: 2.5, cuello: "hombrosAfuera" })), volado],
+      d: [...fondo.filter((_, i) => i % 2).map(q => ln(`M${pt([q[0], q[1] - 12])} L${pt([q[0], q[1] - 3])}`, k, 0.6)), ...pliegues(A, c, { cintura: 1 })] }; },
 
   /* ---- bottoms ---- */
-  jean: c => P("M78,166 L122,166 C125,185 130,198 130,212 C129,250 126,300 123,330 L121,404 L104,404 L102,300 L100,232 L98,300 L96,404 L79,404 L77,330 C74,300 71,250 70,212 C70,198 75,185 78,166 Z", c)
-    + L("M78,172 L122,172", shade(c, -0.25)) + L("M100,172 L100,204", shade(c, -0.25)) + LL("M81,180 C86,183 89,187 90,174", shade(c, 0.3), 0.8)
-    + LL("M85,236 C86,300 87,350 88,402", shade(c, 0.2), 0.7),
-  sastrero: c => P("M78,166 L122,166 C125,185 130,198 130,212 C129,250 128,300 127,330 L126,404 L103,404 L101,300 L100,232 L99,300 L97,404 L74,404 L73,330 C72,300 71,250 70,212 C70,198 75,185 78,166 Z", c)
-    + P("M78,166 L122,166 L122.5,173 L77.5,173 Z", shade(c, 0.08)) + LL("M86,214 L86,404", shade(c, 0.2), 0.8),
-  plisada: c => P("M79,166 L121,166 C127,200 134,260 140,336 L60,336 C66,260 73,200 79,166 Z", c)
-    + P("M79,166 L121,166 L122,173 L78,173 Z", shade(c, -0.08))
-    + [0, 1, 2, 3, 4, 5, 6, 7].map(i => L(`M${83.5 + i * 4.7},174 L${68 + i * 9.1},335`, shade(c, -0.2), 0.7)).join(""),
-  short: c => P("M78,166 L122,166 C125,185 130,198 130,212 L131,246 L103,248 L100,232 L97,248 L69,246 L70,212 C70,198 75,185 78,166 Z", c)
-    + L("M78,172 L122,172", shade(c, -0.25)) + L("M69,244 L72,248 L75,244 L78,248 L81,244 L84,248 L87,244 L90,248 L93,244 L96,248", "#fff", 0.8, 'opacity=".8"')
-    + L("M104,248 L107,244 L110,248 L113,244 L116,248 L119,244 L122,248 L125,244 L128,248 L131,244", "#fff", 0.8, 'opacity=".8"'),
-  calza: c => P("M79,166 L121,166 C124,185 129,198 129,212 C128,250 125,290 121,320 C120,350 118,380 116,400 L104,400 C103,370 103,345 102,320 C101,280 101,250 100,228 C99,250 99,280 98,320 C97,345 97,370 96,400 L84,400 C82,380 80,350 79,320 C75,290 72,250 71,212 C71,198 76,185 79,166 Z", c)
-    + P("M79,166 L121,166 L122,174 L78,174 Z", shade(c, 0.12)) + LL("M72,214 C74,260 78,300 80,330 L84,398", shade(c, 0.35), 1.2),
-  palazzo: c => P("M78,166 L122,166 C127,190 132,230 134,260 L140,404 L103,404 L100,240 L97,404 L60,404 L66,260 C68,230 73,190 78,166 Z", c)
-    + P("M78,166 L122,166 L123,173 L77,173 Z", shade(c, -0.1)) + LL("M80,240 L72,402", shade(c, -0.15), 0.7) + LL("M90,250 L88,402", shade(c, -0.15), 0.7),
-  minifalda: c => P("M79,166 L121,166 C125,190 128,215 130,244 L70,244 C72,215 75,190 79,166 Z", c)
-    + L("M106,168 L106,198", shade(c, 0.4), 0.9) + L("M86,176 C84,200 82,220 80,238", "#fff", 1.6, 'opacity=".25"'),
+  jean: (A, c) => { const Y = A.Y, yw = Y.wa + 2, hilo = "#D9A44A", k = shade(c, -0.3);
+    const costura = s => { const b = bordes(resample(A.piernas[s], 0.12, 0.95, 6), () => -2); return ln(curva(s === "l" ? b.L : b.R), hilo, 0.7, 'stroke-dasharray="1.8 1.4"'); };
+    return { p: pantalonP(A, { ease: 1.6, t: 0.965 }),
+      d: [ln(curva([ext(A, "l", yw + 4.5 - A.tilt * 0.3, 0.5), [cX(A, yw + 5), yw + 5], ext(A, "r", yw + 4.5 + A.tilt * 0.3, 0.5)]), hilo, 0.7, 'stroke-dasharray="1.8 1.4"'),
+        ln(curva([ext(A, "l", yw + 4 - A.tilt * 0.3, 0.5), [cX(A, yw + 4), yw + 4], ext(A, "r", yw + 4 + A.tilt * 0.3, 0.5)]), k, 0.8),
+        ln(curva([[cX(A, yw) + 2, yw + 5], [cX(A, yw + 20) + 3, yw + 22], [cX(A, yw + 28) - 0.5, yw + 30]]), hilo, 0.8),
+        ...LADOS.map(s => { const g = s === "l" ? 1 : -1, x = sideX(A, s, yw + 5); return ln(curva([[x + g * 1, yw + 5], [x + g * 7, yw + 9], [x + g * 11, yw + 5]]), hilo, 0.8); }),
+        ...LADOS.map(s => { const g = s === "l" ? 1 : -1; return dot([sideX(A, s, yw + 5) + g * 11, yw + 5.5], 1, "#C9A45A"); }),
+        costura("l"), costura("r"),
+        ...LADOS.map(s => { const [a, b] = cruce(A.piernas[s], 0.93, 3.2); return ln(curva([a, b]), hilo, 0.7, 'stroke-dasharray="1.8 1.4"'); }),
+        ...pliegues(A, c, { rodillas: 1 })] }; },
+  sastrero: (A, c) => { const yw = A.Y.wa + 2, lt = shade(c, 0.22);
+    return { p: pantalonP(A, { ease: 2.6, t: 0.975, flare: u => u * 6 }),
+      d: [ln(curva([ext(A, "l", yw + 5 - A.tilt * 0.3, 0.6), [cX(A, yw + 5), yw + 5.5], ext(A, "r", yw + 5 + A.tilt * 0.3, 0.6)]), shade(c, 0.12), 1),
+        ...LADOS.map(s => ln(curva(resample(A.piernas[s], 0.1, 0.97, 6).pts), lt, 0.9)),
+        ...LADOS.map(s => { const g = s === "l" ? 1 : -1, x = sideX(A, s, yw + 6); return ln(`M${pt([x + g * 3, yw + 6])} L${pt([x + g * 0.5, yw + 22])}`, lt, 0.8); })] }; },
+  plisada: (A, c) => { const Y = A.Y, hem = Y.ro + 16, pts = faldaPts(A, { hem, flare: 26, ease: 2, zig: 1 }); let pl = "";
+    for (let i = 1; i < 14; i++) { const u = i / 14, top = lp(ext(A, "l", Y.wa + 6, 2), ext(A, "r", Y.wa + 6, 2), u), bot = lp(ext(A, "l", hem - A.tilt, 28), ext(A, "r", hem + A.tilt, 28), u);
+      pl += ln(`M${pt(top)} L${pt([bot[0], bot[1] + (i % 2 ? 3 : 0)])}`, i % 2 ? shade(c, -0.22) : shade(c, 0.3), 0.8); }
+    return { p: [shape(pts)], d: [pl, ln(curva([ext(A, "l", Y.wa + 5, 2), [cX(A, Y.wa + 5), Y.wa + 5.5], ext(A, "r", Y.wa + 5, 2)]), shade(c, -0.25), 0.9)] }; },
+  short: (A, c) => { const yw = A.Y.wa + 2, k = shade(c, -0.3), deshilache = [];
+    LADOS.forEach(s => { const [a, b] = cruce(A.piernas[s], 0.2, 7); for (let i = 1; i < 8; i++) { const q = lp(a, b, i / 8); deshilache.push(ln(`M${pt([q[0], q[1] - 1])} L${pt([q[0] + 0.4, q[1] + 2.2])}`, "#FFFFFF", 0.7, 'opacity=".85"')); } });
+    const botamangas = LADOS.map(s => { const [a, b] = cruce(A.piernas[s], 0.2, 7.5), [c2, d2] = cruce(A.piernas[s], 0.155, 7); return fillD(shape([[...c2, 1], [...d2, 1], [...b, 1], [...a, 1]]), shade(c, 0.12), 1); });
+    return { p: pantalonP(A, { ease: 3, t: 0.2, flare: u => u * 4 }),
+      d: [...botamangas, ln(curva([[A.entrepierna[0], A.entrepierna[1] - 2], lp(cruce(A.piernas.l, 0.2, 7)[1], cruce(A.piernas.r, 0.2, 7)[0], 0.5)]), shade(c, -0.4), 1.2), ln(curva([ext(A, "l", yw + 4 - A.tilt * 0.3, 0.5), [cX(A, yw + 4), yw + 4], ext(A, "r", yw + 4 + A.tilt * 0.3, 0.5)]), k, 0.8),
+        ln(curva([[cX(A, yw) + 2, yw + 5], [cX(A, yw + 18) + 3, yw + 19], [cX(A, yw + 24) - 0.5, yw + 26]]), "#D9A44A", 0.8),
+        ...LADOS.map(s => { const g = s === "l" ? 1 : -1, x = sideX(A, s, yw + 5); return ln(curva([[x + g * 1, yw + 5], [x + g * 7, yw + 9], [x + g * 11, yw + 5]]), "#D9A44A", 0.8); }), ...deshilache] }; },
+  calza: (A, c) => { const lt = shade(c, 0.4), yw = A.Y.wa;
+    return { p: pantalonP(A, { ease: 0.4, t: 0.985, tiro: -2 }),
+      d: [ln(curva([ext(A, "l", yw + 6 - A.tilt * 0.3, 0), [cX(A, yw + 6), yw + 6.5], ext(A, "r", yw + 6 + A.tilt * 0.3, 0)]), shade(c, 0.2), 1.2),
+        ...LADOS.map(s => { const b = bordes(resample(A.piernas[s], 0.06, 0.97, 7), () => -2.2); return ln(curva(s === "l" ? b.L : b.R), lt, 1.3); }), ...pliegues(A, c, { rodillas: 1 })] }; },
+  palazzo: (A, c) => { const yw = A.Y.wa, k = shade(c, -0.22);
+    return { p: pantalonP(A, { ease: 3, t: 0.995, flare: u => 4 + u * 22, tiro: -2 }),
+      d: [ln(curva([ext(A, "l", yw + 6 - A.tilt * 0.3, 3), [cX(A, yw + 6), yw + 6.5], ext(A, "r", yw + 6 + A.tilt * 0.3, 3)]), k, 1),
+        entrepierna(A, c, 0.995),
+        ...LADOS.flatMap(s => [-0.25, 0.2].map(off => { const r = resample(A.piernas[s], 0.25, 0.99, 5); return ln(curva(r.pts.map((p, i) => [p[0] + off * (r.w[i] + 4 + (i / 5) * 22), p[1]])), k, 0.8); }))] }; },
+  minifalda: (A, c) => { const Y = A.Y, hem = Y.cr + 12;
+    return { p: [shape(faldaPts(A, { hem, flare: 6, ease: 2 }))],
+      d: [ln(`M${pt([cX(A, Y.wa) + 5, Y.wa + 2])} L${pt([cX(A, Y.wa + 28) + 5, Y.wa + 28])}`, shade(c, 0.5), 0.9),
+        ln(curva([ext(A, "l", Y.wa + 8, -3), ext(A, "l", Y.hi, -4), ext(A, "l", hem - 6 - A.tilt, -3)]), "#FFFFFF", 1.6, 'opacity=".25"')] }; },
 
   /* ---- vestidos / enteritos ---- */
-  slip: c => P("M80,104 C90,110 110,110 120,104 C122,130 121,150 120,168 C126,200 133,260 138,330 L62,330 C67,260 74,200 80,168 C79,150 78,130 80,104 Z", c)
-    + LL("M83,105 L90,86", shade(c, -0.3), 0.9) + LL("M88,118 C92,160 88,230 84,320", "#fff", 1.6, BRILLO),
-  gala: c => P("M93,86 C86,88 78,90 74,96 C76,112 78,124 78,136 C78,150 80,160 80,168 C84,220 70,320 56,414 L144,414 C130,320 116,220 120,168 C120,160 122,150 122,136 C122,124 124,112 126,96 C122,90 114,88 107,86 L100,110 Z", c)
-    + L("M80,166 C92,170 108,170 120,166", shade(c, 0.3), 1.2) + LL("M92,180 C88,260 80,330 70,410", shade(c, 0.22), 0.9) + L("M103,176 C108,250 116,330 124,410", "#fff", 1.6, 'opacity=".25"'),
-  camisero: c => P("M93,84 C84,87 74,89 69,95 C72,110 75,118 75,124 C75,140 79,158 80,168 C75,200 70,260 66,322 L134,322 C130,260 125,200 120,168 C121,158 125,140 125,124 C125,118 128,110 131,95 C126,89 116,87 107,84 L100,96 Z", c)
-    + PP(G.mangaCorta, c) + PP("M93,84 L100,96 L88,97 Z", shade(c, 0.2)) + L("M100,96 L100,320", shade(c, -0.25), 0.8)
-    + [110, 128, 146, 186, 206].map(y => C(100, y, 1.2, shade(c, -0.35))).join("") + P("M79,163 L121,163 L121,172 L79,172 Z", shade(c, -0.3)),
-  enterito: c => P("M90,84 C88,92 82,96 76,100 C76,130 78,150 79,166 C73,190 68,230 66,260 L60,404 L97,404 L100,240 L103,404 L140,404 L134,260 C132,230 127,190 121,166 C122,150 124,130 124,100 C118,96 112,92 110,84 C106,92 94,92 90,84 Z", c)
-    + L("M79,166 C92,170 108,170 121,166", shade(c, -0.3), 1.6) + L("M104,168 L110,184 M104,168 L101,186", shade(c, -0.3), 1.2) + LL("M84,250 L76,402", shade(c, -0.18), 0.7),
-  lunares: (c, dot) => P("M93,84 C84,87 76,90 72,96 C74,112 76,124 77,140 C78,152 79,160 80,168 C76,190 70,220 66,252 L134,252 C130,220 124,190 120,168 C121,160 122,152 123,140 C124,124 126,112 128,96 C124,90 116,87 107,84 C104,90 96,90 93,84 Z", c)
-    + PP("M70,95 C62,98 56,108 55,121 C62,118 68,120 74,124 Z", shade(c, 0.1))
-    + [[86, 108], [100, 104], [114, 108], [82, 124], [93, 120], [107, 120], [118, 124], [86, 140], [100, 136], [114, 140], [92, 154], [108, 154], [80, 182], [92, 178], [104, 182], [116, 178], [76, 202], [88, 198], [100, 204], [112, 198], [124, 202], [74, 222], [86, 220], [98, 226], [110, 220], [122, 224], [80, 242], [92, 240], [106, 242], [120, 240]]
-      .map(([x, y]) => C(x, y, 2, dot)).join("") + L("M80,168 C92,172 108,172 120,168", shade(c, -0.2), 1),
-  punto: c => P("M93,84 C84,87 74,89 69,95 C72,110 75,118 75,124 C75,140 79,158 80,168 C76,185 70,198 70,212 C71,260 76,300 80,345 L120,345 C124,300 129,260 130,212 C130,198 124,185 120,168 C121,158 125,140 125,124 C125,118 128,110 131,95 C126,89 116,87 107,84 C104,90 96,90 93,84 Z", c)
-    + PP(G.mangaLarga, c) + [84, 92, 100, 108, 116].map(x => L(`M${x},96 L${x},340`, shade(c, -0.12), 0.6)).join("")
-    + L("M93,84 C96,91 104,91 107,84", shade(c, -0.25), 2),
+  slip: (A, c) => { const Y = A.Y, yT = Y.bu - 10, lt = shade(c, 0.55);
+    const tiras = LADOS.map(s => limb({ pts: [[A.busto[s][0] + (s === "l" ? 5 : -5), yT - 1], lp(A.cuello[s], A.hombros[s], 0.42)], w: [1.8, 1.8] }));
+    return { p: [shape(torsoPts(A, { hem: Y.wa + 3, ease: 1.5, cuello: "tirantes", alto: 10 })), shape(faldaPts(A, { hem: Y.ro + 30, flare: 16, ease: 2, tiro: -1 })), ...tiras],
+      d: [ln(curva([ext(A, "l", Y.bu, -6), ext(A, "l", Y.hi, -8), ext(A, "l", Y.ro + 20 - A.tilt, -4)]), lt, 1.6, 'opacity=".5"'),
+        ln(curva([[cX(A, Y.hi) + 8, Y.hi], [cX(A, Y.ro) + 14, Y.ro], [cX(A, Y.ro + 26) + 20, Y.ro + 28]]), shade(c, -0.25), 0.8)] }; },
+  gala: (A, c) => { const Y = A.Y, lt = shade(c, 0.4), k = shade(c, -0.35);
+    return { p: [shape(torsoPts(A, { hem: Y.wa + 3, ease: 1.5, cuello: "v", sinMangas: 1 })), shape(faldaPts(A, { hem: 414, flare: 30, ease: 2 }))],
+      d: [ln(curva([ext(A, "l", Y.wa + 1, 0), [cX(A, Y.wa + 2), Y.wa + 3.5], ext(A, "r", Y.wa + 1, 0)]), lt, 1.2),
+        ln(curva([[cX(A, Y.ro) + 12, Y.ro - 6], [cX(A, Y.ro + 40) + 16, Y.ro + 40], [cX(A, 412) + 22, 416]]), k, 1),
+        ...[-14, -4, 6].map(dx => ln(curva([[cX(A, Y.hi) + dx * 0.6, Y.hi], [cX(A, Y.ro) + dx * 1.2, Y.ro], [cX(A, 410) + dx * 1.9, 410]]), dx < 0 ? lt : k, 0.8, 'opacity=".7"'))] }; },
+  camisero: (A, c) => { const Y = A.Y, nb = A.cuello.base, nl = A.cuello.l, nr = A.cuello.r, hem = Y.ro + 8, k = shade(c, -0.35);
+    return { p: [shape(torsoPts(A, { hem: Y.wa + 4, ease: 2.5, cuello: "camisa" })), ...mangas(A, 0.3, 5), ...punos(A, 0.25, 0.32, 6.5), shape(faldaPts(A, { hem, flare: 14 }))],
+      d: [ln(curva([[nb[0], nb[1] + 11], [cX(A, Y.wa), Y.wa], [cX(A, hem), hem + 3]]), k, 0.9),
+        ...[0.12, 0.3, 0.48, 0.66, 0.84].map(u => { const y = lerp(nb[1] + 14, hem - 8, u); return dot([cX(A, y) + 1.5, y], 1.2, k); }),
+        fillD(shape([[nl[0] - 0.5, nl[1] - 2.5, 1], [nb[0] - 0.5, nb[1] + 11, 1], [nl[0] - 9, nb[1] + 7, 1]]), c),
+        fillD(shape([[nr[0] + 0.5, nr[1] - 2.5, 1], [nb[0] + 0.5, nb[1] + 11, 1], [nr[0] + 9, nb[1] + 6, 1]]), c),
+        fillD(shape([[...ext(A, "l", Y.wa - 3, 2.5), 1], [...ext(A, "r", Y.wa - 3, 2.5), 1], [...ext(A, "r", Y.wa + 4, 2.5), 1], [...ext(A, "l", Y.wa + 4, 2.5), 1]]), shade(c, -0.45), 0.8),
+        dot([cX(A, Y.wa) + 2, Y.wa + 0.5], 2.4, "#C9A45A")] }; },
+  enterito: (A, c) => { const Y = A.Y, k = shade(c, -0.3);
+    return { p: [shape(torsoPts(A, { hem: Y.wa + 4, ease: 2, cuello: "u", sinMangas: 1 })), ...pantalonP(A, { ease: 3, t: 0.99, flare: u => 3 + u * 16, tiro: 0 })],
+      d: [ln(curva([ext(A, "l", Y.wa + 1, 2.5), [cX(A, Y.wa + 2), Y.wa + 2.5], ext(A, "r", Y.wa + 1, 2.5)]), k, 2.2),
+        ln(curva([[cX(A, Y.wa) + 3, Y.wa + 2], [cX(A, Y.wa) + 8, Y.wa + 14], [cX(A, Y.wa) + 6, Y.wa + 22]]), k, 1.2),
+        ln(curva([[cX(A, Y.wa) + 3, Y.wa + 2], [cX(A, Y.wa) - 1, Y.wa + 15], [cX(A, Y.wa) + 1, Y.wa + 21]]), k, 1.2),
+        entrepierna(A, c, 0.99), ...LADOS.map(s => ln(curva(resample(A.piernas[s], 0.3, 0.98, 4).pts), shade(c, -0.18), 0.8))] }; },
+  lunares: (A, c, it) => { const Y = A.Y;
+    return { p: [shape(torsoPts(A, { hem: Y.wa + 3, ease: 2 })), ...mangas(A, 0.25, u => 6 + u * 10), shape(faldaPts(A, { hem: Y.cr + 20, flare: 18 }))],
+      d: [lunaresP(it.detalleHex || "#FFFFFF", 1.9), ln(curva([ext(A, "l", Y.wa + 2, 2), [cX(A, Y.wa + 3), Y.wa + 3.5], ext(A, "r", Y.wa + 2, 2)]), shade(c, -0.3), 0.9)] }; },
+  punto: (A, c) => { const Y = A.Y, k = shade(c, -0.18); let rib = "";
+    for (let x = 34; x <= 166; x += 4) rib += ln(`M${x},80 L${x},420`, k, 0.6);
+    return { p: [shape(torsoPts(A, { hem: Y.wa + 4, ease: 1.5 })), ...mangas(A, 0.97, 3), shape(faldaPts(A, { hem: Y.ro + 26, flare: -3, ease: 1.5 }))],
+      d: [rib, ln(curva([[A.cuello.r[0] + 1.5, A.cuello.r[1] + 1.5], [A.cuello.base[0], A.cuello.base[1] + 6], [A.cuello.l[0] - 1.5, A.cuello.l[1] + 1.5]]), shade(c, -0.35), 2), ...pliegues(A, c, { codos: 1 })] }; },
 
-  /* ---- calzado ---- */
-  zapatillas: c => PP("M83,402 L97,402 C98,408 99,413 99,418 C99,424 97,427 93,427 L82,427 C79,427 79,421 81,418 Z", c)
-    + PP("M80,422 L99.4,422 C99,425 97,427.5 93,427.5 L82,427.5 C80,427.5 79.6,425 80,422 Z", shade(c, -0.15)) + LL("M86,408 L95,408 M86,412.5 L96,412.5", shade(c, -0.35), 0.8),
-  stilettos: c => PP("M85,408 L97,408 C98,414 98,418 97,421 C94,426 88,428 82,427 C82,421 84,414 85,408 Z", c)
-    + PP("M95,420 L97.5,420 L97.2,432 L96.2,432 Z", shade(c, -0.1)) + LL("M87,412 C88,418 86,422 84,424", "#fff", 0.8, BRILLO),
-  borcegos: c => PP("M82,366 L99,366 L99,416 C99,423 97,426 93,426 L80,426 C78,426 78,420 80,416 Z", c)
-    + PP("M78,421 L100,421 L100,429 L78,429 Z", shade(c, -0.4)) + LL("M86,374 L95,374 M86,382 L95,382 M86,390 L95,390 M86,398 L95,398 M86,406 L95,406", shade(c, 0.45), 0.9)
-    + PP("M82,366 L99,366 L99,370 L82,370 Z", shade(c, 0.15)),
-  ojotas: c => PP("M82,419 L98,419 C99,424 97,427 93,427 L85,427 C81,427 80,423 82,419 Z", c) + LL("M84,420 L91,409 L98,420", shade(c, -0.25), 1.6),
-  mocasines: c => PP("M84,410 L97.5,410 C98.5,414 99,418 99,421 C99,425 96,427 92,427 L82,427 C80,427 80,422 82,418 Z", c)
-    + LL("M85.5,414 C89,412 94,412 97.5,414", shade(c, 0.3), 1.1) + PP("M81,424 L99,424 L99,427.5 L81,427.5 Z", shade(c, -0.3)),
-  sandalias: c => LL("M85,407 L97,407", c, 2) + LL("M84,413 L97.5,413", c, 2.2) + LL("M83,419 L98,419", c, 2.2)
-    + PP("M82,422 L98,421.5 C98,426 95,428 91,428 L84,428 C82,428 81,426 82,422 Z", shade(c, -0.15)) + PP("M95,423 L97.5,423 L97.2,433 L96.2,433 Z", shade(c, -0.25)),
-  botasAltas: c => PP("M77,314 L100,314 L99,404 L99,416 C99,423 97,426 93,426 L80,426 C78,426 78,420 80,416 L79,370 Z", c)
-    + PP("M78,421 L100,421 L100,428 L78,428 Z", shade(c, -0.35)) + LL("M77.5,321 L99.8,321", shade(c, -0.3), 0.8) + LL("M83,330 C84,360 84,390 85,412", "#fff", 1.2, 'opacity=".2"'),
+  /* ---- calzado (puesto en 3/4 + perfil para el placard) ---- */
+  zapatillas: Object.assign((A, c) => calzadoPuesto(A, c, {
+    up: ["M-5.6,-3 L5.6,-3 C6.3,4 6.5,10 6.5,16 L6.5,22 L-11.6,22.6 C-15.8,22.6 -16.6,18.6 -13.6,16.2 C-9.2,12.6 -6.6,6 -5.6,-3 Z"],
+    suela: ["M-16.2,20.6 L6.8,20.6 L6.8,25.6 L-12.2,25.8 C-15.6,25.8 -16.8,23.4 -16.2,20.6 Z"], suelaHex: "#E4E1DA",
+    det: [["M-5.6,3 L-1.4,1.8 M-6.8,7 L-2.6,5.8 M-8.4,11 L-4.2,9.8", "#9C9AA6", 0.9], ["M-12.6,17 C-9,16 -4,13.4 1.6,15.8", "#C7C4CC", 0.8]] }), {
+    perfil: c => ({ p: ["M8,32 C8,27 14,25 22,23 L34,17 C38,15 44,13 50,13 L58,14 C61,18 62,26 62,33 L10,35 C8.5,35 8,34 8,32 Z"],
+      capas: [{ p: ["M5,33 L63,33 L63,39 L10,39 C6.5,39 5,36 5,33 Z"], c: "#E4E1DA", d: [] }],
+      d: [ln("M31,19 L35,23 M36,16.5 L40,20.5 M41,14.6 L45,18.6", "#9C9AA6", 1), ln("M14,30 C24,27 36,26 52,25", "#C7C4CC", 1), ln("M56,14 L60,26", "#C7C4CC", 0.9)] }) }),
+  stilettos: Object.assign((A, c) => calzadoPuesto(A, c, {
+    up: ["M-5,8 C-6.6,13 -8.4,18.6 -9.8,21.6 C-11,25 -9.2,26.6 -6.6,26 C-3,22 0.8,15.6 5,9.4 L5,5 C1.6,7.8 -1.8,8.8 -5,8 Z", "M3,9 L5.6,9 L5.2,28.6 L4.1,28.6 Z"],
+    det: [["M-7.6,18 C-6.6,15 -5.2,12.6 -3.4,11", shade(c, 0.45), 0.8]] }), { pie: "taco",
+    perfil: c => ({ p: ["M4,35 C4,31.5 10,30 18,29 C28,27.5 36,24 44,17 L54,9.5 C58,7 63,8 64,12 L64,18 C58,19 52,23 46,28 C38,34 26,37 10,38 C6,38 4,37 4,35 Z", "M58,17 L64,17 L61.5,41 L59.8,41 Z"],
+      d: [ln("M18,29.5 C28,27.5 37,23 45,16", shade(c, 0.45), 1)] }) }),
+  borcegos: Object.assign((A, c) => calzadoPuesto(A, c, {
+    up: ["M-5.9,-16 L5.9,-16 L6.3,13 C6.7,17 6.7,20 6.5,22.6 L-11.9,23 C-16.1,23 -17.1,19 -13.9,16.4 C-9.7,13 -6.9,6 -5.9,-16 Z"],
+    suela: ["M-17.2,21 L7,21 L7,26.6 L-13.2,26.8 C-16.2,26.8 -17.8,24 -17.2,21 Z"], suelaHex: "#16121A",
+    det: [["M-5.2,-12 L-1.2,-10.6 M-5.4,-7 L-1.4,-5.6 M-5.8,-2 L-1.8,-0.6 M-6.4,3 L-2.4,4.4 M-7.6,8 L-3.6,9.4", "#B8B2BC", 0.8], ["M-5.9,-12.8 L5.9,-12.8", shade(c, 0.3), 0.8]] }), {
+    perfil: c => ({ p: ["M10,31 L28,27 L30,4 L56,4 L58,30 L58,35 L11,36 C6,36 5,32 10,31 Z"],
+      capas: [{ p: ["M5,34 L60,34 L60,40 L9,40 C6,40 5,37 5,34 Z"], c: "#16121A", d: [] }],
+      d: [ln("M31,9 L37,11 M31,14 L37,16 M30.6,19 L36.6,21 M30,24 L36,26", "#B8B2BC", 1), ln("M30,8 L56,8", shade(c, 0.3), 0.9), ln("M14,31 C20,29 26,28 29,27", shade(c, 0.3), 0.8)] }) }),
+  ojotas: Object.assign((A, c) => calzadoPuesto(A, c, {
+    up: ["M-15,21.6 L6,21.4 C6.6,23.6 6,25.4 4,25.6 L-12,25.8 C-15.4,25.8 -16,23.6 -15,21.6 Z"],
+    tiras: [["M-11,17.5 L-4.5,8 L4.8,13", shade(c, -0.2), 1.8]] }), {
+    perfil: c => { const suela = "M20,4 C27,4 30,10 29.5,18 C29,26 27,32 27,40 C27,50 25,58 19,58 C13,58 11,50 11,40 C11,32 9,26 9,18 C9,10 13,4 20,4 Z", v = "M20,9 L13,26 M20,9 L27,26", otro = { x: 58, y: 0, flip: true };
+      return { p: [suela, xf(suela, otro)], d: [tira(v, shade(c, -0.25), 2.2), tira(xf(v, otro), shade(c, -0.25), 2.2)] }; } }),
+  mocasines: Object.assign((A, c) => calzadoPuesto(A, c, {
+    up: ["M-5,6 C-7.5,11 -10,15 -12.6,17.2 C-15,19.4 -14.6,23.4 -11.2,23.6 L4.2,23.2 C6.2,22.4 6.2,18 5.8,12 L5.4,4.6 C1.6,7 -2,7.4 -5,6 Z"],
+    suela: ["M-14.4,22.2 L6.2,22 L6.2,25 L-11.2,25.2 C-13.8,25.2 -14.8,24 -14.4,22.2 Z"],
+    det: [["M-10,12.5 C-7.6,10 -4.4,9.6 -1.6,10.6", shade(c, 0.35), 0.9], ["M-8.4,14.4 L-3.6,13", shade(c, -0.35), 1.1]] }), {
+    perfil: c => ({ p: ["M6,33 C6,26 12,22 20,20 C28,18.5 34,17 40,16 C48,15 58,16 62,21 L62,34 L9,36 C7,36 6,35 6,33 Z"],
+      capas: [{ p: ["M5,34.5 L63,33.5 L63,38 L9,38.5 C6,38.5 5,36.5 5,34.5 Z"], c: shade(c, -0.35), d: [] }],
+      d: [ln("M14,27 C20,24 28,23.5 34,25", shade(c, 0.35), 1), ln("M20,27.5 L31,26", shade(c, -0.35), 1.3)] }) }),
+  sandalias: Object.assign((A, c) => calzadoPuesto(A, c, {
+    up: ["M-10.6,24.6 C-6,24 -1,17.5 4.6,9.5 L5.6,10.6 C0,18.6 -5,25.6 -10,26.6 C-11.6,26.8 -12,25.2 -10.6,24.6 Z", "M3.4,9.4 L5.6,9.4 L5.1,28.6 L4,28.6 Z"],
+    tiras: [["M-9.2,19.4 C-7.4,17.4 -4.6,17.4 -3.2,20", c, 2.4], ["M-5.2,1.6 C-1.6,0.2 2,0.2 5.2,1.6", c, 2.2], ["M-6,11.5 L3.4,4", c, 2.2], ["M-6,4 L3.6,11", c, 2]] }), { pie: "taco",
+    perfil: c => ({ p: ["M4,36 C4,33 9,32 16,32 C28,31 40,26 50,18 L58,13 C62,11 64,14 63,18 L60,19 C52,24 44,32 30,36 L10,38.5 C6,38.5 4,37.5 4,36 Z", "M57,18 L62.5,18 L60,41 L58.6,41 Z"],
+      d: [tira("M14,32 C16,26 22,25 26,30", c, 2), tira("M50,16 C51,10 56,8 59,11", c, 2), tira("M32,29 L44,20", c, 1.8)] }) }),
+  botasAltas: Object.assign((A, c) => { const b = calzadoPuesto(A, c, {
+      up: ["M-5.9,-8 L5.9,-8 L6.3,13 C6.7,17 6.7,20 6.5,22.6 L-11.9,23 C-16.1,23 -17.1,19 -13.9,16.4 C-9.7,13 -6.9,6 -5.9,-8 Z", "M1.6,21.6 L6.6,21.6 L6.3,27.2 L2.2,27.2 Z"],
+      suela: ["M-16.8,21.6 L2,21.6 L2,24.6 L-13,24.8 C-15.6,24.8 -17.2,23.4 -16.8,21.6 Z"], suelaHex: "#1F1714" });
+    LADOS.forEach(s => { b.p.push(limb(resample(A.piernas[s], 0.6, 0.99, 5), { extra: 4, capIni: "flat", capFin: "flat" }));
+      const [a, q] = cruce(A.piernas[s], 0.63, 4); b.d.push(ln(curva([a, q]), shade(c, -0.35), 0.9));
+      b.d.push(ln(curva(resample(A.piernas[s], 0.64, 0.97, 3).pts.map(p => [p[0] + (s === "l" ? -2 : 2), p[1]])), shade(c, 0.35), 1.1, 'opacity=".6"')); });
+    return b; }, {
+    perfil: c => ({ p: ["M8,34 C8,30 14,28 22,26 L34,23 L34,-24 L58,-24 L58,28 L58,35 L10,37 C8.5,37 8,36 8,34 Z", "M48,35 L58,35 L58,41 L49,41 Z"],
+      capas: [{ p: ["M5,35 L48,35 L48,39 L9,39 C6,39 5,37 5,35 Z"], c: "#1F1714", d: [] }],
+      d: [ln("M34,-19 L58,-19", shade(c, -0.35), 1), ln("M38,-14 L38,22", shade(c, 0.35), 1.2, 'opacity=".6"')] }) }),
 
   /* ---- abrigos ---- */
-  blazer: c => PP("M93,86 C83,88 72,90 66,96 C68,112 72,124 72,140 C71,170 70,200 70,224 L97,224 L97,150 L91,118 L95,100 Z", c) + PP(G.mangaAbrigo, c)
-    + PP("M95,97 L86,118 L97,148 L91,118 Z", shade(c, -0.12)) + LL("M76,196 L90,196", shade(c, -0.3), 0.8) + C(97, 186, 1.6, shade(c, -0.4)),
-  cuero: c => PP("M93,86 C83,88 72,90 66,96 C68,112 72,124 72,140 C72,160 73,172 74,186 L98,186 L98,120 L92,104 Z", c) + PP(G.mangaAbrigo, c)
-    + PP("M93,86 L84,100 L95,113 L92,104 Z", shade(c, 0.18)) + PP("M74,180 L98,180 L98,186 L74,186 Z", shade(c, 0.1))
-    + LL("M97,118 L97,184", shade(c, 0.5), 0.8) + LL("M70,104 C74,120 76,150 76,176", "#fff", 1.4, 'opacity=".18"'),
-  tapado: c => PP("M93,86 C83,88 72,90 66,96 C68,112 72,124 72,140 C71,180 68,260 66,345 L98,345 L98,150 L91,118 L95,100 Z", c) + PP(G.mangaAbrigo, c)
-    + PP("M95,97 L86,118 L97,148 L91,118 Z", shade(c, -0.12)) + PP("M71,166 L98,166 L98,174 L71,174 Z", shade(c, -0.15)) + LL("M82,200 L80,340", shade(c, -0.18), 0.7),
-  puffer: c => P("M88,80 L112,80 C122,86 136,90 138,98 L140,196 L60,196 L62,98 C64,90 78,86 88,80 Z", c)
-    + PP("M62,98 C54,102 51,112 51,124 L47,166 L45,212 L64,216 L67,170 L70,130 Z", c) + P("M86,72 L114,72 L115,88 L85,88 Z", shade(c, -0.06))
-    + [118, 142, 168].map(y => L(`M62,${y} L138,${y}`, shade(c, -0.22), 0.9)).join("") + LL("M49,150 L68,154 M47,184 L66,188", shade(c, -0.22), 0.9)
-    + L("M100,74 L100,196", shade(c, -0.35), 1),
-  kimono: (c, m) => PP("M93,86 C84,88 74,90 68,96 C70,130 72,200 70,300 L94,300 L95,140 L96,100 Z", c) + PP("M68,96 C58,104 48,130 42,160 L64,168 L72,132 Z", c)
-    + [[78, 120], [86, 150], [78, 180], [88, 210], [78, 240], [86, 272], [54, 150]].map(([x, y]) => CC(x, y, 2.4, m)).join("")
-    + LL("M96,100 L95,140 L94,300", shade(c, -0.3), 2),
+  blazer: (A, c) => { const Y = A.Y, hem = Y.hi + 16, pan = LADOS.map(s => panelPts(A, s, { hem, ease: 4.5, gap: 5 })), k = shade(c, -0.35);
+    return { p: [...pan.map(x => shape(x.pts)), ...mangas(A, 0.97, 6)],
+      d: [...pan.map((x, i) => { const g = i ? 1 : -1, q = x.quiebre, n = x.cuello, m = lp(q, n, 0.5); return fillD(shape([[...q, 1], [m[0] + g * 9, m[1], 1], [n[0] + g * 3, n[1] + 3, 1]]), shade(c, -0.06)); }),
+        ...LADOS.map(s => { const g = s === "l" ? 1 : -1, y = Y.hi + 2, x = sideX(A, s, y) - g * 3; return ln(`M${pt([x + g * 1, y])} L${pt([x + g * 13, y + (s === "l" ? -1 : 1)])}`, k, 1); }),
+        dot([cX(A, Y.bu + 14) - 4, Y.bu + 14], 1.8, k), ...LADOS.map(s => { const [a, b] = cruce(A.brazos[s], 0.9, 6); return ln(curva([a, b]), k, 0.8); }),
+        ...pliegues(A, c, { codos: 1 })] }; },
+  cuero: (A, c) => { const Y = A.Y, hem = Y.wa + 18, pan = LADOS.map(s => panelPts(A, s, { hem, ease: 3.5, gap: 4, quiebre: Y.bu + 2 })), cierre = "#B9B6BE";
+    return { p: [...pan.map(x => shape(x.pts)), ...mangas(A, 0.97, 5)],
+      d: [...pan.map((x, i) => { const g = i ? 1 : -1, q = x.quiebre, n = x.cuello, m = lp(q, n, 0.5); return fillD(shape([[...q, 1], [m[0] + g * 11, m[1] + 2, 1], [n[0] + g * 4, n[1] + 2, 1]]), shade(c, 0.12)); }),
+        ...pan.map((x, i) => { const g = i ? 1 : -1; return ln(curva(Array.from({ length: 4 }, (_, j) => { const y = lerp(x.quiebre[1], hem, j / 3); return [cX(A, y) + g * 6, y]; })), cierre, 0.9, 'stroke-dasharray="1 1"'); }),
+        ln(curva([ext(A, "l", hem - 5 - A.tilt * 0.8, 3), [cX(A, hem - 5) - 6, hem - 5]]), shade(c, 0.25), 0.9), ln(curva([[cX(A, hem - 5) + 6, hem - 5], ext(A, "r", hem - 5 + A.tilt * 0.8, 3)]), shade(c, 0.25), 0.9),
+        ...LADOS.map(s => ln(curva(resample(A.brazos[s], 0.1, 0.9, 4).pts.map(p => [p[0] + (s === "l" ? -2.5 : 2.5), p[1]])), "#FFFFFF", 1.4, 'opacity=".18"')),
+        ...pliegues(A, c, { codos: 1 })] }; },
+  tapado: (A, c) => { const Y = A.Y, hem = Y.ro + 30, pan = LADOS.map(s => panelPts(A, s, { hem, ease: 5, gap: 4 })), k = shade(c, -0.3);
+    return { p: [...pan.map(x => shape(x.pts)), ...mangas(A, 0.97, 7)],
+      d: [...pan.map((x, i) => { const g = i ? 1 : -1, q = x.quiebre, n = x.cuello, m = lp(q, n, 0.5); return fillD(shape([[...q, 1], [m[0] + g * 10, m[1], 1], [n[0] + g * 3, n[1] + 3, 1]]), shade(c, -0.06)); }),
+        fillD(shape([[...ext(A, "l", Y.wa - 3, 5.5), 1], [cX(A, Y.wa) - 4, Y.wa - 2.5, 1], [cX(A, Y.wa) - 4, Y.wa + 4.5, 1], [...ext(A, "l", Y.wa + 4, 5.5), 1]]), shade(c, -0.1), 0.9),
+        fillD(shape([[cX(A, Y.wa) + 4, Y.wa - 2.5, 1], [...ext(A, "r", Y.wa - 3, 5.5), 1], [...ext(A, "r", Y.wa + 4, 5.5), 1], [cX(A, Y.wa) + 4, Y.wa + 4.5, 1]]), shade(c, -0.1), 0.9),
+        ...LADOS.map(s => ln(curva([ext(A, s, Y.hi + 10, 1), ext(A, s, Y.ro + 26 + (s === "l" ? -A.tilt : A.tilt), 3)]), k, 0.8)), ...pliegues(A, c, { codos: 1 })] }; },
+  puffer: (A, c) => { const Y = A.Y, hem = Y.hi + 6, k = shade(c, -0.3), nb = A.cuello.base; let q = "";
+    for (let y = Y.ax + 4; y < hem - 4; y += 15) q += ln(curva([ext(A, "l", y, 8), [cX(A, y), y + 3], ext(A, "r", y, 8)]), k, 1);
+    LADOS.forEach(s => [0.3, 0.55, 0.8].forEach(t => { const [a, b] = cruce(A.brazos[s], t, 11); q += ln(curva([a, lp(a, b, 0.5).map((v, i) => v + (i ? 2 : 0)), b]), k, 1); }));
+    return { p: [shape(torsoPts(A, { hem, ease: 8, cuello: "alto" })), ...mangas(A, 0.96, u => 11 - u * 2), limb({ pts: [[nb[0], 72], [nb[0], nb[1] + 3]], w: [26, 28] }, { capIni: "flat", capFin: "flat" })],
+      d: [q, ln(`M${pt([nb[0], 72])} L${pt([cX(A, hem), hem + 2])}`, shade(c, -0.45), 1.1)] }; },
+  kimono: (A, c, it) => { const Y = A.Y, hem = Y.ro - 4, pan = LADOS.map(s => panelPts(A, s, { hem, ease: 6, gap: 14, gapFlat: 8, quiebre: Y.ax })), m = it.detalleHex || "#F7D9B8"; let flores = "";
+    for (let y = 104, f = 0; y < hem; y += 16, f++) for (let x = 22 + (f % 2) * 10; x < 180; x += 20) flores += dot([x, y], 2.6, m) + dot([x + 3.2, y - 2], 1.2, shade(m, -0.2));
+    return { p: [...pan.map(x => shape(x.pts)), ...LADOS.map(s => limb(resample(A.brazos[s], 0, 0.55, 5), { extra: u => 10 + u * 16, capFin: "flat" }))],
+      d: [flores, ...pan.map((x, i) => { const g = i ? 1 : -1; return ln(curva([x.cuello, ...Array.from({ length: 5 }, (_, j) => { const y = lerp(Y.ax, hem, j / 4); return [cX(A, y) + g * 14, y]; })]), shade(c, -0.35), 2.4); })] }; },
 
   /* ---- bolsos ---- */
-  clutch: c => P("M46,219 L72,219 L72,236 L46,236 Z", c) + P("M46,219 L72,219 L59,229 Z", shade(c, -0.12)) + C(59, 229, 1.6, shade(c, 0.4))
-    + L("M49,233 L69,233", "#fff", 1, BRILLO),
-  tote: c => L("M127,96 C130,130 132,160 133,200", shade(c, -0.3), 1.6) + L("M127,96 C138,130 152,160 158,200", shade(c, -0.3), 1.6)
-    + P("M128,198 L162,198 L165,252 L125,252 Z", c) + L("M129,206 L161,206", shade(c, -0.2), 0.7, 'stroke-dasharray="2 2"'),
-  cartera: c => L("M134,226 C134,211 150,211 150,226", shade(c, -0.3), 2) + P("M128,224 L156,224 L154,252 L130,252 Z", c)
-    + P("M128,224 L156,224 L155,234 L129,234 Z", shade(c, -0.12)) + C(142, 234, 1.8, "#C9A45A"),
-  rinonera: c => L("M72,177 C90,181 110,181 128,177", shade(c, -0.35), 2.4)
-    + P("M86,170 L114,170 C118,170 120,174 120,178 L120,186 C120,190 116,192 112,192 L88,192 C84,192 80,190 80,186 L80,178 C80,174 82,170 86,170 Z", c)
-    + L("M84,178 L116,178", shade(c, 0.4), 0.9),
+  clutch: Object.assign((A, c) => { const w = A.brazos.l.pts[4], x = w[0] - 1, y = w[1] + 13;
+    return { p: [shape([[x - 14, y - 8, 1], [x + 14, y - 8, 1], [x + 14, y + 8, 1], [x - 14, y + 8, 1]])],
+      d: [fillD(`M${pt([x - 14, y - 8])} L${pt([x + 14, y - 8])} L${pt([x, y + 2])} Z`, shade(c, -0.08), 0.8), dot([x, y + 1], 1.6, shade(c, 0.5)), ln(`M${pt([x - 11, y + 5.5])} L${pt([x + 11, y + 5.5])}`, "#FFFFFF", 1, 'opacity=".45"')] }; }, { opts: { sh: 0.7 } }),
+  tote: Object.assign((A, c) => { const Y = A.Y, bx = sideX(A, "r", Y.wa + 40) + 3, t = Y.wa + 30, b = Y.wa + 82, s = lp(A.cuello.r, A.hombros.r, 0.55);
+    const manijas = A.flat ? [limb({ pts: [[bx + 6, t + 1], [bx + 9, t - 14], [bx + 21, t - 14], [bx + 24, t + 1]], w: [2.6, 2.6, 2.6, 2.6] })]
+      : [limb({ pts: [s, [bx + 5, t + 1]], w: [2.6, 2.6] }), limb({ pts: [[s[0] + 2, s[1]], [bx + 25, t + 1]], w: [2.6, 2.6] })];
+    return { p: [shape([[bx, t, 1], [bx + 30, t, 1], [bx + 33, b, 1], [bx - 3, b, 1]]), ...manijas],
+      d: [ln(`M${pt([bx + 1, t + 6])} L${pt([bx + 29, t + 6])}`, shade(c, -0.3), 0.7, 'stroke-dasharray="1.6 1.4"'), fillD(shape([[bx + 6, t + 16, 1], [bx + 24, t + 16, 1], [bx + 24.5, t + 32, 1], [bx + 5.5, t + 32, 1]]), shade(c, -0.06), 0.7)] }; }, { opts: { sh: 0.8 } }),
+  cartera: Object.assign((A, c) => { const w = A.brazos.r.pts[4], x = w[0], y = w[1] + 12;
+    return { p: [shape([[x - 13, y, 1], [x + 13, y, 1], [x + 14, y + 26, 1], [x - 14, y + 26, 1]]), limb({ pts: [[x - 7, y + 1], [x - 4, y - 9], [x + 4, y - 9], [x + 7, y + 1]], w: [2.4, 2.4, 2.4, 2.4] })],
+      d: [fillD(shape([[x - 13, y, 1], [x + 13, y, 1], [x + 13.3, y + 10, 1], [x - 13.3, y + 10, 1]]), shade(c, -0.1), 0.8), dot([x, y + 10], 1.8, "#C9A45A"), ln(`M${pt([x - 11, y + 22])} L${pt([x + 11, y + 22])}`, shade(c, 0.3), 0.6, 'stroke-dasharray="1.4 1.2"')] }; }, { opts: { sh: 0.8 } }),
+  rinonera: Object.assign((A, c) => { const Y = A.Y, cx = cX(A, Y.wa + 14) + 4, y = Y.wa + 15;
+    return { p: [limb({ pts: [ext(A, "l", Y.wa + 10, 2.5), [cX(A, Y.wa + 12), Y.wa + 13], ext(A, "r", Y.wa + 6, 2.5)], w: [3.2, 3.2, 3.2] }, { capIni: "flat", capFin: "flat" }),
+      shape([[cx - 17, y - 6], [cx, y - 9.5], [cx + 17, y - 6], [cx + 16, y + 6], [cx, y + 9], [cx - 16, y + 6]])],
+      d: [ln(curva([[cx - 14, y - 3], [cx, y - 5.5], [cx + 14, y - 3]]), shade(c, 0.45), 0.9), dot([cx + 10, y - 3.6], 1.1, "#C9C6CE")] }; }, { opts: { sh: 0.7 } }),
 
   /* ---- joyería y gafas ---- */
-  perlas: c => CC(83, 58, 2.7, c, `stroke="${shade(c, -0.3)}" stroke-width=".5"`) + CC(82.3, 57.3, 0.8, "#fff"),
-  argollas: c => CC(83, 60, 4.6, "none", `stroke="${c}" stroke-width="1.4"`),
-  lentes: c => PP("M86,43 L98,43 L98,48.5 C98,52 96,54 92,54 C88,54 86,52 86,48.5 Z", c) + L("M98,45.5 L102,45.5", c, 1.2)
-    + LL("M88,45 L91,45", "#fff", 0.9, 'opacity=".5"'),
-  collar: c => L("M91,85 Q100,106 109,85", c, 1.4) + C(100, 96, 2.4, c, `stroke="${shade(c, -0.3)}" stroke-width=".4"`),
+  perlas: Object.assign((A, c) => ({ p: LADOS.map(s => circ(A.orejas[s][0], A.orejas[s][1] + 8, 2.8)), d: LADOS.map(s => dot([A.orejas[s][0] - 0.8, A.orejas[s][1] + 7.2], 0.8, "#FFFFFF")) }), { opts: { sh: 0.25, ancho: 1.4 } }),
+  argollas: Object.assign((A, c) => ({ p: LADOS.map(s => "!" + circ(A.orejas[s][0], A.orejas[s][1] + 9, 5) + " " + circ(A.orejas[s][0], A.orejas[s][1] + 9, 3.7)), d: [] }), { opts: { sh: 0.2, ancho: 1.2 } }),
+  lentes: Object.assign((A, c) => { const lente = s => { const [x, y] = A.ojos[s]; return shape([[x - 6.8, y - 4.6], [x + 6.2, y - 4.8], [x + 6, y + 1.5], [x + 1, y + 5], [x - 5.5, y + 3.5]].map(p => (s === "l" ? p : [2 * x - p[0], p[1]]))); };
+    return { p: [lente("l"), lente("r"), limb({ pts: [[A.ojos.l[0] + 6, A.ojos.l[1] - 2.6], [A.ojos.r[0] - 6, A.ojos.r[1] - 2.6]], w: [1.6, 1.6] })],
+      d: LADOS.map(s => ln(`M${pt([A.ojos[s][0] - 3.5, A.ojos[s][1] - 2.4])} L${pt([A.ojos[s][0] - 1, A.ojos[s][1] - 2.8])}`, "#FFFFFF", 0.9, 'opacity=".6"')) }; }, { opts: { sh: 0.3, ancho: 1.4 } }),
+  collar: Object.assign((A, c) => { const nb = A.cuello.base, nl = A.cuello.l, nr = A.cuello.r, p = [[nl[0] - 1, nl[1] + 1.5], [nb[0] - 6, nb[1] + 10], [nb[0], nb[1] + 13], [nb[0] + 6, nb[1] + 10], [nr[0] + 1, nr[1] + 1.5]];
+    return { p: [limb({ pts: p, w: p.map(() => 1.5) }, { capIni: "flat", capFin: "flat" }), circ(nb[0], nb[1] + 16.5, 2.7)], d: [ln(curva(p), shade(c, 0.45), 0.6, 'stroke-dasharray=".8 1.6"')] }; }, { opts: { sh: 0.3, ancho: 1.4 } }),
 };
+
+/* ---------- cuerpo, cabeza y pelo ---------- */
+const CABEZA = "M100,20.5 C110.5,20.5 116.6,29 116.6,40.5 C116.6,52.5 110,63 100,67.5 C90,63 83.4,52.5 83.4,40.5 C83.4,29 89.5,20.5 100,20.5 Z";
+const OREJA = "M84.4,40.5 C81.6,40 80.8,43.5 81.4,47 C81.9,49.6 83.4,51 85,50.4 Z";
+const MANO = "M-3.6,0 C-4.8,4 -5.2,9 -4.4,13.5 C-3.6,17.5 -1.2,19.5 1,19 C3.4,18.4 4.2,15 4.2,11 L4.4,7.5 C6.2,6.8 7,5 6,3.6 C5,2.8 4,3 3.4,3.6 L3.6,0 Z";
+function manoT(A, s) { const P = A.brazos[s].pts, w = P[4], dx = w[0] - P[3][0], dy = w[1] - P[3][1]; return { x: w[0], y: w[1] - 1, rot: Math.atan2(-dx, dy) * 180 / Math.PI, flip: s === "r" }; }
+function torsoContorno(A) {
+  const mid = (a, b) => { const m = lp(a, b, 0.5); m[1] -= 1.5; return m; };
+  return [A.cuello.l, mid(A.cuello.l, A.hombros.l), A.hombros.l, A.axilas.l, A.busto.l, A.cintura.l, A.cadera.l, [A.cadera.l[0] + 5, A.cadera.l[1] + 22], A.entrepierna,
+    [A.cadera.r[0] - 5, A.cadera.r[1] + 20], A.cadera.r, A.cintura.r, A.busto.r, A.axilas.r, A.hombros.r, mid(A.cuello.r, A.hombros.r), A.cuello.r];
+}
+function cuerpoPiezas(A, pie = "plano") {
+  const p = [limb({ pts: [A.cuello.top, [100, 74], [A.cuello.base[0], A.cuello.base[1] + 2]], w: [13, 13.4, 17] }), shape(torsoContorno(A))];
+  LADOS.forEach(s => { p.push(limb(A.piernas[s]), limb(A.brazos[s]), xf(pie === "taco" ? PIE_TACO : PIE_PLANO, pieT(A, s)), xf(MANO, manoT(A, s))); });
+  return p;
+}
+function ropaInterior(A) {
+  const Y = A.Y, yT = Y.bu - 12, cx = cX(A, Y.bu);
+  const corpino = shape([[...ext(A, "l", A.axilas.l[1] + 5, -0.3), 1], [A.busto.l[0] + 11, yT], [cx, Y.bu - 4, 1], [A.busto.r[0] - 11, yT - 1], [...ext(A, "r", A.axilas.r[1] + 5, -0.3), 1], [...ext(A, "r", Y.bu + 9, -0.3), 1], [cx, Y.bu + 11], [...ext(A, "l", Y.bu + 9, -0.3), 1]]);
+  const breteles = LADOS.map(s => limb({ pts: [[A.busto[s][0] + (s === "l" ? 10 : -10), yT + 1], lp(A.cuello[s], A.hombros[s], 0.45)], w: [1.6, 1.6] }));
+  const cr = A.entrepierna;
+  const bombacha = shape([[...ext(A, "l", Y.hi - 9 - A.tilt * 0.6, -0.3), 1], ext(A, "l", Y.hi + 5, -0.3), [cr[0] - 5, cr[1] - 7], [cr[0], cr[1] + 1.5], [cr[0] + 5, cr[1] - 7], ext(A, "r", Y.hi + 5, -0.3), [...ext(A, "r", Y.hi - 9 + A.tilt * 0.6, -0.3), 1], [cX(A, Y.hi - 9), Y.hi - 7.5]]);
+  return { p: [corpino, ...breteles, bombacha], d: [] };
+}
+const CAPA_PELO = "M83,46 C81,29 89.5,19.5 101,19.5 C113,19.5 120,29 117.6,46 C116,37 112.5,30.5 106.5,28.6 C102,34.5 93,38 84.6,46.5 Z";
+const MECHON_LACIO = "M84.6,44 C82,62 82.2,86 78.4,112 C77,123 79.6,131 84,134 C84.6,120 86.4,104 88,86 C89.2,72 88.6,56 86.6,45 Z";
+const MECHON_ONDA = "M84.6,44 C80,54 85,62 81,72 C77,82 84,92 79,104 C83.6,104.5 88.4,97 88.4,87 C88.4,77 86.2,68 88,58 C88.8,52 87.8,47 86.4,44 Z";
+const MECHON_BOB = "M83.4,44 C81.4,56 81.4,68 83,75.5 C87.2,75 89.4,70 88.8,62 C88.2,54 86.6,48 85,44 Z";
+const PEINADOS = [
+  { id: "lacio", nombre: "Lacio",
+    atras: ["M84,30 C77.5,44 78,80 76.5,112 C75.5,128 79,142 84,149 L116,149 C121,142 124.5,128 123.5,112 C122,80 122.5,44 116,30 C110,19.5 90,19.5 84,30 Z"],
+    frente: [CAPA_PELO, MECHON_LACIO, mir(MECHON_LACIO)], mechas: ["M95,22 C90,26 87,33 85.5,42", "M84,60 C83.5,80 82,100 80,118"] },
+  { id: "ondulado", nombre: "Ondulado",
+    atras: ["M84,30 C75.5,40 80,54 76,66 C72,80 80,90 75,104 C71.5,116 79,126 84.5,131 L115.5,131 C121,126 128.5,116 125,104 C120,90 128,80 124,66 C120,54 124.5,40 116,30 C110,19.5 90,19.5 84,30 Z"],
+    frente: [CAPA_PELO, MECHON_ONDA, mir(MECHON_ONDA)], mechas: ["M95,22 C90,26 87,33 85.5,42", "M84,62 C81,70 85,78 82,88"] },
+  { id: "bob", nombre: "Bob",
+    atras: ["M82,30 C75.5,42 77,60 78,75 C84,78 90.5,76 94,73.5 L106,73.5 C109.5,76 116,78 122,75 C123,60 124.5,42 118,30 C112,19.5 88,19.5 82,30 Z"],
+    frente: [CAPA_PELO, MECHON_BOB, mir(MECHON_BOB)], mechas: ["M95,22 C90,26 87,33 85.5,42", "M84.6,52 C83.6,60 83.8,68 84.8,73"] },
+  { id: "recogido", nombre: "Recogido",
+    atras: [circ(106.5, 16.5, 10.5), "M86,40 C84,52 86,62 90,66 L110,66 C114,62 116,52 114,40 Z"],
+    frente: ["M83.2,45 C81.5,28.5 90,19.6 100.5,19.6 C111.5,19.6 119,28.5 116.8,45 C114.6,35 108.6,29.4 100.5,29.4 C92.4,29.4 85.4,35 83.2,45 Z", "M84,44 C82.6,50 83,56 84.6,60 C85.6,56 85.8,50 85.4,45 Z"],
+    mechas: ["M92,22.6 C96,21 104,21 108,22.6", "M101,8 C104,11 108,12 112,11"] },
+];
+function cara(sk, hc) {
+  const ojo = "M89.4,44.4 C91,42.5 94.6,42.3 96.6,44.1 C94.6,45.8 91,45.9 89.4,44.4 Z", ceja = "M88.6,39.8 C91.2,38 94.8,37.9 97.2,39.2", pest = "M89.6,44.2 C88.8,43.6 88.2,43 87.8,42.3";
+  const labios = mix(sk, "#B4485F", 0.45), piel2 = shade(sk, -0.3);
+  return `<circle cx="90" cy="51.5" r="4.2" fill="#E07A8A" opacity=".13"/><circle cx="110" cy="51.5" r="4.2" fill="#E07A8A" opacity=".13"/>`
+    + `<path d="${ojo}" fill="${CONTORNO}"/><path d="${mir(ojo)}" fill="${CONTORNO}"/><circle cx="94.3" cy="43.6" r=".6" fill="#fff"/><circle cx="108.3" cy="43.6" r=".6" fill="#fff"/>`
+    + ln(pest, CONTORNO, 0.7) + ln(mir(pest), CONTORNO, 0.7) + ln(ceja, shade(hc, -0.15), 1.2) + ln(mir(ceja), shade(hc, -0.15), 1.2)
+    + ln("M101,45.5 C101.4,49 102,51.4 100,52.4", piel2, 0.8)
+    + `<path d="M96.2,56.8 C97.6,55.7 99,56.1 100,56.7 C101,56.1 102.4,55.7 103.8,56.8 C102.2,57.5 97.8,57.5 96.2,56.8 Z" fill="${shade(labios, -0.15)}"/>`
+    + `<path d="M96.6,57 C98,59.6 102,59.6 103.4,57 C101.4,57.7 98.6,57.7 96.6,57 Z" fill="${labios}"/>` + ln("M96.2,56.9 C98.5,57.4 101.5,57.4 103.8,56.9", shade(labios, -0.4), 0.5);
+}
+const OPC_PIEL = sk => ({ contorno: shade(sk, -0.42), ancho: 2, sombra: shade(sk, -0.1), luz: shade(sk, 0.22), opLuz: 0.35, sh: 0.7 });
+const OPC_PELO = hc => ({ contorno: shade(hc, -0.45), ancho: 2, sombra: shade(hc, -0.18), luz: shade(hc, 0.3), opLuz: 0.5, sh: 0.8 });
+function cabezaSVG(sk, hc, pz) {
+  const P = PEINADOS[pz];
+  return pintar({ p: P.atras }, hc, OPC_PELO(hc)) + pintar({ p: [OREJA, mir(OREJA), CABEZA] }, sk, OPC_PIEL(sk)) + cara(sk, hc)
+    + pintar({ p: P.frente, d: P.mechas.map(m => ln(m, shade(hc, 0.28), 0.8, 'opacity=".7"')) }, hc, OPC_PELO(hc));
+}
+
+/* ---------- pintura: contorno, sombra, luz y detalles ---------- */
+let UID = 0;
+function pintar(g, c, o = {}) {
+  const id = "k" + (++UID).toString(36), sh = o.sh ?? g.sh ?? 1;
+  const ps = g.p.map(x => (x[0] === "!" ? `<path d="${x.slice(1)}" fill-rule="evenodd" clip-rule="evenodd"/>` : `<path d="${x}"/>`)).join("");
+  const sx = f1(-3.2 * sh), sy = f1(-2.4 * sh);
+  return `<g fill="${c}" stroke="${o.contorno || CONTORNO}" stroke-width="${o.ancho ?? 3}" stroke-linejoin="round">${ps}</g>`
+    + `<clipPath id="${id}">${ps}</clipPath><g clip-path="url(#${id})">`
+    + `<g fill="${o.sombra || shade(c, -0.15)}">${ps}</g><g fill="${c}" transform="translate(${sx} ${sy})">${ps}</g>`
+    + `<g fill="none" stroke="${o.luz || shade(c, 0.28)}" stroke-width="${o.anchoLuz ?? 1.2}" opacity="${o.opLuz ?? 0.55}" transform="translate(${f1(-sx * 0.6)} ${f1(-sy * 0.8)})">${ps}</g>`
+    + (g.d || []).join("") + `</g>`;
+}
+function pintarPrenda(g, c, opts) { return pintar(g, c, opts) + (g.capas || []).map(k => pintar(k, k.c, opts)).join(""); }
 
 /* =====================================================================
    3) DATOS: CATÁLOGO. Para sumar una prenda, agregá un objeto acá.
       art: artículo para los comentarios ("la", "el", "las", "los").
+      dibujo: clave de DIBUJOS; colorHex pinta la prenda; detalleHex (opcional)
+        pinta rayas, lunares o estampado.
       slot (opcional, joyería): zona del cuerpo; no se repite.
+      img (opcional): URL o data URI que reemplaza la miniatura del placard.
+      imgPuesta (opcional): {href, x, y, w, h} en coordenadas del avatar
+        (viewBox 0 4 200 434) que reemplaza el dibujo puesto.
    ===================================================================== */
 const TODAS = ["primavera", "verano", "otoño", "invierno"];
 const CATALOGO = [
   // TOPS (9)
-  { id: "top_01", categoria: "top", nombre: "Remera blanca", art: "la", colorHex: "#F3F1EC", familiaColor: "neutro", formalidad: 2, estaciones: ["primavera", "verano", "otoño"], estilos: ["minimal", "urbano", "sporty"], svg: D.remera("#F3F1EC") },
-  { id: "top_02", categoria: "top", nombre: "Blusa satinada", art: "la", colorHex: "#E8D5C4", familiaColor: "neutro", formalidad: 4, estaciones: ["primavera", "verano", "otoño"], estilos: ["romantico", "glam"], svg: D.blusa("#E8D5C4") },
-  { id: "top_03", categoria: "top", nombre: "Camisa a rayas", art: "la", colorHex: "#DCE6F2", familiaColor: "frio", formalidad: 3, estaciones: ["primavera", "verano", "otoño"], estilos: ["clasico", "minimal"], svg: D.camisa("#DCE6F2", "#5B7DAB") },
-  { id: "top_04", categoria: "top", nombre: "Musculosa de lino", art: "la", colorHex: "#D9A441", familiaColor: "calido", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["boho", "minimal"], svg: D.musculosa("#D9A441") },
-  { id: "top_05", categoria: "top", nombre: "Sweater trenzado", art: "el", colorHex: "#9C4A2F", familiaColor: "calido", formalidad: 2, estaciones: ["otoño", "invierno"], estilos: ["clasico", "boho"], svg: D.sweater("#9C4A2F") },
-  { id: "top_06", categoria: "top", nombre: "Top corset", art: "el", colorHex: "#1E1B21", familiaColor: "neutro", formalidad: 4, estaciones: ["primavera", "verano", "otoño"], estilos: ["glam", "rocker"], svg: D.corset("#1E1B21") },
-  { id: "top_07", categoria: "top", nombre: "Top deportivo", art: "el", colorHex: "#E2457A", familiaColor: "saturado", formalidad: 1, estaciones: ["primavera", "verano"], estilos: ["sporty", "urbano"], svg: D.deportivo("#E2457A") },
-  { id: "top_08", categoria: "top", nombre: "Polera de cuello alto", art: "la", colorHex: "#2F3B5C", familiaColor: "frio", formalidad: 3, estaciones: ["otoño", "invierno"], estilos: ["minimal", "clasico"], svg: D.polera("#2F3B5C") },
-  { id: "top_09", categoria: "top", nombre: "Blusa con volados", art: "la", colorHex: "#F1C6CF", familiaColor: "pastel", formalidad: 3, estaciones: ["primavera", "verano"], estilos: ["romantico", "boho"], svg: D.volados("#F1C6CF") },
+  { id: "top_01", categoria: "top", nombre: "Remera blanca", art: "la", colorHex: "#F3F1EC", familiaColor: "neutro", formalidad: 2, estaciones: ["primavera", "verano", "otoño"], estilos: ["minimal", "urbano", "sporty"], dibujo: "remera" },
+  { id: "top_02", categoria: "top", nombre: "Blusa satinada", art: "la", colorHex: "#E8D5C4", familiaColor: "neutro", formalidad: 4, estaciones: ["primavera", "verano", "otoño"], estilos: ["romantico", "glam"], dibujo: "blusa" },
+  { id: "top_03", categoria: "top", nombre: "Camisa a rayas", art: "la", colorHex: "#DCE6F2", familiaColor: "frio", formalidad: 3, estaciones: ["primavera", "verano", "otoño"], estilos: ["clasico", "minimal"], dibujo: "camisa", detalleHex: "#5B7DAB" },
+  { id: "top_04", categoria: "top", nombre: "Musculosa de lino", art: "la", colorHex: "#D9A441", familiaColor: "calido", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["boho", "minimal"], dibujo: "musculosa" },
+  { id: "top_05", categoria: "top", nombre: "Sweater trenzado", art: "el", colorHex: "#9C4A2F", familiaColor: "calido", formalidad: 2, estaciones: ["otoño", "invierno"], estilos: ["clasico", "boho"], dibujo: "sweater" },
+  { id: "top_06", categoria: "top", nombre: "Top corset", art: "el", colorHex: "#1E1B21", familiaColor: "neutro", formalidad: 4, estaciones: ["primavera", "verano", "otoño"], estilos: ["glam", "rocker"], dibujo: "corset" },
+  { id: "top_07", categoria: "top", nombre: "Top deportivo", art: "el", colorHex: "#E2457A", familiaColor: "saturado", formalidad: 1, estaciones: ["primavera", "verano"], estilos: ["sporty", "urbano"], dibujo: "deportivo" },
+  { id: "top_08", categoria: "top", nombre: "Polera de cuello alto", art: "la", colorHex: "#2F3B5C", familiaColor: "frio", formalidad: 3, estaciones: ["otoño", "invierno"], estilos: ["minimal", "clasico"], dibujo: "polera" },
+  { id: "top_09", categoria: "top", nombre: "Blusa con volados", art: "la", colorHex: "#F1C6CF", familiaColor: "pastel", formalidad: 3, estaciones: ["primavera", "verano"], estilos: ["romantico", "boho"], dibujo: "volados" },
   // BOTTOMS (7)
-  { id: "bot_01", categoria: "bottom", nombre: "Jean recto", art: "el", colorHex: "#4D6E98", familiaColor: "neutro", formalidad: 2, estaciones: TODAS, estilos: ["urbano", "clasico"], svg: D.jean("#4D6E98") },
-  { id: "bot_02", categoria: "bottom", nombre: "Pantalón sastrero", art: "el", colorHex: "#2A292E", familiaColor: "neutro", formalidad: 4, estaciones: ["primavera", "otoño", "invierno"], estilos: ["clasico", "minimal"], svg: D.sastrero("#2A292E") },
-  { id: "bot_03", categoria: "bottom", nombre: "Falda midi plisada", art: "la", colorHex: "#C5D6C0", familiaColor: "pastel", formalidad: 3, estaciones: ["primavera", "verano"], estilos: ["romantico", "clasico"], svg: D.plisada("#C5D6C0") },
-  { id: "bot_04", categoria: "bottom", nombre: "Short de jean", art: "el", colorHex: "#8CAAD0", familiaColor: "neutro", formalidad: 1, estaciones: ["verano"], estilos: ["urbano", "sporty", "boho"], svg: D.short("#8CAAD0") },
-  { id: "bot_05", categoria: "bottom", nombre: "Calza deportiva", art: "la", colorHex: "#2C2B33", familiaColor: "neutro", formalidad: 1, estaciones: TODAS, estilos: ["sporty"], svg: D.calza("#2C2B33") },
-  { id: "bot_06", categoria: "bottom", nombre: "Pantalón palazzo", art: "el", colorHex: "#E6D8C3", familiaColor: "neutro", formalidad: 3, estaciones: ["primavera", "verano"], estilos: ["boho", "minimal"], svg: D.palazzo("#E6D8C3") },
-  { id: "bot_07", categoria: "bottom", nombre: "Minifalda de cuero", art: "la", colorHex: "#6E1F30", familiaColor: "calido", formalidad: 3, estaciones: ["primavera", "otoño", "invierno"], estilos: ["rocker", "glam"], svg: D.minifalda("#6E1F30") },
+  { id: "bot_01", categoria: "bottom", nombre: "Jean recto", art: "el", colorHex: "#4D6E98", familiaColor: "neutro", formalidad: 2, estaciones: TODAS, estilos: ["urbano", "clasico"], dibujo: "jean" },
+  { id: "bot_02", categoria: "bottom", nombre: "Pantalón sastrero", art: "el", colorHex: "#2A292E", familiaColor: "neutro", formalidad: 4, estaciones: ["primavera", "otoño", "invierno"], estilos: ["clasico", "minimal"], dibujo: "sastrero" },
+  { id: "bot_03", categoria: "bottom", nombre: "Falda midi plisada", art: "la", colorHex: "#C5D6C0", familiaColor: "pastel", formalidad: 3, estaciones: ["primavera", "verano"], estilos: ["romantico", "clasico"], dibujo: "plisada" },
+  { id: "bot_04", categoria: "bottom", nombre: "Short de jean", art: "el", colorHex: "#8CAAD0", familiaColor: "neutro", formalidad: 1, estaciones: ["verano"], estilos: ["urbano", "sporty", "boho"], dibujo: "short" },
+  { id: "bot_05", categoria: "bottom", nombre: "Calza deportiva", art: "la", colorHex: "#2C2B33", familiaColor: "neutro", formalidad: 1, estaciones: TODAS, estilos: ["sporty"], dibujo: "calza" },
+  { id: "bot_06", categoria: "bottom", nombre: "Pantalón palazzo", art: "el", colorHex: "#E6D8C3", familiaColor: "neutro", formalidad: 3, estaciones: ["primavera", "verano"], estilos: ["boho", "minimal"], dibujo: "palazzo" },
+  { id: "bot_07", categoria: "bottom", nombre: "Minifalda de cuero", art: "la", colorHex: "#6E1F30", familiaColor: "calido", formalidad: 3, estaciones: ["primavera", "otoño", "invierno"], estilos: ["rocker", "glam"], dibujo: "minifalda" },
   // VESTIDOS / ENTERITOS (6)
-  { id: "dre_01", categoria: "vestido", nombre: "Vestido slip de seda", art: "el", colorHex: "#B8A4D4", familiaColor: "pastel", formalidad: 4, estaciones: ["primavera", "verano"], estilos: ["romantico", "glam", "minimal"], svg: D.slip("#B8A4D4") },
-  { id: "dre_02", categoria: "vestido", nombre: "Vestido largo de gala", art: "el", colorHex: "#1F3B63", familiaColor: "frio", formalidad: 5, estaciones: ["primavera", "otoño", "invierno"], estilos: ["glam", "clasico"], svg: D.gala("#1F3B63") },
-  { id: "dre_03", categoria: "vestido", nombre: "Vestido camisero", art: "el", colorHex: "#D6C2A3", familiaColor: "neutro", formalidad: 3, estaciones: ["primavera", "verano", "otoño"], estilos: ["clasico", "minimal"], svg: D.camisero("#D6C2A3") },
-  { id: "dre_04", categoria: "vestido", nombre: "Enterito de lino", art: "el", colorHex: "#C46A48", familiaColor: "calido", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["boho", "urbano"], svg: D.enterito("#C46A48") },
-  { id: "dre_05", categoria: "vestido", nombre: "Vestido corto con lunares", art: "el", colorHex: "#EE9B2F", familiaColor: "saturado", formalidad: 2, estaciones: ["verano"], estilos: ["boho", "romantico"], svg: D.lunares("#EE9B2F", "#FFF6E8") },
-  { id: "dre_06", categoria: "vestido", nombre: "Vestido de punto", art: "el", colorHex: "#6B4A3A", familiaColor: "calido", formalidad: 3, estaciones: ["otoño", "invierno"], estilos: ["minimal", "clasico"], svg: D.punto("#6B4A3A") },
+  { id: "dre_01", categoria: "vestido", nombre: "Vestido slip de seda", art: "el", colorHex: "#B8A4D4", familiaColor: "pastel", formalidad: 4, estaciones: ["primavera", "verano"], estilos: ["romantico", "glam", "minimal"], dibujo: "slip" },
+  { id: "dre_02", categoria: "vestido", nombre: "Vestido largo de gala", art: "el", colorHex: "#1F3B63", familiaColor: "frio", formalidad: 5, estaciones: ["primavera", "otoño", "invierno"], estilos: ["glam", "clasico"], dibujo: "gala" },
+  { id: "dre_03", categoria: "vestido", nombre: "Vestido camisero", art: "el", colorHex: "#D6C2A3", familiaColor: "neutro", formalidad: 3, estaciones: ["primavera", "verano", "otoño"], estilos: ["clasico", "minimal"], dibujo: "camisero" },
+  { id: "dre_04", categoria: "vestido", nombre: "Enterito de lino", art: "el", colorHex: "#C46A48", familiaColor: "calido", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["boho", "urbano"], dibujo: "enterito" },
+  { id: "dre_05", categoria: "vestido", nombre: "Vestido corto con lunares", art: "el", colorHex: "#EE9B2F", familiaColor: "saturado", formalidad: 2, estaciones: ["verano"], estilos: ["boho", "romantico"], dibujo: "lunares", detalleHex: "#FFF6E8" },
+  { id: "dre_06", categoria: "vestido", nombre: "Vestido de punto", art: "el", colorHex: "#6B4A3A", familiaColor: "calido", formalidad: 3, estaciones: ["otoño", "invierno"], estilos: ["minimal", "clasico"], dibujo: "punto" },
   // CALZADO (7)
-  { id: "sho_01", categoria: "calzado", nombre: "Zapatillas blancas", art: "las", colorHex: "#F4F3EF", familiaColor: "neutro", formalidad: 2, estaciones: TODAS, estilos: ["urbano", "sporty", "minimal"], svg: D.zapatillas("#F4F3EF") },
-  { id: "sho_02", categoria: "calzado", nombre: "Stilettos", art: "los", colorHex: "#1D1A1F", familiaColor: "neutro", formalidad: 5, estaciones: TODAS, estilos: ["glam", "clasico"], svg: D.stilettos("#1D1A1F") },
-  { id: "sho_03", categoria: "calzado", nombre: "Borcegos", art: "los", colorHex: "#2B2523", familiaColor: "neutro", formalidad: 2, estaciones: ["primavera", "otoño", "invierno"], estilos: ["rocker", "urbano"], svg: D.borcegos("#2B2523") },
-  { id: "sho_04", categoria: "calzado", nombre: "Ojotas", art: "las", colorHex: "#3BA39B", familiaColor: "frio", formalidad: 1, estaciones: ["verano"], estilos: ["sporty", "boho"], svg: D.ojotas("#3BA39B") },
-  { id: "sho_05", categoria: "calzado", nombre: "Mocasines", art: "los", colorHex: "#6A3D25", familiaColor: "calido", formalidad: 3, estaciones: ["primavera", "otoño", "invierno"], estilos: ["clasico", "minimal"], svg: D.mocasines("#6A3D25") },
-  { id: "sho_06", categoria: "calzado", nombre: "Sandalias doradas", art: "las", colorHex: "#C9A45A", familiaColor: "neutro", formalidad: 4, estaciones: ["primavera", "verano"], estilos: ["glam", "romantico"], svg: D.sandalias("#C9A45A") },
-  { id: "sho_07", categoria: "calzado", nombre: "Botas de caña alta", art: "las", colorHex: "#4E3226", familiaColor: "calido", formalidad: 3, estaciones: ["otoño", "invierno"], estilos: ["boho", "clasico", "rocker"], svg: D.botasAltas("#4E3226") },
+  { id: "sho_01", categoria: "calzado", nombre: "Zapatillas blancas", art: "las", colorHex: "#F4F3EF", familiaColor: "neutro", formalidad: 2, estaciones: TODAS, estilos: ["urbano", "sporty", "minimal"], dibujo: "zapatillas" },
+  { id: "sho_02", categoria: "calzado", nombre: "Stilettos", art: "los", colorHex: "#1D1A1F", familiaColor: "neutro", formalidad: 5, estaciones: TODAS, estilos: ["glam", "clasico"], dibujo: "stilettos" },
+  { id: "sho_03", categoria: "calzado", nombre: "Borcegos", art: "los", colorHex: "#2B2523", familiaColor: "neutro", formalidad: 2, estaciones: ["primavera", "otoño", "invierno"], estilos: ["rocker", "urbano"], dibujo: "borcegos" },
+  { id: "sho_04", categoria: "calzado", nombre: "Ojotas", art: "las", colorHex: "#3BA39B", familiaColor: "frio", formalidad: 1, estaciones: ["verano"], estilos: ["sporty", "boho"], dibujo: "ojotas" },
+  { id: "sho_05", categoria: "calzado", nombre: "Mocasines", art: "los", colorHex: "#6A3D25", familiaColor: "calido", formalidad: 3, estaciones: ["primavera", "otoño", "invierno"], estilos: ["clasico", "minimal"], dibujo: "mocasines" },
+  { id: "sho_06", categoria: "calzado", nombre: "Sandalias doradas", art: "las", colorHex: "#C9A45A", familiaColor: "neutro", formalidad: 4, estaciones: ["primavera", "verano"], estilos: ["glam", "romantico"], dibujo: "sandalias" },
+  { id: "sho_07", categoria: "calzado", nombre: "Botas de caña alta", art: "las", colorHex: "#4E3226", familiaColor: "calido", formalidad: 3, estaciones: ["otoño", "invierno"], estilos: ["boho", "clasico", "rocker"], dibujo: "botasAltas" },
   // ABRIGOS (5)
-  { id: "coa_01", categoria: "abrigo", nombre: "Blazer oversize", art: "el", colorHex: "#CDBA9C", familiaColor: "neutro", formalidad: 4, estaciones: ["primavera", "otoño"], estilos: ["clasico", "minimal"], svg: D.blazer("#CDBA9C") },
-  { id: "coa_02", categoria: "abrigo", nombre: "Campera de cuero", art: "la", colorHex: "#1F1D21", familiaColor: "neutro", formalidad: 2, estaciones: ["primavera", "otoño", "invierno"], estilos: ["rocker", "urbano"], svg: D.cuero("#1F1D21") },
-  { id: "coa_03", categoria: "abrigo", nombre: "Tapado de lana", art: "el", colorHex: "#B88A5E", familiaColor: "neutro", formalidad: 4, estaciones: ["otoño", "invierno"], estilos: ["clasico", "minimal"], svg: D.tapado("#B88A5E") },
-  { id: "coa_04", categoria: "abrigo", nombre: "Campera puffer", art: "la", colorHex: "#9FC3B2", familiaColor: "pastel", formalidad: 1, estaciones: ["invierno"], estilos: ["sporty", "urbano"], svg: D.puffer("#9FC3B2") },
-  { id: "coa_05", categoria: "abrigo", nombre: "Kimono liviano", art: "el", colorHex: "#D9734E", familiaColor: "calido", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["boho"], svg: D.kimono("#D9734E", "#F7D9B8") },
+  { id: "coa_01", categoria: "abrigo", nombre: "Blazer oversize", art: "el", colorHex: "#CDBA9C", familiaColor: "neutro", formalidad: 4, estaciones: ["primavera", "otoño"], estilos: ["clasico", "minimal"], dibujo: "blazer" },
+  { id: "coa_02", categoria: "abrigo", nombre: "Campera de cuero", art: "la", colorHex: "#1F1D21", familiaColor: "neutro", formalidad: 2, estaciones: ["primavera", "otoño", "invierno"], estilos: ["rocker", "urbano"], dibujo: "cuero" },
+  { id: "coa_03", categoria: "abrigo", nombre: "Tapado de lana", art: "el", colorHex: "#B88A5E", familiaColor: "neutro", formalidad: 4, estaciones: ["otoño", "invierno"], estilos: ["clasico", "minimal"], dibujo: "tapado" },
+  { id: "coa_04", categoria: "abrigo", nombre: "Campera puffer", art: "la", colorHex: "#9FC3B2", familiaColor: "pastel", formalidad: 1, estaciones: ["invierno"], estilos: ["sporty", "urbano"], dibujo: "puffer" },
+  { id: "coa_05", categoria: "abrigo", nombre: "Kimono liviano", art: "el", colorHex: "#D9734E", familiaColor: "calido", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["boho"], dibujo: "kimono", detalleHex: "#F7D9B8" },
   // BOLSOS (4)
-  { id: "bag_01", categoria: "bolso", nombre: "Clutch metalizado", art: "el", colorHex: "#C9A45A", familiaColor: "neutro", formalidad: 5, estaciones: TODAS, estilos: ["glam"], svg: D.clutch("#C9A45A") },
-  { id: "bag_02", categoria: "bolso", nombre: "Tote de lona", art: "el", colorHex: "#E7DBC2", familiaColor: "neutro", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["boho", "urbano", "minimal"], svg: D.tote("#E7DBC2") },
-  { id: "bag_03", categoria: "bolso", nombre: "Cartera estructurada", art: "la", colorHex: "#7A1F2B", familiaColor: "calido", formalidad: 4, estaciones: TODAS, estilos: ["clasico", "glam"], svg: D.cartera("#7A1F2B") },
-  { id: "bag_04", categoria: "bolso", nombre: "Riñonera", art: "la", colorHex: "#E2457A", familiaColor: "saturado", formalidad: 1, estaciones: TODAS, estilos: ["sporty", "urbano"], svg: D.rinonera("#E2457A") },
+  { id: "bag_01", categoria: "bolso", nombre: "Clutch metalizado", art: "el", colorHex: "#C9A45A", familiaColor: "neutro", formalidad: 5, estaciones: TODAS, estilos: ["glam"], dibujo: "clutch" },
+  { id: "bag_02", categoria: "bolso", nombre: "Tote de lona", art: "el", colorHex: "#E7DBC2", familiaColor: "neutro", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["boho", "urbano", "minimal"], dibujo: "tote" },
+  { id: "bag_03", categoria: "bolso", nombre: "Cartera estructurada", art: "la", colorHex: "#7A1F2B", familiaColor: "calido", formalidad: 4, estaciones: TODAS, estilos: ["clasico", "glam"], dibujo: "cartera" },
+  { id: "bag_04", categoria: "bolso", nombre: "Riñonera", art: "la", colorHex: "#E2457A", familiaColor: "saturado", formalidad: 1, estaciones: TODAS, estilos: ["sporty", "urbano"], dibujo: "rinonera" },
   // JOYERÍA Y GAFAS (4)
-  { id: "jew_01", categoria: "joyeria", slot: "orejas", nombre: "Aros de perla", art: "los", colorHex: "#F4EFE6", familiaColor: "neutro", formalidad: 4, estaciones: TODAS, estilos: ["romantico", "clasico"], svg: D.perlas("#F4EFE6") },
-  { id: "jew_02", categoria: "joyeria", slot: "cara", nombre: "Lentes de sol", art: "los", colorHex: "#1E1C1F", familiaColor: "neutro", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["urbano", "glam"], svg: D.lentes("#1E1C1F") },
-  { id: "jew_03", categoria: "joyeria", slot: "cuello", nombre: "Collar de cadena", art: "el", colorHex: "#C9A45A", familiaColor: "neutro", formalidad: 3, estaciones: TODAS, estilos: ["rocker", "glam", "minimal"], svg: D.collar("#C9A45A") },
-  { id: "jew_04", categoria: "joyeria", slot: "orejas", nombre: "Argollas doradas", art: "las", colorHex: "#C9A45A", familiaColor: "neutro", formalidad: 3, estaciones: TODAS, estilos: ["urbano", "boho", "glam"], svg: D.argollas("#C9A45A") },
+  { id: "jew_01", categoria: "joyeria", slot: "orejas", nombre: "Aros de perla", art: "los", colorHex: "#F4EFE6", familiaColor: "neutro", formalidad: 4, estaciones: TODAS, estilos: ["romantico", "clasico"], dibujo: "perlas" },
+  { id: "jew_02", categoria: "joyeria", slot: "cara", nombre: "Lentes de sol", art: "los", colorHex: "#1E1C1F", familiaColor: "neutro", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["urbano", "glam"], dibujo: "lentes" },
+  { id: "jew_03", categoria: "joyeria", slot: "cuello", nombre: "Collar de cadena", art: "el", colorHex: "#C9A45A", familiaColor: "neutro", formalidad: 3, estaciones: TODAS, estilos: ["rocker", "glam", "minimal"], dibujo: "collar" },
+  { id: "jew_04", categoria: "joyeria", slot: "orejas", nombre: "Argollas doradas", art: "las", colorHex: "#C9A45A", familiaColor: "neutro", formalidad: 3, estaciones: TODAS, estilos: ["urbano", "boho", "glam"], dibujo: "argollas" },
 ];
 
 /* =====================================================================
@@ -775,37 +1253,35 @@ function puntuarLook(ids, consigna) {
 }
 
 /* =====================================================================
-   6) AVATAR (string SVG; sirve para DOM y para el canvas)
+   6) AVATAR (string SVG; sirve para DOM, miniaturas y canvas)
    ===================================================================== */
-const CUERPO = "M93,64 L107,64 L107,88 C118,90 128,92 131,96 C128,110 126,118 126,124 C126,145 121,160 120,170 C124,185 129,198 129,212 C128,250 125,290 121,320 C120,350 117,385 114,410 L104,410 C103,380 103,345 102,320 C101,280 101,250 100,228 C99,250 99,280 98,320 C97,345 97,380 96,410 L86,410 C83,385 80,350 79,320 C75,290 72,250 71,212 C71,198 76,185 80,170 C79,160 74,145 74,124 C74,118 72,110 69,96 C72,92 82,90 93,88 Z";
-const BRAZO = "M70,94 C63,98 62,108 62,120 L58,165 L55,218 L63,219 L67,166 L73,124 Z";
-const PIE = "M85,404 L97,404 L97.5,419 C95.5,425 88,426 83.5,423 C83,417 84,411 85,404 Z";
-const BODY_BASE = "M88,86 C86,96 80,100 76,104 C76,130 78,150 80,168 C76,185 72,198 71,212 L71,214 C80,222 92,226 100,232 C108,226 120,222 129,214 L129,212 C128,198 124,185 120,168 C122,150 124,130 124,104 C120,100 114,96 112,86 C106,92 94,92 88,86 Z";
-const PELO = "#2B201E";
-
-function avatarSVG({ piel = 2, silueta = 0, puestas = [], nueva = null, w = null, h = null }) {
-  const sk = PIELES[piel], s = SILUETAS[silueta].escala, sombra = shade(sk, -0.14);
-  const T = `translate(100 0) scale(${s} 1) translate(-100 0)`;
+const VIEWBOX = "0 4 200 434", VB_W = 200, VB_H = 434;
+const enCabeza = i => i.categoria === "joyeria" && (i.slot === "orejas" || i.slot === "cara");
+/** Prenda puesta. Si la prenda trae imgPuesta {href,x,y,w,h} se usa esa imagen. */
+function prendaPuesta(it, A) {
+  if (it.imgPuesta) { const m = it.imgPuesta; return `<image href="${m.href}" x="${m.x}" y="${m.y}" width="${m.w}" height="${m.h}" preserveAspectRatio="xMidYMid meet"/>`; }
+  const fn = DIBUJOS[it.dibujo];
+  return pintarPrenda(fn(A, it.colorHex, it), it.colorHex, fn.opts);
+}
+/** Prenda en flat-lay (calzado de perfil) para el placard. */
+function prendaPlana(it) {
+  const fn = DIBUJOS[it.dibujo];
+  return pintarPrenda(fn.perfil ? fn.perfil(it.colorHex, it) : fn(FLAT_D, it.colorHex, it), it.colorHex, fn.opts);
+}
+function avatarSVG({ piel = 2, silueta = 0, peinado = 1, pelo = 1, puestas = [], nueva = null, w = null, h = null }) {
+  const A = CUERPOS[silueta], sk = PIELES[piel], hc = PELOS[pelo].hex, P = PEINADOS[peinado];
   const items = puestas.map(id => POR_ID[id]).filter(Boolean).sort((a, b) => CAPA[a.categoria] - CAPA[b.categoria]);
-  const enCabeza = i => i.categoria === "joyeria" && (i.slot === "orejas" || i.slot === "cara");
-  const capa = i => `<g class="capa${i.id === nueva ? " cae" : ""}">${i.svg}</g>`;
+  const calz = items.find(i => i.categoria === "calzado"), pie = (calz && DIBUJOS[calz.dibujo].pie) || "plano";
+  const capa = i => `<g class="capa${i.id === nueva ? " cae" : ""}">${prendaPuesta(i, A)}</g>`;
   const size = w ? ` width="${w}" height="${h}"` : "";
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 8 200 432"${size} role="img" aria-label="Avatar">`
-    + `<ellipse cx="100" cy="430" rx="${44 * s}" ry="5" fill="#000" opacity=".08"/>`
-    + `<g transform="${T}">`
-    + `<path d="${BRAZO}" fill="${sk}"/><path d="${mir(BRAZO)}" fill="${sk}"/>`
-    + `<ellipse cx="59" cy="227" rx="4.5" ry="8" fill="${sk}"/><ellipse cx="141" cy="227" rx="4.5" ry="8" fill="${sk}"/>`
-    + `<path d="${CUERPO}" fill="${sk}"/><path d="M93,69 L107,69 C105,76 95,76 93,69 Z" fill="${sombra}" opacity=".7"/>`
-    + `<path d="${PIE}" fill="${sk}"/><path d="${mir(PIE)}" fill="${sk}"/>`
-    + `<path d="${BODY_BASE}" fill="#D9CDD0" stroke="#BFB0B4" stroke-width=".6"/>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${VIEWBOX}"${size} role="img" aria-label="Avatar">`
+    + `<ellipse cx="104" cy="425" rx="${f1(40 * SILUETAS[silueta].k.hi)}" ry="5" fill="#000" opacity=".08"/>`
+    + pintar({ p: P.atras }, hc, OPC_PELO(hc))
+    + pintar({ p: cuerpoPiezas(A, pie) }, sk, OPC_PIEL(sk))
+    + pintar(ropaInterior(A), BASE_HEX, { sh: 0.5, ancho: 2 })
     + items.filter(i => !enCabeza(i)).map(capa).join("")
-    + `</g>`
-    + `<ellipse cx="100" cy="47" rx="19.5" ry="23" fill="${PELO}"/>`
-    + `<ellipse cx="83" cy="52" rx="2.6" ry="4.2" fill="${sombra}"/><ellipse cx="117" cy="52" rx="2.6" ry="4.2" fill="${sombra}"/>`
-    + `<ellipse cx="100" cy="50" rx="17" ry="21" fill="${sk}"/>`
-    + `<path d="M82,51 C80,33 90,27 100,27 C110,27 120,33 118,51 C115,41 108,35 99,36 C92,37 86,42 82,51 Z" fill="${PELO}"/>`
-    + `<circle cx="100" cy="22" r="9.5" fill="${PELO}"/>`
-    + `<path d="M95,62 C98,63.5 102,63.5 105,62" fill="none" stroke="${shade(sk, -0.3)}" stroke-width=".9" stroke-linecap="round" opacity=".6"/>`
+    + pintar({ p: [OREJA, mir(OREJA), CABEZA] }, sk, OPC_PIEL(sk)) + cara(sk, hc)
+    + pintar({ p: P.frente, d: P.mechas.map(m => ln(m, shade(hc, 0.28), 0.8, 'opacity=".7"')) }, hc, OPC_PELO(hc))
     + items.filter(enCabeza).map(capa).join("")
     + `</svg>`;
 }
@@ -820,43 +1296,64 @@ function boot() {
     get() { try { return parseInt(localStorage.getItem(CONFIG.storageKey) || "0", 10) || 0; } catch (e) { return 0; } },
     set(n) { try { localStorage.setItem(CONFIG.storageKey, String(n)); } catch (e) { /* sin storage: seguimos */ } },
   };
-  const S = { piel: 2, silueta: 0, reloj: false, consignas: [], ronda: 0, puestas: [], historial: [], resultados: [], tab: "top", timer: null, restante: 0, nueva: null, previas: [] };
+  const S = { piel: 2, silueta: 0, peinado: 1, pelo: 1, reloj: false, consignas: [], ronda: 0, puestas: [], historial: [], resultados: [], tab: "top", timer: null, restante: 0, nueva: null, previas: [] };
 
-  // viewBox de miniatura calculado una sola vez a partir del dibujo
+  // Miniatura flat-lay: se dibuja y se recorta a su caja una sola vez por prenda.
   const mg = $("#measure-g");
-  CATALOGO.forEach(i => {
-    if (i._vb) return;
-    mg.innerHTML = i.svg;
-    let b; try { b = mg.getBBox(); } catch (e) { b = { x: 40, y: 80, width: 120, height: 200 }; }
-    const pad = 5, side = Math.max(b.width, b.height) + pad * 2;
-    i._vb = `${(b.x + b.width / 2 - side / 2).toFixed(1)} ${(b.y + b.height / 2 - side / 2).toFixed(1)} ${side.toFixed(1)} ${side.toFixed(1)}`;
-  });
-  mg.innerHTML = "";
-  const thumb = i => `<svg viewBox="${i._vb}" aria-hidden="true" preserveAspectRatio="xMidYMid meet">${i.svg}</svg>`;
+  function plano(i) {
+    if (i._plano) return i._plano;
+    const svg = prendaPlana(i);
+    mg.innerHTML = svg;
+    let b = null;
+    try {
+      [...mg.children].filter(n => n.tagName === "g" && !n.hasAttribute("clip-path")).forEach(n => {
+        const r = n.getBBox(); if (!b) b = { x: r.x, y: r.y, x2: r.x + r.width, y2: r.y + r.height };
+        else { b.x = Math.min(b.x, r.x); b.y = Math.min(b.y, r.y); b.x2 = Math.max(b.x2, r.x + r.width); b.y2 = Math.max(b.y2, r.y + r.height); }
+      });
+    } catch (e) { b = null; }
+    b = b ? { x: b.x, y: b.y, width: b.x2 - b.x, height: b.y2 - b.y } : { x: 40, y: 80, width: 120, height: 200 };
+    mg.innerHTML = "";
+    const pad = 4, side = Math.max(b.width, b.height) + pad * 2;
+    i._plano = { svg, vb: `${f1(b.x + b.width / 2 - side / 2)} ${f1(b.y + b.height / 2 - side / 2)} ${f1(side)} ${f1(side)}` };
+    return i._plano;
+  }
+  const thumb = i => i.img ? `<img src="${i.img}" alt="" draggable="false">` : `<svg viewBox="${plano(i).vb}" aria-hidden="true" preserveAspectRatio="xMidYMid meet">${plano(i).svg}</svg>`;
+  const av = o => avatarSVG({ piel: S.piel, silueta: S.silueta, peinado: S.peinado, pelo: S.pelo, ...o });
 
   const show = id => { document.querySelectorAll(".screen").forEach(s => { s.hidden = s.id !== id; }); const el = $("#" + id); el.scrollTop = 0; const h = el.querySelector("h1,h2"); if (h) { h.setAttribute("tabindex", "-1"); h.focus({ preventScroll: true }); } };
   let toastT;
   const toast = msg => { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2200); };
 
   /* ---------- Inicio ---------- */
-  $("#hero-avatar").innerHTML = avatarSVG({ piel: 2, silueta: 0, puestas: ["top_01", "bot_01", "coa_01", "sho_05", "jew_02", "bag_03"] });
+  $("#hero-avatar").innerHTML = avatarSVG({ piel: 2, silueta: 0, peinado: 1, pelo: 1, puestas: ["top_01", "bot_01", "coa_01", "sho_05", "jew_02", "bag_03"] });
   const best = store.get();
   if (best) { $("#best-inicio").hidden = false; $("#best-inicio").textContent = `Tu mejor marca: ${best}/300`; }
   $("#btn-jugar").onclick = () => { S.reloj = $("#chk-reloj").checked; pintarSetup(); show("s-avatar"); };
 
   /* ---------- Avatar ---------- */
+  const GRUPOS = [
+    { sel: "#swatches", key: "piel", n: PIELES.length },
+    { sel: "#siluetas", key: "silueta", n: SILUETAS.length },
+    { sel: "#peinados", key: "peinado", n: PEINADOS.length },
+    { sel: "#pelos", key: "pelo", n: PELOS.length },
+  ];
+  const radio = (key, i, label, inner, cls, style = "") => `<button class="${cls}" role="radio" aria-checked="${i === S[key]}" tabindex="${i === S[key] ? 0 : -1}" aria-label="${label}" data-i="${i}"${style}>${inner}</button>`;
   function pintarSetup() {
-    $("#avatar-prev").innerHTML = avatarSVG({ piel: S.piel, silueta: S.silueta });
-    $("#swatches").innerHTML = PIELES.map((c, i) => `<button class="swatch" role="radio" aria-checked="${i === S.piel}" aria-label="Tono de piel ${i + 1}" data-i="${i}" style="background:${c}"></button>`).join("");
-    $("#siluetas").innerHTML = SILUETAS.map((s, i) => `<button class="sil" role="radio" aria-checked="${i === S.silueta}" aria-label="Silueta ${s.id}" data-i="${i}"><svg viewBox="40 60 120 380" aria-hidden="true"><g transform="translate(100 0) scale(${s.escala} 1) translate(-100 0)"><path d="${CUERPO}" fill="currentColor"/><path d="${BRAZO}" fill="currentColor"/><path d="${mir(BRAZO)}" fill="currentColor"/></g><ellipse cx="100" cy="50" rx="17" ry="21" fill="currentColor"/></svg>${s.id}</button>`).join("");
+    $("#avatar-prev").innerHTML = av({});
+    $("#swatches").innerHTML = PIELES.map((c, i) => radio("piel", i, `Tono de piel ${i + 1}`, "", "swatch", ` style="background:${c}"`)).join("");
+    $("#siluetas").innerHTML = SILUETAS.map((s, i) => radio("silueta", i, `Silueta ${s.id}`, `<svg viewBox="40 14 120 420" aria-hidden="true">${cuerpoPiezas(CUERPOS[i]).map(d => `<path d="${d}" fill="currentColor"/>`).join("")}<path d="${CABEZA}" fill="currentColor"/></svg>${s.id}`, "sil")).join("");
+    $("#peinados").innerHTML = PEINADOS.map((p, i) => radio("peinado", i, `Peinado ${p.nombre}`, `<svg viewBox="68 4 64 80" aria-hidden="true">${cabezaSVG(PIELES[S.piel], PELOS[S.pelo].hex, i)}</svg>${p.nombre}`, "sil")).join("");
+    $("#pelos").innerHTML = PELOS.map((p, i) => radio("pelo", i, `Pelo ${p.nombre}`, "", "swatch sm", ` style="background:${p.hex}"`)).join("");
   }
-  const radioNav = (box, key) => box.addEventListener("click", e => { const b = e.target.closest("[data-i]"); if (!b) return; S[key] = +b.dataset.i; pintarSetup(); box.querySelector(`[data-i="${S[key]}"]`).focus(); });
-  radioNav($("#swatches"), "piel"); radioNav($("#siluetas"), "silueta");
-  ["#swatches", "#siluetas"].forEach((sel, k) => $(sel).addEventListener("keydown", e => {
-    const key = k ? "silueta" : "piel", n = k ? SILUETAS.length : PIELES.length;
-    if (!["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"].includes(e.key)) return;
-    e.preventDefault(); S[key] = (S[key] + (e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : n - 1)) % n; pintarSetup(); $(sel).querySelector(`[data-i="${S[key]}"]`).focus();
-  }));
+  GRUPOS.forEach(g => {
+    const box = $(g.sel);
+    const set = i => { S[g.key] = i; pintarSetup(); box.querySelector(`[data-i="${i}"]`).focus(); };
+    box.addEventListener("click", e => { const b = e.target.closest("[data-i]"); if (b) set(+b.dataset.i); });
+    box.addEventListener("keydown", e => {
+      if (!["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"].includes(e.key)) return;
+      e.preventDefault(); set((S[g.key] + (e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : g.n - 1)) % g.n);
+    });
+  });
   $("#btn-empezar").onclick = nuevaPartida;
 
   /* ---------- Partida ---------- */
@@ -909,7 +1406,7 @@ function boot() {
     }).join("");
     $("#rail").scrollLeft = 0;
   }
-  function pintarAvatar() { $("#espejo").innerHTML = avatarSVG({ piel: S.piel, silueta: S.silueta, puestas: S.puestas, nueva: reduce ? null : S.nueva }); }
+  function pintarAvatar() { $("#espejo").innerHTML = av({ puestas: S.puestas, nueva: reduce ? null : S.nueva }); }
   function pintarListo() {
     const f = faltantes(S.puestas), b = $("#btn-listo");
     b.disabled = f.length > 0;
@@ -1003,7 +1500,7 @@ function boot() {
     const { consigna: c, puestas, res } = S.resultados[S.ronda];
     $("#res-num").textContent = `Look ${S.ronda + 1} de ${CONFIG.rondas}`;
     $("#t-res").textContent = `${c.icono} ${c.titulo}`;
-    $("#res-avatar").innerHTML = avatarSVG({ piel: S.piel, silueta: S.silueta, puestas });
+    $("#res-avatar").innerHTML = av({ puestas });
     $("#res-stars").innerHTML = [1, 2, 3].map(() => estrellaSVG(false)).join("");
     $("#res-stars").setAttribute("aria-label", `${res.estrellas} de 3 estrellas`); $("#res-stars").setAttribute("role", "img");
     const R = REGLAS, filas = [["Ocasión", res.desglose.ocasion, R.ocasion.max], ["Color", res.desglose.color, R.color.max], ["Clima", res.desglose.clima, R.clima.max], ["Estilo", res.desglose.estilo, R.estilo.max]];
@@ -1094,12 +1591,12 @@ function boot() {
     x.textAlign = "left"; x.font = `600 150px ${disp}`; x.fillText(n, W / 2 - (wN + wS + 10) / 2, 420);
     x.fillStyle = tk("--muted"); x.font = `500 46px ${body}`; x.fillText("/300", W / 2 - (wN + wS + 10) / 2 + wN + 10, 420);
     const pw = 296, gap = 24, x0 = (W - (pw * 3 + gap * 2)) / 2, y0 = 470, ph = 560;
-    const imgs = await Promise.all(S.resultados.map(r => cargarImg(avatarSVG({ piel: S.piel, silueta: S.silueta, puestas: r.puestas, w: 400, h: 864 }))));
+    const imgs = await Promise.all(S.resultados.map(r => cargarImg(av({ puestas: r.puestas, w: 400, h: Math.round(400 * VB_H / VB_W) }))));
     S.resultados.forEach((r, i) => {
       const px = x0 + i * (pw + gap);
       x.fillStyle = tk("--blush"); roundRect(x, px, y0, pw, ph, [140, 140, 12, 12]); x.fill();
       x.strokeStyle = tk("--brass"); x.lineWidth = 2; x.stroke();
-      const ih = ph - 40, iw = ih * (200 / 432);
+      const ih = ph - 40, iw = ih * (VB_W / VB_H);
       x.drawImage(imgs[i], px + (pw - iw) / 2, y0 + 30, iw, ih);
       x.textAlign = "center"; x.fillStyle = tk("--ink"); x.font = `500 26px ${body}`;
       wrap(x, r.consigna.titulo, px + pw / 2, y0 + ph + 44, pw - 10, 30);
@@ -1134,7 +1631,17 @@ function boot() {
     })(t0);
   }
 
-  show("s-inicio");
+  /* ---------- Hoja de contacto ---------- */
+  function hojaContacto() {
+    $("#debug-n").textContent = `${CATALOGO.length} prendas`;
+    $("#sheet").innerHTML = CATALOGO.map((it, i) => `<figure class="cs"><span class="cs-n num">${String(i + 1).padStart(2, "0")}</span>`
+      + `<div class="cs-flat">${thumb(it)}</div><div class="cs-on">${av({ puestas: [it.id] })}</div><figcaption class="cs-nm">${it.nombre}</figcaption></figure>`).join("");
+    show("s-debug");
+  }
+  $("#chk-nombres").onchange = e => $("#sheet").classList.toggle("anon", e.target.checked);
+  $("#btn-debug-salir").onclick = () => show("s-inicio");
+
+  if (/(^|[?&#])debug\b/.test(location.search + location.hash)) hojaContacto(); else show("s-inicio");
 }
 
 if (typeof document !== "undefined") boot();
