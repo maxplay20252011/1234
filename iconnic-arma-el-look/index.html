@@ -29,6 +29,7 @@
   color-scheme:light;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{height:100%}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;overflow:hidden;-webkit-tap-highlight-color:transparent}
 button{font:inherit;color:inherit}
@@ -198,6 +199,48 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
 .fin-ctas .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .fin-ctas .row.single{grid-template-columns:1fr}
 
+.campo{width:100%;font:inherit;font-size:16px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r);background:var(--card);color:var(--ink)}
+.campo:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+.campo.sm{padding:9px 10px;font-size:15px}
+.form-col{display:flex;flex-direction:column;gap:10px;margin-top:20px;max-width:420px}
+.err{color:var(--bad)}
+.err:empty{display:none}
+.btn-icono{appearance:none;border:1px solid var(--line);background:var(--card);border-radius:50%;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;color:var(--ink);padding:0}
+.tuerca{border-color:transparent;background:transparent;color:var(--muted)}
+.tuerca svg{width:20px;height:20px}
+.link-inline{appearance:none;border:none;background:none;padding:4px 2px;font:inherit;color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 8px}
+.envio{margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r);background:var(--card);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.envio p{margin:0}
+.envio .lugar{font-size:17px}
+.envio .lugar b{font-family:var(--f-display);color:var(--accent);font-size:24px}
+.rk-lista{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column}
+.rk-fila{display:grid;grid-template-columns:34px 1fr auto 48px;gap:10px;align-items:center;padding:11px 4px;border-bottom:1px solid var(--line)}
+.rk-fila.vos{background:var(--blush);border-radius:8px;border-bottom-color:transparent;padding-inline:8px}
+.rk-pos{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.rk-pos.m1{background:#D9B45A;color:#2B2040}.rk-pos.m2{background:#C9CCD3;color:#2B2040}.rk-pos.m3{background:#C98D5B;color:#2B2040}
+.rk-nom{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rk-nom small{color:var(--muted)}
+.rk-pts{font-family:var(--f-display);font-weight:600;font-size:20px;color:var(--accent)}
+.rk-fecha{font-size:12px;color:var(--muted);text-align:right}
+.rk-sep{text-align:center;color:var(--muted);padding:4px}
+.rk-vacio{padding:28px 8px;text-align:center;color:var(--muted);font-size:16px}
+.rk-pie{display:flex;flex-direction:column;gap:12px;padding-top:16px}
+.privacidad{font-size:13px;color:var(--muted)}
+.privacidad summary{cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.ad-top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.ad-lista{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.ad-fila{border:1px solid var(--line);border-radius:var(--r);background:var(--card);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.ad-fila.borrada{opacity:.7;border-style:dashed}
+.ad-cab{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.ad-cab b{font-weight:600}
+.ad-acc{display:flex;gap:6px;flex-wrap:wrap}
+.btn.sm{min-height:36px;padding:6px 12px;font-size:13px}
+.btn.peligro{background:var(--bad);border-color:var(--bad);color:#fff}
+.ad-form{display:grid;grid-template-columns:1fr;gap:8px;border-top:1px solid var(--line);padding-top:8px}
+.ad-form[hidden]{display:none}
+.ad-form label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.ad-form .fila-btn{display:flex;gap:6px;flex-wrap:wrap}
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 132px);transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:9px 14px;border-radius:99px;font-size:13px;z-index:60;max-width:calc(100% - 32px);text-align:center;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
 #confeti{position:fixed;inset:0;pointer-events:none;z-index:70;width:100%;height:100%}
@@ -228,6 +271,7 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
         <span class="switch"><input type="checkbox" id="chk-reloj" aria-label="Activar modo contrarreloj"><span></span></span>
       </label>
       <button class="btn btn-primary" id="btn-jugar" aria-label="Jugar">Jugar</button>
+      <button class="btn btn-link" id="btn-ranking-inicio" hidden aria-label="Ver el ranking">Ver ranking</button>
       <p class="best num" id="best-inicio" hidden></p>
     </div>
   </section>
@@ -312,6 +356,7 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
     <div class="res-head"><span class="eyebrow">Tu resultado</span><span class="wordmark">ICON</span></div>
     <h2 class="fin-title" id="t-final"></h2>
     <div class="fin-score"><div class="big num"><span id="fin-pts">0</span><small>/300</small></div><span class="best num" id="fin-best"></span></div>
+    <div class="envio" id="fin-envio" aria-live="polite" hidden></div>
     <div class="card-prev" id="card-prev">Armando tu tarjeta…</div>
     <div class="fin-ctas">
       <a class="btn btn-primary" id="cta-espejo" target="_blank" rel="noopener" aria-label="Probá tus looks en el espejo de ICON (abre en otra pestaña)">Probá tus looks en el espejo de ICON</a>
@@ -321,6 +366,77 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
       </div>
       <p class="note" style="text-align:center">¿No se descargó? Mantené apretada la tarjeta para guardarla.</p>
       <button class="btn btn-link" id="btn-otra" aria-label="Jugar de nuevo con otras consignas">Jugar de nuevo</button>
+    </div>
+  </section>
+
+  <!-- APODO PARA EL RANKING -->
+  <section class="screen" id="s-nombre" hidden aria-labelledby="t-nombre">
+    <div class="setup-head">
+      <span class="eyebrow">Ranking</span>
+      <h2 id="t-nombre">¿Cómo te llamamos en el ranking?</h2>
+    </div>
+    <form class="form-col" id="f-nombre" novalidate>
+      <label class="eyebrow" for="in-nombre">Tu apodo</label>
+      <input class="campo" id="in-nombre" maxlength="20" autocomplete="nickname" spellcheck="false" aria-describedby="nombre-aviso nombre-error">
+      <p class="note err" id="nombre-error" role="alert"></p>
+      <p class="note" id="nombre-aviso">Tu nombre se muestra en el ranking público. Usá un apodo si preferís.</p>
+      <button class="btn btn-primary" type="submit">Seguir</button>
+    </form>
+  </section>
+
+  <!-- RANKING -->
+  <section class="screen" id="s-ranking" hidden aria-labelledby="t-ranking">
+    <div class="res-head">
+      <button class="btn-icono" id="rk-volver" aria-label="Volver">←</button>
+      <span class="wordmark">ICON</span>
+      <button class="btn-icono tuerca" id="rk-admin" aria-label="Administración"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/><circle cx="12" cy="12" r="6.4"/></svg></button>
+    </div>
+    <h2 class="fin-title" id="t-ranking">Ranking</h2>
+    <div class="seg" role="group" aria-label="Período">
+      <button class="chip" data-p="hoy" aria-pressed="false">Hoy</button>
+      <button class="chip" data-p="semana" aria-pressed="false">Esta semana</button>
+      <button class="chip" data-p="siempre" aria-pressed="true">Siempre</button>
+    </div>
+    <p class="note num" id="rk-estado" aria-live="polite"></p>
+    <ol class="rk-lista" id="rk-lista"></ol>
+    <div class="rk-pie">
+      <button class="btn btn-ghost" id="rk-actualizar">Actualizar</button>
+      <p class="note">Tu apodo: <b id="rk-apodo"></b> · <button class="link-inline" id="rk-cambiar">Cambiar</button></p>
+      <details class="privacidad">
+        <summary>Privacidad</summary>
+        <p>Para el ranking guardamos solo tu apodo, un número al azar que identifica este dispositivo y tus partidas (prendas, consignas y puntaje). No pedimos mail, teléfono ni fotos. Si cambiás tu apodo, se actualiza en tu próxima partida. Para que borren tus datos, pedíselo a ICONNIC.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- ADMINISTRACIÓN -->
+  <section class="screen" id="s-admin" hidden aria-labelledby="t-admin">
+    <div class="res-head">
+      <button class="btn-icono" id="ad-volver" aria-label="Volver al ranking">←</button>
+      <span class="eyebrow">Administración</span>
+      <span></span>
+    </div>
+    <h2 class="fin-title" id="t-admin">Administración</h2>
+    <form class="form-col" id="ad-login" novalidate>
+      <label class="eyebrow" for="in-pass">Contraseña</label>
+      <input class="campo" type="password" id="in-pass" autocomplete="current-password">
+      <p class="note err" id="ad-error" role="alert"></p>
+      <button class="btn btn-dark" type="submit" id="ad-entrar">Entrar</button>
+    </form>
+    <div id="ad-panel" hidden>
+      <div class="ad-top">
+        <div class="seg" role="group" aria-label="Sección">
+          <button class="chip" data-v="jugadoras" aria-pressed="true">Jugadoras</button>
+          <button class="chip" data-v="historial" aria-pressed="false">Historial</button>
+        </div>
+        <button class="link-inline" id="ad-salir">Salir de admin</button>
+      </div>
+      <div id="ad-v-jugadoras">
+        <label class="sr-only" for="ad-buscar">Buscar por nombre</label>
+        <input class="campo" type="search" id="ad-buscar" placeholder="Buscar por nombre">
+        <ul class="ad-lista" id="ad-lista"></ul>
+      </div>
+      <div id="ad-v-historial" hidden><ul class="ad-lista" id="ad-log"></ul></div>
     </div>
   </section>
 
@@ -344,6 +460,15 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
 
 <script>
 "use strict";
+/* =====================================================================
+   0) RANKING ONLINE (Supabase). Completá con los datos de tu proyecto:
+      Supabase → Project Settings → API. La "anon" / "publishable" key es
+      pública por diseño. La contraseña de admin NUNCA va en este archivo.
+      Si quedan vacías, el juego funciona igual, sin ranking.
+   ===================================================================== */
+const SUPABASE_URL = "";        // ej. "https://abcd1234.supabase.co"
+const SUPABASE_ANON_KEY = "";   // ej. "eyJhbGciOi..." o "sb_publishable_..."
+
 /* =====================================================================
    1) CONFIGURACIÓN
    ===================================================================== */
@@ -1349,6 +1474,29 @@ const listaY = arr => arr.length < 2 ? arr.join("") : arr.slice(0, -1).join(", "
 function estrellasDe(total) { return REGLAS.estrellas.find(([min]) => total >= min)[1]; }
 function tituloFinal(total) { return REGLAS.titulos.find(([min]) => total >= min)[1]; }
 
+/** Sortea las consignas de una partida sin repetir. La usan el juego (sin conexión) y el servidor. */
+function sortearConsignas(azar = Math.random, excluir = [], n = CONFIG.rondas) {
+  let pool = CONSIGNAS.filter(c => !excluir.includes(c.id));
+  if (pool.length < n) pool = CONSIGNAS.slice();
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(azar() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  return pool.slice(0, n);
+}
+/** Un look es válido si se puede armar en el placard: prendas que existen, sin repetir y sin combinaciones imposibles. */
+function lookValido(ids) {
+  if (!Array.isArray(ids) || ids.length > 20 || new Set(ids).size !== ids.length || !ids.every(id => typeof id === "string" && POR_ID[id])) return false;
+  return ids.reduce((p, id) => aplicarPrenda(p, id).puestas, []).length === ids.length;
+}
+/** Puntaje de una partida: [{consigna, prendas}] → {total, rondas}. Un look incompleto (se acabó el tiempo) vale 0. */
+function puntuarPartida(rondas) {
+  if (!Array.isArray(rondas) || rondas.length !== CONFIG.rondas) throw new Error("rondas_invalidas");
+  const detalle = rondas.map(r => {
+    const c = CONSIGNAS.find(x => x.id === r?.consigna);
+    if (!c || !lookValido(r.prendas)) throw new Error("look_invalido");
+    return { consigna: c.id, prendas: r.prendas.slice(), puntaje: faltantes(r.prendas).length ? 0 : puntuarLook(r.prendas, c).total };
+  });
+  return { total: detalle.reduce((s, r) => s + r.puntaje, 0), rondas: detalle };
+}
+
 /** Puntúa un look para una consigna. Determinístico: mismo look → mismo resultado. */
 function puntuarLook(ids, consigna) {
   const items = [...ids].sort().map(id => POR_ID[id]);
@@ -1578,7 +1726,47 @@ function boot() {
   $("#hero-avatar").innerHTML = avatarSVG({ piel: 2, silueta: 0, peinado: 1, pelo: 1, puestas: ["top_01", "bot_01", "coa_01", "sho_05", "jew_02", "bag_03"] });
   const best = store.get();
   if (best) { $("#best-inicio").hidden = false; $("#best-inicio").textContent = `Tu mejor marca: ${best}/300`; }
-  $("#btn-jugar").onclick = () => { S.reloj = $("#chk-reloj").checked; pintarSetup(); show("s-avatar"); };
+  /* ---------- Ranking online: conexión ---------- */
+  const RANKING_ON = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
+  const ls = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* sin storage */ } } };
+  let deviceId = ls.get("icon_device_id");
+  if (!deviceId || !/^[A-Za-z0-9_-]{8,64}$/.test(deviceId)) {
+    deviceId = (crypto.randomUUID ? crypto.randomUUID() : Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, "0")).join("")).replace(/[^A-Za-z0-9_-]/g, "");
+    ls.set("icon_device_id", deviceId);
+  }
+  S.nombre = ls.get("icon_apodo") || "";
+  const esc = t => String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  async function llamar(url, body, ms = 8000) {
+    const h = { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY };
+    if (SUPABASE_ANON_KEY.startsWith("eyJ")) h.Authorization = "Bearer " + SUPABASE_ANON_KEY; // claves "anon" viejas (JWT)
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms);
+    try {
+      const r = await fetch(url, { method: "POST", headers: h, body: JSON.stringify(body), signal: ctl.signal });
+      let json = {}; try { json = await r.json(); } catch (e) { /* respuesta vacía */ }
+      return { ok: r.ok, status: r.status, json };
+    } catch (e) { return { ok: false, status: 0, json: {} }; }
+    finally { clearTimeout(t); }
+  }
+  const funcion = (nombre, body, ms) => llamar(`${SUPABASE_URL}/functions/v1/${nombre}`, body, ms);
+  const rpcRanking = body => llamar(`${SUPABASE_URL}/rest/v1/rpc/ranking`, body);
+  const ordinal = n => `${n}ª`;
+
+  /* ---------- Apodo ---------- */
+  let trasNombre = null;
+  function pedirNombre(despues) { trasNombre = despues; $("#in-nombre").value = S.nombre; $("#nombre-error").textContent = ""; show("s-nombre"); setTimeout(() => $("#in-nombre").focus(), 50); }
+  $("#f-nombre").addEventListener("submit", e => {
+    e.preventDefault();
+    const n = $("#in-nombre").value.normalize("NFC").replace(/\s+/g, " ").trim();
+    if (n.length < 2 || n.length > 20) { $("#nombre-error").textContent = "El apodo tiene que tener entre 2 y 20 caracteres."; return; }
+    if (!/^[\p{L}\p{N} ._'-]+$/u.test(n)) { $("#nombre-error").textContent = "Usá solo letras, números, espacios, punto, guion o apóstrofo."; return; }
+    S.nombre = n; ls.set("icon_apodo", n);
+    const f = trasNombre; trasNombre = null; if (f) f();
+  });
+
+  const irAlAvatar = () => { pintarSetup(); show("s-avatar"); };
+  $("#btn-jugar").onclick = () => { S.reloj = $("#chk-reloj").checked; if (RANKING_ON && !S.nombre) pedirNombre(irAlAvatar); else irAlAvatar(); };
+  $("#btn-ranking-inicio").hidden = !RANKING_ON;
+  $("#btn-ranking-inicio").onclick = () => abrirRanking("s-inicio");
 
   /* ---------- Avatar ---------- */
   const GRUPOS = [
@@ -1607,12 +1795,23 @@ function boot() {
   $("#btn-empezar").onclick = nuevaPartida;
 
   /* ---------- Partida ---------- */
-  function nuevaPartida() {
-    let pool = CONSIGNAS.filter(c => !S.previas.includes(c.id));
-    if (pool.length < CONFIG.rondas) pool = CONSIGNAS.slice();
-    pool = pool.slice();
-    for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
-    S.consignas = pool.slice(0, CONFIG.rondas);
+  let iniciando = false;
+  async function nuevaPartida(e) {
+    if (iniciando) return;
+    S.gameId = null; let delServidor = null;
+    if (RANKING_ON) {
+      iniciando = true;
+      const b = e && e.currentTarget, txt = b && b.textContent;
+      if (b) { b.textContent = "Preparando…"; b.setAttribute("aria-busy", "true"); }
+      const r = await funcion("start-game", { deviceId, excluir: S.previas }, 4000);
+      if (b) { b.textContent = txt; b.removeAttribute("aria-busy"); }
+      iniciando = false;
+      if (r.ok && Array.isArray(r.json.consignas)) {
+        const cs = r.json.consignas.map(id => CONSIGNAS.find(c => c.id === id));
+        if (cs.length === CONFIG.rondas && cs.every(Boolean)) { delServidor = cs; S.gameId = r.json.gameId; }
+      }
+    }
+    S.consignas = delServidor || sortearConsignas(Math.random, S.previas); // sin conexión: se juega igual
     S.previas = S.consignas.map(c => c.id);
     S.resultados = []; S.ronda = 0;
     empezarRonda();
@@ -1787,6 +1986,7 @@ function boot() {
     $("#fin-best").textContent = total > prev && prev > 0 ? "¡Nuevo récord!" : prev ? `Tu mejor marca: ${Math.max(prev, total)}` : "";
     $("#cta-espejo").href = CONFIG.ctaUrl;
     show("s-final");
+    enviarPuntaje();
     contar($("#fin-pts"), total, 1100, () => { if (total >= 270) confeti(); });
     $("#card-prev").textContent = "Armando tu tarjeta…"; cardBlob = null;
     $("#btn-share").hidden = true; $("#row-sec").classList.add("single");
@@ -1823,6 +2023,151 @@ function boot() {
     } catch (e) { /* cancelado o no disponible */ }
   };
   $("#btn-otra").onclick = nuevaPartida;
+
+  /* ---------- Envío del puntaje ---------- */
+  function enviarPuntaje() {
+    const box = $("#fin-envio");
+    box.hidden = !RANKING_ON;
+    if (!RANKING_ON) return;
+    if (!S.gameId) { box.innerHTML = `<p class="note">Jugaste sin conexión: esta partida no entra al ranking.</p><button class="btn btn-ghost sm" data-a="ver">Ver ranking</button>`; return; }
+    box.innerHTML = `<p class="note">Guardando tu puntaje…</p>`;
+    const rondas = S.resultados.map(r => ({ consigna: r.consigna.id, prendas: r.puestas }));
+    funcion("submit-score", { gameId: S.gameId, deviceId, nombre: S.nombre, rondas }).then(r => {
+      if (r.ok) {
+        box.innerHTML = `<p class="lugar">Quedaste <b>${ordinal(r.json.posicion)}</b> de ${r.json.de}</p><button class="btn btn-ghost sm" data-a="ver">Ver ranking</button>`;
+      } else if (r.json.error === "partida_usada") {
+        box.innerHTML = `<p class="note">Esta partida ya está guardada.</p><button class="btn btn-ghost sm" data-a="ver">Ver ranking</button>`;
+      } else if (r.json.error === "nombre_invalido") {
+        box.innerHTML = `<p class="note err">${esc(r.json.mensaje || "Elegí otro apodo.")}</p><button class="btn btn-ghost sm" data-a="apodo">Cambiar apodo</button>`;
+      } else {
+        const detalle = r.status === 0 ? "" : r.json.mensaje ? ` ${esc(r.json.mensaje)}` : "";
+        box.innerHTML = `<p class="note err">No pudimos guardar tu puntaje.${detalle}</p><button class="btn btn-ghost sm" data-a="reintentar">Reintentar</button>`;
+      }
+    });
+  }
+  $("#fin-envio").addEventListener("click", e => {
+    const a = e.target.closest("[data-a]")?.dataset.a;
+    if (a === "ver") abrirRanking("s-final");
+    if (a === "reintentar") enviarPuntaje();
+    if (a === "apodo") pedirNombre(() => { show("s-final"); enviarPuntaje(); });
+  });
+
+  /* ---------- Ranking ---------- */
+  let volverA = "s-inicio", periodo = "siempre";
+  function desdePeriodo(p) {
+    const d = new Date(); d.setHours(0, 0, 0, 0);
+    if (p === "semana") d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); // desde el lunes
+    return p === "siempre" ? null : d.toISOString();
+  }
+  function abrirRanking(desde) { if (desde) volverA = desde; show("s-ranking"); cargarRanking(); }
+  const fechaCorta = f => new Date(f).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" });
+  const MEDALLA = { 1: "medalla de oro", 2: "medalla de plata", 3: "medalla de bronce" };
+  function filaRanking(f) {
+    return `<li class="rk-fila${f.esVos ? " vos" : ""}"><span class="rk-pos${f.posicion <= 3 ? " m" + f.posicion : ""}">${f.posicion}${MEDALLA[f.posicion] ? `<span class="sr-only">, ${MEDALLA[f.posicion]}</span>` : ""}</span>`
+      + `<span class="rk-nom">${esc(f.nombre)}${f.esVos ? " <small>(vos)</small>" : ""}</span><span class="rk-pts num">${f.puntaje}</span><span class="rk-fecha num">${fechaCorta(f.fecha)}</span></li>`;
+  }
+  async function cargarRanking() {
+    $("#rk-apodo").textContent = S.nombre || "todavía no elegiste";
+    document.querySelectorAll("#s-ranking .seg .chip").forEach(c => c.setAttribute("aria-pressed", c.dataset.p === periodo));
+    const lista = $("#rk-lista"), estado = $("#rk-estado");
+    estado.textContent = "Cargando…"; lista.innerHTML = "";
+    const r = await rpcRanking({ p_desde: desdePeriodo(periodo), p_device: deviceId, p_limite: 50 });
+    if (!r.ok) { estado.textContent = "No pudimos cargar el ranking. Revisá tu conexión y tocá Actualizar."; return; }
+    const { total, filas, yo } = r.json;
+    if (!total) { estado.textContent = ""; lista.innerHTML = `<li class="rk-vacio">Todavía nadie jugó. ¡Estrenalo vos!</li>`; return; }
+    estado.textContent = `${total} ${total === 1 ? "participante" : "participantes"}`;
+    lista.innerHTML = filas.map(filaRanking).join("") + (yo && yo.posicion > filas.length ? `<li class="rk-sep" aria-hidden="true">…</li>${filaRanking(yo)}` : "");
+  }
+  document.querySelector("#s-ranking .seg").addEventListener("click", e => { const c = e.target.closest(".chip"); if (c) { periodo = c.dataset.p; cargarRanking(); } });
+  $("#rk-actualizar").onclick = cargarRanking;
+  $("#rk-volver").onclick = () => show(volverA);
+  $("#rk-cambiar").onclick = () => pedirNombre(() => abrirRanking());
+
+  /* ---------- Administración (el token vive solo en memoria) ---------- */
+  let adminToken = null, jugadoras = [], historial = [], vistaAdmin = "jugadoras";
+  $("#rk-admin").onclick = () => { show("s-admin"); mostrarAdmin(); };
+  $("#ad-volver").onclick = () => abrirRanking();
+  function mostrarAdmin(msg) {
+    $("#ad-login").hidden = !!adminToken; $("#ad-panel").hidden = !adminToken;
+    $("#ad-error").textContent = msg || "";
+    if (adminToken) cargarAdmin(); else setTimeout(() => $("#in-pass").focus(), 50);
+  }
+  $("#ad-login").addEventListener("submit", async e => {
+    e.preventDefault();
+    const pass = $("#in-pass").value; if (!pass) return;
+    const b = $("#ad-entrar"); b.disabled = true; b.textContent = "Entrando…";
+    const r = await funcion("admin-login", { password: pass });
+    b.disabled = false; b.textContent = "Entrar"; $("#in-pass").value = "";
+    if (r.ok && r.json.token) { adminToken = r.json.token; mostrarAdmin(); return; }
+    $("#ad-error").textContent = r.status === 429 ? "Demasiados intentos. Probá en 10 minutos." : r.status === 401 ? "Contraseña incorrecta" : "No pudimos conectar. Probá de nuevo.";
+  });
+  $("#ad-salir").onclick = () => { adminToken = null; jugadoras = []; historial = []; mostrarAdmin(); };
+  async function accion(body) {
+    const r = await funcion("admin-action", { token: adminToken, ...body });
+    if (r.status === 401) { adminToken = null; mostrarAdmin("Tu sesión venció. Entrá de nuevo."); return null; }
+    if (!r.ok) toast(r.json.mensaje || "No se pudo completar.");
+    return r.ok ? r.json : null;
+  }
+  async function cargarAdmin() {
+    const [a, b] = await Promise.all([accion({ accion: "list" }), accion({ accion: "history" })]);
+    if (!a || !b) return;
+    jugadoras = a.jugadoras; historial = b.historial; pintarAdmin();
+  }
+  const signo = n => (n > 0 ? "+" : "") + n;
+  function pintarAdmin() {
+    document.querySelectorAll("#ad-panel .seg .chip").forEach(c => c.setAttribute("aria-pressed", c.dataset.v === vistaAdmin));
+    $("#ad-v-jugadoras").hidden = vistaAdmin !== "jugadoras"; $("#ad-v-historial").hidden = vistaAdmin !== "historial";
+    const q = $("#ad-buscar").value.trim().toLowerCase();
+    const lista = jugadoras.filter(j => !q || j.nombre.toLowerCase().includes(q));
+    $("#ad-lista").innerHTML = lista.length ? lista.map(j => {
+      const borrada = j.partidas === 0 && j.borradas > 0, final = (j.mejor ?? 0) + j.bonus;
+      return `<li class="ad-fila${borrada ? " borrada" : ""}" data-d="${esc(j.deviceId)}" data-n="${esc(j.nombre)}" data-final="${final}">`
+        + `<div class="ad-cab"><div><b>${esc(j.nombre)}</b><div class="note num">Mejor ${j.mejor ?? "—"} · Bonus ${signo(j.bonus)} · ${j.partidas} ${j.partidas === 1 ? "partida" : "partidas"}${borrada ? " · Borrada" : ""}</div></div>`
+        + `<div class="ad-acc"><button class="btn btn-ghost sm" data-a="puntos" aria-label="Sumar o restar puntos a ${esc(j.nombre)}">± Puntos</button>`
+        + (borrada ? `<button class="btn btn-ghost sm" data-a="restaurar" aria-label="Restaurar a ${esc(j.nombre)}">Restaurar</button>` : `<button class="btn btn-ghost sm" data-a="borrar" aria-label="Borrar a ${esc(j.nombre)}">Borrar</button>`)
+        + `</div></div><div class="ad-form" hidden></div></li>`;
+    }).join("") : `<li class="rk-vacio">${jugadoras.length ? "No hay jugadoras con ese nombre." : "Todavía no hay jugadoras."}</li>`;
+    const ACC = { bonus: c => `${signo(c)} puntos`, delete: c => `Borrada (${c} ${c === 1 ? "partida" : "partidas"})`, restore: c => `Restaurada (${c} ${c === 1 ? "partida" : "partidas"})` };
+    $("#ad-log").innerHTML = historial.length ? historial.map(h => `<li class="ad-fila"><div class="ad-cab"><div><b>${esc(h.nombre || "—")}</b>`
+      + `<div class="note num">${new Date(h.fecha).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} · ${ACC[h.accion](h.cantidad)}${h.motivo ? " · " + esc(h.motivo) : ""}</div></div>`
+      + (h.accion === "delete" ? `<button class="btn btn-ghost sm" data-a="restaurar-log" data-d="${esc(h.deviceId)}">Restaurar</button>` : "") + `</div></li>`).join("")
+      : `<li class="rk-vacio">Todavía no hay acciones.</li>`;
+  }
+  document.querySelector("#ad-panel .seg").addEventListener("click", e => { const c = e.target.closest(".chip"); if (c) { vistaAdmin = c.dataset.v; pintarAdmin(); } });
+  $("#ad-buscar").addEventListener("input", pintarAdmin);
+  $("#ad-lista").addEventListener("input", e => {
+    const fila = e.target.closest(".ad-fila"); if (!fila || e.target.dataset.f !== "cant") return;
+    const n = parseInt(e.target.value, 10), prev = fila.querySelector("[data-f=prev]");
+    prev.textContent = Number.isInteger(n) && n !== 0 ? `Queda en ${+fila.dataset.final + n} (hoy ${fila.dataset.final})` : "";
+  });
+  $("#ad-lista").addEventListener("click", async e => {
+    const btn = e.target.closest("[data-a]"); if (!btn) return;
+    const fila = btn.closest(".ad-fila"), form = fila.querySelector(".ad-form"), d = fila.dataset.d, nombre = fila.dataset.n, a = btn.dataset.a;
+    if (a === "puntos") {
+      form.innerHTML = `<label>Puntos (de -300 a 300)<input class="campo sm" type="number" step="1" min="-300" max="300" inputmode="numeric" data-f="cant"></label>`
+        + `<label>Motivo (obligatorio)<input class="campo sm" maxlength="200" data-f="motivo"></label><p class="note num" data-f="prev" aria-live="polite"></p>`
+        + `<div class="fila-btn"><button class="btn btn-dark sm" data-a="aplicar">Aplicar</button><button class="btn btn-ghost sm" data-a="cancelar">Cancelar</button></div>`;
+      form.hidden = false; form.querySelector("input").focus();
+    } else if (a === "borrar") {
+      form.innerHTML = `<p>¿Borrar a ${esc(nombre)} del ranking? Esta acción se puede deshacer desde el historial.</p>`
+        + `<div class="fila-btn"><button class="btn peligro sm" data-a="confirmar-borrar">Borrar</button><button class="btn btn-ghost sm" data-a="cancelar">Cancelar</button></div>`;
+      form.hidden = false;
+    } else if (a === "cancelar") { form.hidden = true; form.innerHTML = ""; }
+    else if (a === "aplicar") {
+      const n = parseInt(form.querySelector("[data-f=cant]").value, 10), motivo = form.querySelector("[data-f=motivo]").value.trim();
+      if (!Number.isInteger(n) || n === 0 || n < -300 || n > 300) { toast("Poné un número entero entre -300 y 300, distinto de 0."); return; }
+      if (!motivo) { toast("Escribí el motivo."); return; }
+      if (await accion({ accion: "add_points", deviceId: d, cantidad: n, motivo })) { toast(`Listo: ${signo(n)} puntos para ${nombre}.`); cargarAdmin(); }
+    } else if (a === "confirmar-borrar") {
+      if (await accion({ accion: "delete_player", deviceId: d })) { toast(`${nombre} ya no aparece en el ranking.`); cargarAdmin(); }
+    } else if (a === "restaurar") {
+      if (await accion({ accion: "restore_player", deviceId: d })) { toast(`${nombre} volvió al ranking.`); cargarAdmin(); }
+    }
+  });
+  $("#ad-log").addEventListener("click", async e => {
+    const b = e.target.closest("[data-a=restaurar-log]"); if (!b) return;
+    if (await accion({ accion: "restore_player", deviceId: b.dataset.d })) { toast("Restaurada."); cargarAdmin(); }
+  });
 
   function cargarImg(svg) {
     return new Promise((ok, ko) => { const im = new Image(); im.onload = () => ok(im); im.onerror = ko; im.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg); });
