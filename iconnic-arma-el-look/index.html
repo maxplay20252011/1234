@@ -139,6 +139,12 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
 .tab{flex:0 0 auto;background:none;border:none;padding:11px 9px 9px;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;position:relative}
 .tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
 .tab .pip{position:absolute;top:7px;right:1px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.subs{display:flex;align-items:center;gap:8px;padding:8px 16px 0}
+.chips{display:flex;gap:6px;overflow-x:auto;flex:1;min-width:0;scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent)}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;border:1px solid var(--line);background:var(--card);border-radius:99px;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.cuenta{flex:0 0 auto;font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
 .rack{position:relative}
 .rack::before{content:"";position:absolute;left:0;right:0;top:15px;height:3px;border-radius:2px;background:linear-gradient(180deg,#C9A770,var(--brass) 60%,#7E6136);box-shadow:0 1px 1px rgba(0,0,0,.15)}
 .rack[data-modo="estante"]::before{top:auto;bottom:10px;height:7px;border-radius:1px;background:linear-gradient(180deg,#D8BE92,var(--brass))}
@@ -280,6 +286,7 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
     </div>
     <div class="placard">
       <div class="tabs" role="tablist" id="tabs" aria-label="Categorías del placard"></div>
+      <div class="subs" id="subs" role="group" aria-label="Filtrar prendas"></div>
       <div class="rack" id="rack"><div class="rail" id="rail" role="tabpanel" aria-label="Prendas"></div></div>
     </div>
   </section>
@@ -361,17 +368,18 @@ const REGLAS = {
   titulos: [[270, "ICON total"], [220, "Stylist en potencia"], [150, "Ojo entrenado"], [0, "Estilo en construcción"]],
 };
 
-const CATEGORIAS = [
-  { id: "top", nombre: "Tops", modo: "percha" },
-  { id: "bottom", nombre: "Bottoms", modo: "percha" },
-  { id: "vestido", nombre: "Vestidos", modo: "percha" },
-  { id: "calzado", nombre: "Calzado", modo: "estante" },
-  { id: "abrigo", nombre: "Abrigos", modo: "percha" },
-  { id: "bolso", nombre: "Bolsos", modo: "estante" },
-  { id: "joyeria", nombre: "Joyas y gafas", modo: "estante" },
+/* Pestañas del placard: cada una agrupa una o más categorías. Los subfiltros salen del campo "sub". */
+const TABS = [
+  { id: "top", nombre: "Tops", cats: ["top"], modo: "percha" },
+  { id: "bottom", nombre: "Bottoms", cats: ["bottom"], modo: "percha" },
+  { id: "vestido", nombre: "Vestidos", cats: ["vestido"], modo: "percha" },
+  { id: "calzado", nombre: "Calzado", cats: ["calzado"], modo: "estante" },
+  { id: "abrigo", nombre: "Abrigos", cats: ["abrigo"], modo: "percha" },
+  { id: "bolso", nombre: "Bolsos", cats: ["bolso"], modo: "estante" },
+  { id: "accesorios", nombre: "Accesorios", cats: ["joyeria", "cinturon", "medias", "panuelo", "sombrero"], modo: "estante" },
 ];
-// Orden de capas: piel → bottom → top/vestido → abrigo → calzado → accesorios
-const CAPA = { bottom: 1, top: 2, vestido: 2, abrigo: 3, calzado: 4, bolso: 5, joyeria: 6 };
+// Orden de capas: piel → medias → bottom → top/vestido → cinturón → abrigo → pañuelo → calzado → bolso → joyas → sombrero
+const CAPA = { medias: 0.5, bottom: 1, top: 2, vestido: 2, cinturon: 2.5, abrigo: 3, panuelo: 3.5, calzado: 4, bolso: 5, joyeria: 6, sombrero: 7 };
 const MAX_JOYERIA = 2;
 
 
@@ -890,6 +898,201 @@ const DIBUJOS = {
     return { p: [limb({ pts: p, w: p.map(() => 1.5) }, { capIni: "flat", capFin: "flat" }), circ(nb[0], nb[1] + 16.5, 2.7)], d: [ln(curva(p), shade(c, 0.45), 0.6, 'stroke-dasharray=".8 1.6"')] }; }, { opts: { sh: 0.3, ancho: 1.4 } }),
 };
 
+/* ---------- PRENDAS (Bloque A): formas nuevas ---------- */
+const elip = (x, y, rx, ry) => { const kx = rx * 0.5523, ky = ry * 0.5523; return `M${pt([x - rx, y])} C${pt([x - rx, y - ky])} ${pt([x - kx, y - ry])} ${pt([x, y - ry])} C${pt([x + kx, y - ry])} ${pt([x + rx, y - ky])} ${pt([x + rx, y])} C${pt([x + rx, y + ky])} ${pt([x + kx, y + ry])} ${pt([x, y + ry])} C${pt([x - kx, y + ry])} ${pt([x - rx, y + ky])} ${pt([x - rx, y])} Z`; };
+const cinturaL = (A, y, e) => curva([ext(A, "l", y - A.tilt * 0.3, e), [cX(A, y), y + 0.5], ext(A, "r", y + A.tilt * 0.3, e)]);
+const banda = (A, y0, y1, e) => shape([[...ext(A, "l", y0 - A.tilt * 0.3, e), 1], [...ext(A, "r", y0 + A.tilt * 0.3, e), 1], [...ext(A, "r", y1 + A.tilt * 0.3, e), 1], [...ext(A, "l", y1 - A.tilt * 0.3, e), 1]]);
+const HILO = "#D9A44A", DASH = 'stroke-dasharray="1.8 1.4"';
+const escoteRedondo = (A, k) => ln(curva([[A.cuello.r[0] + 1.5, A.cuello.r[1] + 2.2], [A.cuello.base[0], A.cuello.base[1] + 7], [A.cuello.l[0] - 1.5, A.cuello.l[1] + 2.2]]), k, 0.9);
+const solapas = (A, pan, c, ancho = 9) => pan.map((x, i) => { const g = i ? 1 : -1, q = x.quiebre, n = x.cuello, m = lp(q, n, 0.5); return fillD(shape([[...q, 1], [m[0] + g * ancho, m[1], 1], [n[0] + g * 3, n[1] + 3, 1]]), shade(c, -0.06)); });
+
+Object.assign(DIBUJOS, {
+  /* ---- tops ---- */
+  crop: (A, c) => { const hem = A.Y.bu + 18, k = shade(c, -0.28);
+    return { p: [shape(torsoPts(A, { hem, ease: 2.5, hemCurva: 1 })), ...mangas(A, 0.22, 4)],
+      d: [escoteRedondo(A, k), ln(curva([ext(A, "l", hem - 3.5 - A.tilt * 0.4, 1), [cX(A, hem), hem - 2.5], ext(A, "r", hem - 3.5 + A.tilt * 0.4, 1)]), k, 0.7, 'stroke-dasharray="1.6 1.6"')] }; },
+  camisola: (A, c) => { const Y = A.Y, yT = Y.bu - 10, cx = cX(A, yT);
+    const tiras = LADOS.map(s => limb({ pts: [[A.busto[s][0] + (s === "l" ? 5 : -5), yT - 1], lp(A.cuello[s], A.hombros[s], 0.42)], w: [1.6, 1.6] }));
+    return { p: [shape(torsoPts(A, { hem: Y.wa + 14, ease: 2.5, cuello: "tirantes", alto: 10 })), ...tiras],
+      d: [ln(curva([[A.busto.l[0] + 4, yT + 1.5], [cx - 9, yT], [cx, yT + 5], [cx + 9, yT], [A.busto.r[0] - 4, yT + 1.5]]), shade(c, -0.3), 2.6, 'stroke-dasharray=".1 2.4"'),
+        ln(curva([ext(A, "l", Y.bu, -6), ext(A, "l", Y.wa, -7), ext(A, "l", Y.wa + 10, -6)]), shade(c, 0.6), 1.6, 'opacity=".55"'), ...pliegues(A, c, { cintura: 1 })] }; },
+  cardigan: (A, c) => { const Y = A.Y, hem = Y.wa + 10, pan = LADOS.map(s => panelPts(A, s, { hem, ease: 3.5, gap: 2.5, quiebre: Y.bu + 8 })), k = shade(c, -0.3); let rib = "";
+    for (let x = 36; x <= 164; x += 2.6) rib += ln(`M${f1(x)},${f1(hem - 7)} L${f1(x)},${f1(hem + 5)}`, k, 0.55);
+    return { p: [...pan.map(x => shape(x.pts)), ...mangas(A, 0.9, u => 5 + u * 2), ...punos(A, 0.88, 0.98, 3.5)],
+      d: [rib, ...pan.map((x, i) => { const g = i ? 1 : -1; return ln(curva([x.cuello, x.quiebre, ...[1, 2, 3].map(j => { const y = lerp(x.quiebre[1], hem, j / 3); return [cX(A, y) + g * 2.5, y]; })]), k, 2); }),
+        ...[0.15, 0.45, 0.75].map(u => { const y = lerp(Y.bu + 8, hem - 4, u); return dot([cX(A, y) - 2.5, y], 1.5, shade(c, 0.45)); }), ...pliegues(A, c, { codos: 1 })] }; },
+  halter: (A, c) => { const Y = A.Y, yT = Y.bu - 9, nb = A.cuello.base;
+    const tiras = LADOS.map(s => limb({ pts: [[A.busto[s][0] + (s === "l" ? 6 : -6), yT], [nb[0] + (s === "l" ? -5 : 5), nb[1] - 10]], w: [3, 3] }));
+    return { p: [shape(torsoPts(A, { hem: Y.wa + 14, ease: 1.5, cuello: "tirantes", alto: 9 })), ...tiras],
+      d: [...[-6, -2, 2, 6].map(dx => ln(curva([[cX(A, yT) + dx * 1.4, yT + 3], [cX(A, Y.bu + 4) + dx, Y.bu + 4], [cX(A, Y.bu + 14) + dx * 0.6, Y.bu + 14]]), shade(c, -0.25), 0.7)), ...pliegues(A, c, { cintura: 1 })] }; },
+  chaleco: (A, c) => { const Y = A.Y, hem = Y.wa + 16, k = shade(c, -0.35);
+    return { p: [shape(torsoPts(A, { hem, ease: 2.5, cuello: "v", sinMangas: 1, hemPico: 1, hemCurva: 5 }))],
+      d: [ln(curva([[cX(A, Y.bu - 4), Y.bu - 4], [cX(A, hem) + 0.5, hem + 5]]), k, 0.9), ...[0.2, 0.45, 0.7].map(u => { const y = lerp(Y.bu + 2, hem - 4, u); return dot([cX(A, y) + 2, y], 1.4, k); }),
+        ...LADOS.map(s => { const g = s === "l" ? 1 : -1, y = Y.wa + 6, x = sideX(A, s, y) + g * 4; return ln(`M${pt([x, y])} L${pt([x + g * 10, y - 1])}`, k, 1.1); })] }; },
+
+  /* ---- bottoms ---- */
+  wideLeg: (A, c) => { const yw = A.Y.wa + 2;
+    return { p: pantalonP(A, { ease: 2, t: 0.99, flare: u => 3 + u * 15 }),
+      d: [ln(cinturaL(A, yw + 4.5, 0.5), HILO, 0.7, DASH), ln(cinturaL(A, yw + 4, 0.5), shade(c, -0.3), 0.8), ln(curva([[cX(A, yw) + 2, yw + 5], [cX(A, yw + 20) + 3, yw + 22], [cX(A, yw + 28) - 0.5, yw + 30]]), HILO, 0.8),
+        ...LADOS.map(s => { const g = s === "l" ? 1 : -1, x = sideX(A, s, yw + 5); return ln(curva([[x + g, yw + 5], [x + g * 7, yw + 9], [x + g * 11, yw + 5]]), HILO, 0.8); }),
+        entrepierna(A, c, 0.99), ...LADOS.map(s => ln(curva(resample(A.piernas[s], 0.15, 0.99, 5).pts.map((p, i) => [p[0] + (s === "l" ? -1 : 1) * (4 + i * 1.6), p[1]])), shade(c, 0.2), 0.8))] }; },
+  lapiz: (A, c) => { const Y = A.Y, hem = Y.ro + 6;
+    return { p: [shape(faldaPts(A, { hem, flare: -4, ease: 1.5 }))],
+      d: [ln(cinturaL(A, Y.wa + 5, 1.5), shade(c, -0.3), 0.9), ln(`M${pt([cX(A, hem) + 3, hem - 18])} L${pt([cX(A, hem) + 3, hem + 2])}`, shade(c, -0.45), 1.1),
+        ...LADOS.map(s => ln(curva([ext(A, s, Y.wa + 6, -6), ext(A, s, Y.hi, -9)]), shade(c, -0.2), 0.7))] }; },
+  faldaLarga: (A, c, it) => { const Y = A.Y, hem = 404, fl = 26, ea = y => 2 + fl * Math.pow((y - Y.wa) / (hem - Y.wa), 1.5), tiers = [0.36, 0.68].map(u => lerp(Y.wa, hem, u));
+    return { p: [shape(faldaPts(A, { hem, flare: fl, ease: 2 }))],
+      d: [...(it.detalleHex ? [lunaresP(it.detalleHex, 1.3)] : []),
+        ...tiers.map(y => ln(curva([ext(A, "l", y - A.tilt * 0.5, ea(y)), [cX(A, y), y + 1.5], ext(A, "r", y + A.tilt * 0.5, ea(y))]), shade(c, -0.3), 1)),
+        ...tiers.flatMap(y => { const xl = sideX(A, "l", y) - ea(y), xr = sideX(A, "r", y) + ea(y); return Array.from({ length: 8 }, (_, i) => { const x = lerp(xl, xr, (i + 1) / 9); return ln(`M${pt([x, y + 2])} L${pt([x + (i - 3.5) * 0.6, y + 9])}`, shade(c, -0.18), 0.6); }); }),
+        ln(cinturaL(A, Y.wa + 4, 2), shade(c, -0.3), 0.9)] }; },
+  jogger: (A, c) => { const yw = A.Y.wa, k = shade(c, -0.3), cx = cX(A, yw + 7);
+    return { p: [...pantalonP(A, { ease: 3, t: 0.92, flare: u => -u * 5, tiro: 0 }), ...LADOS.map(s => limb(resample(A.piernas[s], 0.9, 0.97, 2), { extra: 2.5, capIni: "flat", capFin: "flat" }))],
+      d: [fillD(banda(A, yw, yw + 7, 3.2), shade(c, 0.08), 0.9), ln(curva([[cx - 2, yw + 7], [cx - 4, yw + 16]]), "#F4F1EC", 0.9), ln(curva([[cx + 2, yw + 7], [cx + 3.5, yw + 15]]), "#F4F1EC", 0.9),
+        ...LADOS.map(s => { const [a, b] = cruce(A.piernas[s], 0.9, 2.5); return ln(curva([a, b]), k, 0.9); }), ...pliegues(A, c, { rodillas: 1 })] }; },
+  cargo: (A, c) => { const yw = A.Y.wa + 2, k = shade(c, -0.32);
+    const bolsillo = s => { const b = bordes(resample(A.piernas[s], 0.32, 0.5, 1), () => 7), o = s === "l" ? b.L : b.R, n = s === "l" ? b.R : b.L;
+      const p0 = lp(o[0], n[0], 0.12), p1 = lp(o[0], n[0], 0.6), p2 = lp(o[1], n[1], 0.6), p3 = lp(o[1], n[1], 0.12);
+      return fillD(shape([[...p0, 1], [...p1, 1], [...p2, 1], [...p3, 1]]), shade(c, 0.06), 0.9) + ln(`M${pt(lp(p0, p3, 0.25))} L${pt(lp(p1, p2, 0.25))}`, k, 0.9); };
+    return { p: pantalonP(A, { ease: 3.5, t: 0.97, flare: () => 2 }),
+      d: [ln(cinturaL(A, yw + 4, 0.5), k, 0.9), bolsillo("l"), bolsillo("r"), ...pliegues(A, c, { rodillas: 1 }), ...LADOS.map(s => { const [a, b] = cruce(A.piernas[s], 0.94, 9); return ln(curva([a, b]), k, 0.8); })] }; },
+  bermuda: (A, c) => { const yw = A.Y.wa + 2, k = shade(c, -0.3);
+    return { p: pantalonP(A, { ease: 3, t: 0.4, flare: u => u * 6 }),
+      d: [ln(cinturaL(A, yw + 5, 0.6), k, 0.9), ...LADOS.map(s => ln(curva(resample(A.piernas[s], 0.1, 0.39, 3).pts), shade(c, 0.2), 0.9)),
+        ...LADOS.map(s => { const [a, b] = cruce(A.piernas[s], 0.36, 9); return ln(curva([a, b]), k, 0.8); }), entrepierna(A, c, 0.4)] }; },
+
+  /* ---- vestidos / enteritos ---- */
+  coctel: (A, c) => { const Y = A.Y, k = shade(c, -0.3), cx = cX(A, Y.wa);
+    return { p: [shape(torsoPts(A, { hem: Y.wa + 3, ease: 1, cuello: "recto", alto: 8 })), shape(faldaPts(A, { hem: Y.cr + 32, flare: 24, ease: 1.5, tiro: 2 }))],
+      d: [ln(cinturaL(A, Y.wa + 3, 1), k, 1.6), fillD(shape([[cx + 5, Y.wa + 3], [cx + 14, Y.wa - 3], [cx + 13, Y.wa + 9]]), c, 0.8), fillD(shape([[cx + 5, Y.wa + 3], [cx - 4, Y.wa - 3], [cx - 3, Y.wa + 9]]), c, 0.8), dot([cx + 5, Y.wa + 3], 2, shade(c, -0.15)),
+        ...[-16, -6, 4, 14].map(dx => ln(curva([[cX(A, Y.wa + 8) + dx * 0.5, Y.wa + 8], [cX(A, Y.cr + 28) + dx * 1.4, Y.cr + 28]]), dx < 0 ? shade(c, 0.45) : k, 0.8, 'opacity=".7"'))] }; },
+  wrap: (A, c, it) => { const Y = A.Y, nl = A.cuello.l, k = shade(c, -0.32), xs = sideX(A, "l", Y.wa);
+    return { p: [shape(torsoPts(A, { hem: Y.wa + 4, ease: 2, cuello: "v" })), ...mangas(A, 0.55, 5), shape(faldaPts(A, { hem: Y.ro + 14, flare: 15 }))],
+      d: [...(it.detalleHex ? [lunaresP(it.detalleHex, 1.4)] : []), ln(curva([[nl[0] - 1, nl[1]], [cX(A, Y.bu) + 3, Y.bu - 2], [sideX(A, "r", Y.wa) - 2, Y.wa + 2]]), k, 1.1),
+        ln(curva([[sideX(A, "r", Y.wa) - 2, Y.wa + 3], [cX(A, Y.hi) + 16, Y.hi + 6], [cX(A, Y.ro + 12) + 22, Y.ro + 14]]), k, 0.9),
+        ln(curva([[xs + 3, Y.wa + 2], [xs + 1, Y.wa + 14], [xs + 3, Y.wa + 24]]), shade(c, -0.2), 2.2), ln(curva([[xs + 3, Y.wa + 2], [xs + 6, Y.wa + 16], [xs + 9, Y.wa + 22]]), shade(c, -0.2), 2.2),
+        ...LADOS.map(s => { const [a, b] = cruce(A.brazos[s], 0.52, 5); return ln(curva([a, b]), k, 0.8); })] }; },
+  tejidoLargo: (A, c) => { const Y = A.Y, nb = A.cuello.base, k = shade(c, -0.2); let rib = "";
+    for (let x = 30; x <= 170; x += 3.4) rib += ln(`M${f1(x)},60 L${f1(x)},420`, k, 0.55);
+    return { p: [shape(torsoPts(A, { hem: Y.wa + 4, ease: 2, cuello: "alto" })), ...mangas(A, 0.97, 4), limb({ pts: [[A.cuello.top[0], 64], [nb[0], nb[1] + 1]], w: [17, 18.5] }, { capIni: "flat", capFin: "flat" }), shape(faldaPts(A, { hem: 404, flare: 12, ease: 2 }))],
+      d: [rib, ...pliegues(A, c, { codos: 1 })] }; },
+  mono: (A, c) => { const Y = A.Y;
+    return { p: [shape(torsoPts(A, { hem: Y.wa + 4, ease: 2, cuello: "v", sinMangas: 1 })), ...pantalonP(A, { ease: 3, t: 0.985, flare: u => 2 + u * 8, tiro: 0 })],
+      d: [fillD(banda(A, Y.wa - 2.5, Y.wa + 4, 2.5), shade(c, -0.2), 0.8), dot([cX(A, Y.wa) + 1, Y.wa + 0.8], 2.2, "#C9A45A"),
+        ...LADOS.map(s => ln(curva(resample(A.piernas[s], 0.12, 0.98, 5).pts), shade(c, 0.2), 0.9)), entrepierna(A, c, 0.985)] }; },
+  vCamiseta: (A, c, it) => { const Y = A.Y;
+    return { p: [shape(torsoPts(A, { hem: Y.wa + 4, ease: 4 })), ...mangas(A, 0.27, 5.5), shape(faldaPts(A, { hem: Y.cr + 28, flare: 5, ease: 4 }))],
+      d: [...(it.detalleHex ? [Y.bu + 4, Y.bu + 11, Y.cr + 6, Y.cr + 13].map(y => ln(`M20,${f1(y)} L180,${f1(y)}`, it.detalleHex, 3)) : []), escoteRedondo(A, shade(c, -0.28)), ...pliegues(A, c, { cintura: 1, dy: 4 })] }; },
+
+  /* ---- abrigos ---- */
+  trench: (A, c) => { const Y = A.Y, hem = Y.ro + 22, pan = LADOS.map(s => panelPts(A, s, { hem, ease: 5, gap: 3, quiebre: Y.bu + 8 })), k = shade(c, -0.35), cx = cX(A, Y.wa);
+    return { p: [...pan.map(x => shape(x.pts)), ...mangas(A, 0.97, 7)],
+      d: [...solapas(A, pan, c, 13), ...[Y.bu + 14, Y.bu + 28, Y.wa + 16].flatMap(y => [dot([cX(A, y) - 7, y], 1.5, k), dot([cX(A, y) + 7, y], 1.5, k)]),
+        fillD(banda(A, Y.wa - 3, Y.wa + 4, 5.5), shade(c, -0.08), 0.9), fillD(shape([[cx - 6, Y.wa - 4.5, 1], [cx + 4, Y.wa - 4.5, 1], [cx + 4, Y.wa + 5.5, 1], [cx - 6, Y.wa + 5.5, 1]]), "none", 1.2),
+        ...LADOS.map(s => { const [a, b] = cruce(A.brazos[s], 0.85, 7); return ln(curva([a, b]), k, 2.2); }),
+        ...LADOS.map(s => ln(curva([lp(A.cuello[s], A.hombros[s], 0.35), [A.hombros[s][0] + (s === "l" ? 2 : -2), A.hombros[s][1] + 1]]), k, 1.6)), ...pliegues(A, c, { codos: 1 })] }; },
+  chalecoInflable: (A, c) => { const Y = A.Y, hem = Y.hi + 2, k = shade(c, -0.3), nb = A.cuello.base; let q = "";
+    for (let y = Y.ax + 2; y < hem - 4; y += 14) q += ln(curva([ext(A, "l", y, 7), [cX(A, y), y + 3], ext(A, "r", y, 7)]), k, 1);
+    return { p: [shape(torsoPts(A, { hem, ease: 7, cuello: "alto", sinMangas: 1 })), limb({ pts: [[nb[0], 73], [nb[0], nb[1] + 3]], w: [25, 27] }, { capIni: "flat", capFin: "flat" })],
+      d: [q, ln(`M${pt([nb[0], 73])} L${pt([cX(A, hem), hem + 2])}`, shade(c, -0.45), 1.1)] }; },
+  camperaJean: (A, c) => { const Y = A.Y, hem = Y.wa + 14, pan = LADOS.map(s => panelPts(A, s, { hem, ease: 4, gap: 4, quiebre: Y.bu - 4 }));
+    return { p: [...pan.map(x => shape(x.pts)), ...mangas(A, 0.9, 5), ...punos(A, 0.88, 0.98, 6)],
+      d: [...solapas(A, pan, c, 8), ln(curva([ext(A, "l", Y.ax + 4, 4), [cX(A, Y.ax + 6), Y.ax + 8], ext(A, "r", Y.ax + 4, 4)]), HILO, 0.8, DASH),
+        ...LADOS.map(s => { const x = lerp(sideX(A, s, Y.bu + 4), cX(A, Y.bu + 4), 0.45), y = Y.bu + 4; return fillD(shape([[x - 6, y, 1], [x + 6, y, 1], [x + 6, y + 5, 1], [x, y + 7.5, 1], [x - 6, y + 5, 1]]), shade(c, 0.05), 0.8) + dot([x, y + 4.5], 1, "#C9A45A"); }),
+        ln(curva([ext(A, "l", hem - 6 - A.tilt * 0.8, 4), [cX(A, hem - 6), hem - 5], ext(A, "r", hem - 6 + A.tilt * 0.8, 4)]), HILO, 0.8, DASH),
+        ...[0.2, 0.5, 0.8].map(u => { const y = lerp(Y.bu, hem - 4, u); return dot([cX(A, y) - 4, y], 1.3, "#C9A45A"); }), ...pliegues(A, c, { codos: 1 })] }; },
+  poncho: (A, c, it) => { const Y = A.Y, nl = A.cuello.l, nr = A.cuello.r, nb = A.cuello.base, wl = A.brazos.l.pts[3], wr = A.brazos.r.pts[3], hy = Y.hi + 14, m = it.detalleHex || "#F2E6D0";
+    const iz = [wl[0] - 9, hy - 6], de = [wr[0] + 9, hy - 6], pu = [cX(A, hy), hy + 12];
+    const pts = [[nl[0] - 1, nl[1] - 1], [lp(nl, A.hombros.l, 0.6)[0], A.hombros.l[1] - 2], [A.hombros.l[0] - 9, A.hombros.l[1] + 8], [...iz, 1], [...pu, 1], [...de, 1], [A.hombros.r[0] + 9, A.hombros.r[1] + 8], [lp(nr, A.hombros.r, 0.6)[0], A.hombros.r[1] - 2], [nr[0] + 1, nr[1] - 1], [nb[0], nb[1] + 5]];
+    let guarda = ""; [Y.bu + 6, Y.wa + 12].forEach(y => { guarda += ln(`M10,${f1(y)} L190,${f1(y)}`, m, 4) + ln(Array.from({ length: 31 }, (_, i) => `${i ? "L" : "M"}${10 + i * 6},${f1(y + (i % 2 ? 5 : 9))}`).join(" "), shade(c, -0.35), 1.2); });
+    let fleco = ""; for (let i = 0; i <= 18; i++) { const a = i / 18, p = a < 0.5 ? lp(iz, pu, a * 2) : lp(pu, de, (a - 0.5) * 2); fleco += ln(`M${pt(p)} L${pt([p[0], p[1] + 7])}`, shade(c, -0.15), 1.2); }
+    return { p: [shape(pts)], d: [guarda, ln(curva([[nl[0] - 1, nl[1]], [nb[0], nb[1] + 6], [nr[0] + 1, nr[1]]]), shade(c, -0.35), 1.6)], fuera: fleco }; },
+
+  /* ---- calzado ---- */
+  chatitas: Object.assign((A, c) => calzadoPuesto(A, c, {
+    up: ["M-4.8,8 C-7.5,12 -10,15.5 -12.6,17.4 C-15,19.4 -14.6,23.4 -11.2,23.6 L4.2,23.2 C6.2,22.4 6.2,18 5.8,13 L5.4,7 C1.6,9 -2,9.4 -4.8,8 Z"],
+    suela: ["M-14,22.6 L6,22.4 L6,24.4 L-11.2,24.6 C-13.6,24.6 -14.4,23.8 -14,22.6 Z"],
+    det: [["M-10.6,13.4 L-8,11.8 L-7.6,14.6 Z M-7.6,13.2 L-5,12 L-5.6,14.8 Z", shade(c, -0.4), 0.9]] }), {
+    perfil: c => ({ p: ["M6,33 C6,28 12,27 20,26.5 C30,26 38,25 44,22 C50,20 58,21 62,25 L62,34 L9,35.5 C7,35.5 6,34.8 6,33 Z"],
+      capas: [{ p: ["M5,34 L63,33.4 L63,36.4 L9,37 C6,37 5,35.6 5,34 Z"], c: shade(c, -0.35), d: [] }],
+      d: [ln("M13,27.4 C18,24.6 24,24 28,25", shade(c, -0.35), 1), dot([18, 26.2], 1.8, shade(c, -0.35))] }) }),
+  mules: Object.assign((A, c) => calzadoPuesto(A, c, {
+    up: ["M-6,12.6 C-7.6,17 -9.4,21 -10,23 C-11,25.6 -9,26.6 -6.6,26 C-4,23 -1.4,18 1.4,14 C-1,13 -3.6,12.4 -6,12.6 Z", "M2.4,12 L5.6,12 L5.4,28.6 L2.8,28.6 Z"],
+    det: [["M-8.2,19.4 C-6,17.4 -3,16.6 -0.6,17.4", shade(c, -0.35), 0.8]] }), { pie: "taco",
+    perfil: c => ({ p: ["M4,35 C4,31.5 10,30 18,29 C26,28 32,26 36,22 L40,24 C36,30 26,36 10,38 C6,38 4,37 4,35 Z", "M52,18 L60,18 L59,41 L54,41 Z"],
+      capas: [{ p: ["M36,22 C42,19 50,16 60,17 L60,19.6 C52,19.6 44,22 40,24.4 Z"], c: shade(c, -0.3), d: [] }], d: [] }) }),
+  botineta: Object.assign((A, c) => calzadoPuesto(A, c, {
+    up: ["M-5.9,-12 L5.9,-12 L5.8,9 C3,14 -1,20 -4.6,24.6 C-6.6,26.6 -9.6,26.4 -10,24 C-10.2,21 -8,15 -6,8 Z", "M2,9 L5.8,9 L5.6,28.6 L2.6,28.6 Z"],
+    det: [["M-5.9,-8 L5.9,-8", shade(c, 0.3), 0.8], ["M5.1,-10 L4.8,6", shade(c, 0.35), 0.8]] }), { pie: "taco",
+    perfil: c => ({ p: ["M4,35 C4,31.5 10,30 18,29 C28,27.5 36,24 40,18 L40,2 L60,2 L61,19 L58,22 L58,41 L50,41 L50,30 C40,34 26,37 10,38 C6,38 4,37 4,35 Z"],
+      d: [ln("M40,7 L60,7", shade(c, 0.3), 1), ln("M57,4 L57,18", shade(c, 0.35), 1)] }) }),
+  plataformas: Object.assign((A, c, it) => { const t = it.detalleHex || "#F1E6D2"; return calzadoPuesto(A, c, {
+    up: ["M-11.6,24 C-6,23 0,16 5,9 L6.2,9 L6.2,30 L-11,30 C-12.8,30 -13,24.6 -11.6,24 Z"],
+    tiras: [["M-8.6,19 C-6.6,16.8 -3.6,16.6 -2,19.6", t, 2.4], ["M-5,1.5 C-1.6,0.2 2,0.2 5,1.5", t, 2.2], ["M-5.6,10.6 L3.6,4.6", t, 2.2]] }); }, { pie: "taco",
+    perfil: (c, it) => ({ p: ["M4,36 C4,33 9,32 16,31.6 C28,31 40,26 52,18 L62,14 L62,42 L8,42 C5,42 4,40 4,36 Z"],
+      d: [ln("M8,39 L62,39", shade(c, -0.25), 0.8, 'stroke-dasharray="1 2"')], fuera: tira("M14,32 C16,26 22,25 26,30", it.detalleHex || "#F1E6D2", 2.2) + tira("M50,17 C51,10 56,8 60,11", it.detalleHex || "#F1E6D2", 2.2) }) }),
+  sandaliasBajas: Object.assign((A, c) => calzadoPuesto(A, c, {
+    up: ["M-15,21.8 L6,21.6 C6.6,23.4 6,25 4,25.2 L-12,25.4 C-15.4,25.4 -16,23.6 -15,21.8 Z"],
+    tiras: [["M-12.4,17.8 C-10,15.8 -7,15.4 -5,17", c, 2.2], ["M-7,11.4 C-4,9.6 0,9.6 3,11.6", c, 2.2], ["M-4.8,1.4 C-1.6,0 2,0 5,1.4", c, 1.8], ["M4.6,1.4 L5,21", c, 1.6]] }), {
+    perfil: c => ({ p: ["M4,34 C4,31 8,30 14,30 L58,30 C62,30 64,32 64,34 C64,37 62,38 58,38 L10,38 C6,38 4,37 4,34 Z"],
+      d: [], fuera: tira("M14,31 C16,25 22,24 26,30", c, 2.2) + tira("M30,30 C32,23 40,22 44,30", c, 2.2) + tira("M50,30 C50,22 56,18 60,20 L61,30", c, 2) }) }),
+  running: Object.assign((A, c, it) => { const t = it.detalleHex || "#F4F2EE"; return calzadoPuesto(A, c, {
+    up: ["M-5.6,-3 L5.6,-3 C6.3,4 6.5,10 6.5,16 L6.5,21 L-11.6,21.6 C-15.8,21.6 -16.6,17.6 -13.6,15.2 C-9.2,11.6 -6.6,6 -5.6,-3 Z"],
+    suela: ["M-16.8,19.6 L7,19.6 L7,26.4 L-12.6,26.6 C-16,26.6 -17.4,23 -16.8,19.6 Z"], suelaHex: "#F4F2EE",
+    det: [["M-5.6,3 L-1.4,1.8 M-6.8,7 L-2.6,5.8 M-8.4,11 L-4.2,9.8", "#F4F2EE", 0.9], ["M-13,16.4 C-8,13 -2,10.6 4.6,10", t, 1.8]] }); }, {
+    perfil: (c, it) => ({ p: ["M8,31 C8,26 14,24 22,22 L34,16 C38,14 44,12 50,12 L58,13 C61,17 62,24 62,31 L10,33 C8.5,33 8,32 8,31 Z"],
+      capas: [{ p: ["M5,31 L63,31 L63,39 L10,39 C6.5,39 5,35 5,31 Z"], c: "#F4F2EE", d: [ln("M6,35 L62,35", it.detalleHex || "#C9C6CE", 1.6)] }],
+      d: [ln("M31,18 L35,22 M36,15.5 L40,19.5 M41,13.6 L45,17.6", "#F4F2EE", 1.1), ln("M14,29 C26,24 38,21 54,22", it.detalleHex || "#F4F2EE", 2.4)] }) }),
+
+  /* ---- bolsos ---- */
+  bandolera: Object.assign((A, c) => { const Y = A.Y, bx = sideX(A, "r", Y.wa + 34) + 1, by = Y.wa + 26;
+    const tiraB = A.flat ? limb({ pts: [[bx + 1, by + 1], [bx + 4, by - 16], [bx + 15, by - 16], [bx + 18, by + 1]], w: [2, 2, 2, 2] }) : limb({ pts: [lp(A.cuello.l, A.hombros.l, 0.5), [cX(A, Y.bu + 12), Y.bu + 14], [bx + 1, by + 1]], w: [2.2, 2.2, 2.2] });
+    return { p: [shape([[bx - 2, by, 1], [bx + 20, by, 1], [bx + 20, by + 16], [bx + 9, by + 18], [bx - 2, by + 16]]), tiraB],
+      d: [fillD(shape([[bx - 2, by, 1], [bx + 20, by, 1], [bx + 20, by + 9, 1], [bx + 9, by + 11], [bx - 2, by + 9, 1]]), shade(c, -0.08), 0.8), dot([bx + 9, by + 9.5], 1.4, "#C9A45A")] }; }, { opts: { sh: 0.7 } }),
+  mochila: Object.assign((A, c) => { const Y = A.Y;
+    if (A.flat) { const x = 100, y = 200;
+      return { p: [shape([[x - 18, y - 22], [x, y - 28], [x + 18, y - 22], [x + 20, y + 22, 1], [x - 20, y + 22, 1]]), limb({ pts: [[x - 6, y - 26], [x, y - 36], [x + 6, y - 26]], w: [2.4, 2.4, 2.4] })],
+        d: [fillD(shape([[x - 12, y + 2, 1], [x + 12, y + 2, 1], [x + 12, y + 18, 1], [x - 12, y + 18, 1]]), shade(c, -0.06), 0.8), ln(`M${x - 12},${y + 6} L${x + 12},${y + 6}`, shade(c, 0.4), 0.8)],
+        fuera: [-1, 1].map(g => ln(curva([[x + g * 12, y - 20], [x + g * 27, y - 6], [x + g * 23, y + 20]]), shade(c, -0.3), 2.6)).join("") }; }
+    const bx = sideX(A, "r", Y.wa + 30) + 2, by = Y.wa + 14, s = lp(A.cuello.r, A.hombros.r, 0.5);
+    return { p: [shape([[bx, by + 2], [bx + 13, by - 4], [bx + 26, by + 2], [bx + 28, by + 46, 1], [bx - 2, by + 46, 1]]), limb({ pts: [s, [A.hombros.r[0] + 2, A.hombros.r[1] + 16], [bx + 6, by + 2]], w: [3, 3, 3] })],
+      d: [fillD(shape([[bx + 4, by + 22, 1], [bx + 22, by + 22, 1], [bx + 22.5, by + 40, 1], [bx + 3.5, by + 40, 1]]), shade(c, -0.06), 0.8), ln(`M${pt([bx + 4, by + 26])} L${pt([bx + 22, by + 26])}`, shade(c, 0.4), 0.8)] }; }, { opts: { sh: 0.8 } }),
+
+  /* ---- accesorios: sombreros, cinturones, medias, pañuelos, joyas ---- */
+  capelina: Object.assign((A, c) => ({ p: [elip(100, 31, 32, 6.5), "M86,31 C85,17 91,11 100,11 C109,11 115,17 114,31 Z"],
+    d: [ln("M86,27 C94,29.6 106,29.6 114,27", shade(c, -0.45), 2.6), ln("M90,18 C92,14 96,12.6 99,12.4", shade(c, 0.35), 0.9, 'opacity=".7"')] }), { opts: { sh: 0.5 } }),
+  gorro: Object.assign((A, c) => { let r = ""; for (let x = 84; x <= 116; x += 3) r += ln(`M${x},${f1(18 + Math.abs(x - 100) * 0.25)} L${x},31`, shade(c, -0.2), 0.6);
+    return { p: ["M82.6,37 C82,20 90,13 100,13 C110,13 118,20 117.4,37 Z", circ(100, 11, 5.5)], d: [r, fillD(shape([[82.4, 30, 1], [117.6, 30, 1], [117.8, 38.5, 1], [82.2, 38.5, 1]]), shade(c, -0.08), 0.9)] }; }, { opts: { sh: 0.5 } }),
+  cinturonAncho: Object.assign((A, c) => { const y = A.Y.wa + 1, cx = cX(A, y);
+    return { p: [limb({ pts: [ext(A, "l", y - A.tilt * 0.3, 3), [cx, y + 0.6], ext(A, "r", y + A.tilt * 0.3, 3)], w: [7.5, 7.5, 7.5] }, { capIni: "flat", capFin: "flat" })],
+      d: [fillD(shape([[cx - 5, y - 5, 1], [cx + 5, y - 5, 1], [cx + 5, y + 6, 1], [cx - 5, y + 6, 1]]), "#C9A45A", 0.9), fillD(shape([[cx - 2.6, y - 2.4, 1], [cx + 2.6, y - 2.4, 1], [cx + 2.6, y + 3.4, 1], [cx - 2.6, y + 3.4, 1]]), c, 0.6)] }; }, { opts: { sh: 0.4 } }),
+  cinturonFino: Object.assign((A, c) => { const y = A.Y.wa + 3, cx = cX(A, y);
+    return { p: [limb({ pts: [ext(A, "l", y - A.tilt * 0.3, 2.5), [cx, y + 0.6], ext(A, "r", y + A.tilt * 0.3, 2.5)], w: [3.2, 3.2, 3.2] }, { capIni: "flat", capFin: "flat" })],
+      d: [fillD(shape([[cx - 2.6, y - 2.6, 1], [cx + 2.6, y - 2.6, 1], [cx + 2.6, y + 3.2, 1], [cx - 2.6, y + 3.2, 1]]), "none", 0.9), ln(`M${pt([cx - 2.6, y - 2.6])} L${pt([cx + 2.6, y - 2.6])} L${pt([cx + 2.6, y + 3.2])} L${pt([cx - 2.6, y + 3.2])} Z`, "#C9A45A", 1)] }; }, { opts: { sh: 0.3 } }),
+  medias: Object.assign((A, c) => { const pie = A.pie || "plano";
+    return { p: [...pantalonP(A, { ease: 0.3, t: 1, tiro: 4 }), ...LADOS.map(s => xf(pie === "taco" ? PIE_TACO : PIE_PLANO, pieT(A, s)))], d: pliegues(A, c, { rodillas: 1 }) }; }, { opts: { sh: 0.6 } }),
+  panty: Object.assign((A, c) => ({ ...DIBUJOS.medias(A, c), op: 0.5 }), { opts: { sh: 0.3, ancho: 1.4 } }),
+  panuelo: Object.assign((A, c, it) => { const nl = A.cuello.l, nr = A.cuello.r, nb = A.cuello.base;
+    if (A.flat) return { p: [shape([[100, 172, 1], [128, 200, 1], [100, 228, 1], [72, 200, 1]])], d: [lunaresP(it.detalleHex || shade(c, 0.45), 1.1), ln("M100,177 L123,200 L100,223 L77,200 Z", it.detalleHex || shade(c, 0.45), 1.4)] };
+    return { p: [limb({ pts: [[nl[0] - 1, nl[1] - 3], [nb[0] - 4, nb[1] + 3], [nb[0] + 4, nb[1] + 3], [nr[0] + 1, nr[1] - 3]], w: [5, 6, 6, 5] }), circ(nb[0] + 6, nb[1] + 3, 3.6),
+      shape([[nb[0] + 6, nb[1] + 4], [nb[0] + 12, nb[1] + 14], [nb[0] + 15, nb[1] + 12, 1], [nb[0] + 9, nb[1] + 2]]), shape([[nb[0] + 5, nb[1] + 5], [nb[0] + 3, nb[1] + 17, 1], [nb[0] + 7, nb[1] + 17, 1], [nb[0] + 8, nb[1] + 5]])],
+      d: [lunaresP(it.detalleHex || shade(c, 0.45), 0.9)] }; }, { opts: { sh: 0.5 } }),
+  bufanda: Object.assign((A, c) => { const nl = A.cuello.l, nr = A.cuello.r, nb = A.cuello.base, y = A.Y.wa + 16; let r = "", fleco = "";
+    if (A.flat) { for (let x = 92; x <= 108; x += 2.6) r += ln(`M${f1(x)},150 L${f1(x)},250`, shade(c, -0.25), 0.5);
+      for (let x = 92; x <= 108; x += 2.4) fleco += ln(`M${f1(x)},145 L${f1(x)},151 M${f1(x)},249 L${f1(x)},255`, c, 1.3);
+      return { p: [shape([[91, 150, 1], [109, 150, 1], [109, 250, 1], [91, 250, 1]])], d: [r], fuera: fleco }; }
+    for (let x = 60; x <= 140; x += 2.6) r += ln(`M${f1(x)},60 L${f1(x)},${f1(y)}`, shade(c, -0.25), 0.5);
+    for (let i = 0; i < 6; i++) { const x = nb[0] - 13.5 + i * 1.9; fleco += ln(`M${f1(x)},${f1(y)} L${f1(x)},${f1(y + 6)}`, c, 1.3); }
+    return { p: [limb({ pts: [[nl[0] - 2, nl[1] - 6], [nb[0] - 6, nb[1] + 3], [nb[0] + 6, nb[1] + 3], [nr[0] + 2, nr[1] - 6]], w: [9, 10, 10, 9] }), limb({ pts: [[nb[0] - 5, nb[1] + 2], [nb[0] - 8, A.Y.bu], [nb[0] - 9, y]], w: [10, 10, 10] }, { capFin: "flat" })],
+      d: [r], fuera: fleco }; }, { opts: { sh: 0.6 } }),
+  arosLargos: Object.assign((A, c) => ({ p: LADOS.flatMap(s => { const [x, y] = A.orejas[s]; return [limb({ pts: [[x, y + 5], [x, y + 12]], w: [0.9, 0.9] }), shape([[x, y + 11], [x + 2.6, y + 16], [x, y + 19.5], [x - 2.6, y + 16]])]; }), d: [] }), { opts: { sh: 0.25, ancho: 1.2 } }),
+  pulsera: Object.assign((A, c) => { if (A.flat) return { p: ["!" + elip(100, 200, 14, 8) + " " + elip(100, 200, 10.5, 5.2)], d: [] };
+    const [a, b] = cruce(A.brazos.l, 0.93, 3.2), [a2, b2] = cruce(A.brazos.l, 0.98, 3.2);
+    return { p: [shape([[...a, 1], [...b, 1], [...b2, 1], [...a2, 1]])], d: [ln(curva([lp(a, a2, 0.5), lp(b, b2, 0.5)]), shade(c, 0.45), 0.7)] }; }, { opts: { sh: 0.25, ancho: 1.2 } }),
+  collarPerlas: Object.assign((A, c) => { const nl = A.cuello.l, nr = A.cuello.r;
+    return { p: Array.from({ length: 13 }, (_, i) => { const t = i / 12; return circ(lerp(nl[0] - 1, nr[0] + 1, t), lerp(nl[1] + 1.5, nr[1] + 1.5, t) + Math.sin(t * Math.PI) * 12, 1.5); }), d: [] }; }, { opts: { sh: 0.3, ancho: 1 } }),
+});
+
 /* ---------- cuerpo, cabeza y pelo ---------- */
 const CABEZA = "M100,20.5 C110.5,20.5 116.6,29 116.6,40.5 C116.6,52.5 110,63 100,67.5 C90,63 83.4,52.5 83.4,40.5 C83.4,29 89.5,20.5 100,20.5 Z";
 const OREJA = "M84.4,40.5 C81.6,40 80.8,43.5 81.4,47 C81.9,49.6 83.4,51 85,50.4 Z";
@@ -929,6 +1132,7 @@ const PEINADOS = [
     frente: [CAPA_PELO, MECHON_BOB, mir(MECHON_BOB)], mechas: ["M95,22 C90,26 87,33 85.5,42", "M84.6,52 C83.6,60 83.8,68 84.8,73"] },
   { id: "recogido", nombre: "Recogido",
     atras: [circ(106.5, 16.5, 10.5), "M86,40 C84,52 86,62 90,66 L110,66 C114,62 116,52 114,40 Z"],
+    atrasSombrero: ["M86,40 C84,52 86,62 90,66 L110,66 C114,62 116,52 114,40 Z", circ(113.5, 60, 7.5)], // con sombrero, el rodete baja a la nuca
     frente: ["M83.2,45 C81.5,28.5 90,19.6 100.5,19.6 C111.5,19.6 119,28.5 116.8,45 C114.6,35 108.6,29.4 100.5,29.4 C92.4,29.4 85.4,35 83.2,45 Z", "M84,44 C82.6,50 83,56 84.6,60 C85.6,56 85.8,50 85.4,45 Z"],
     mechas: ["M92,22.6 C96,21 104,21 108,22.6", "M101,8 C104,11 108,12 112,11"] },
 ];
@@ -960,9 +1164,9 @@ function pintar(g, c, o = {}) {
     + `<clipPath id="${id}">${ps}</clipPath><g clip-path="url(#${id})">`
     + `<g fill="${o.sombra || shade(c, -0.15)}">${ps}</g><g fill="${c}" transform="translate(${sx} ${sy})">${ps}</g>`
     + `<g fill="none" stroke="${o.luz || shade(c, 0.28)}" stroke-width="${o.anchoLuz ?? 1.2}" opacity="${o.opLuz ?? 0.55}" transform="translate(${f1(-sx * 0.6)} ${f1(-sy * 0.8)})">${ps}</g>`
-    + (g.d || []).join("") + `</g>`;
+    + (g.d || []).join("") + `</g>` + (g.fuera || "");
 }
-function pintarPrenda(g, c, opts) { return pintar(g, c, opts) + (g.capas || []).map(k => pintar(k, k.c, opts)).join(""); }
+function pintarPrenda(g, c, opts) { const s = pintar(g, c, opts) + (g.capas || []).map(k => pintar(k, k.c, opts)).join(""); return g.op ? `<g opacity="${g.op}">${s}</g>` : s; }
 
 /* =====================================================================
    3) DATOS: CATÁLOGO. Para sumar una prenda, agregá un objeto acá.
@@ -974,59 +1178,104 @@ function pintarPrenda(g, c, opts) { return pintar(g, c, opts) + (g.capas || []).
       imgPuesta (opcional): {href, x, y, w, h} en coordenadas del avatar
         (viewBox 0 4 200 434) que reemplaza el dibujo puesto.
    ===================================================================== */
+/** Una prenda con "variantes" genera prendas hermanas: heredan todo y pisan lo que traen. */
+function expandirVariantes(lista) { return lista.flatMap(({ variantes, ...it }) => [it, ...(variantes || []).map(v => ({ ...it, ...v }))]); }
 const TODAS = ["primavera", "verano", "otoño", "invierno"];
-const CATALOGO = [
+const CATALOGO = expandirVariantes([
   // TOPS (9)
-  { id: "top_01", categoria: "top", nombre: "Remera blanca", art: "la", colorHex: "#F3F1EC", familiaColor: "neutro", formalidad: 2, estaciones: ["primavera", "verano", "otoño"], estilos: ["minimal", "urbano", "sporty"], dibujo: "remera" },
-  { id: "top_02", categoria: "top", nombre: "Blusa satinada", art: "la", colorHex: "#E8D5C4", familiaColor: "neutro", formalidad: 4, estaciones: ["primavera", "verano", "otoño"], estilos: ["romantico", "glam"], dibujo: "blusa" },
-  { id: "top_03", categoria: "top", nombre: "Camisa a rayas", art: "la", colorHex: "#DCE6F2", familiaColor: "frio", formalidad: 3, estaciones: ["primavera", "verano", "otoño"], estilos: ["clasico", "minimal"], dibujo: "camisa", detalleHex: "#5B7DAB" },
-  { id: "top_04", categoria: "top", nombre: "Musculosa de lino", art: "la", colorHex: "#D9A441", familiaColor: "calido", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["boho", "minimal"], dibujo: "musculosa" },
-  { id: "top_05", categoria: "top", nombre: "Sweater trenzado", art: "el", colorHex: "#9C4A2F", familiaColor: "calido", formalidad: 2, estaciones: ["otoño", "invierno"], estilos: ["clasico", "boho"], dibujo: "sweater" },
-  { id: "top_06", categoria: "top", nombre: "Top corset", art: "el", colorHex: "#1E1B21", familiaColor: "neutro", formalidad: 4, estaciones: ["primavera", "verano", "otoño"], estilos: ["glam", "rocker"], dibujo: "corset" },
-  { id: "top_07", categoria: "top", nombre: "Top deportivo", art: "el", colorHex: "#E2457A", familiaColor: "saturado", formalidad: 1, estaciones: ["primavera", "verano"], estilos: ["sporty", "urbano"], dibujo: "deportivo" },
-  { id: "top_08", categoria: "top", nombre: "Polera de cuello alto", art: "la", colorHex: "#2F3B5C", familiaColor: "frio", formalidad: 3, estaciones: ["otoño", "invierno"], estilos: ["minimal", "clasico"], dibujo: "polera" },
-  { id: "top_09", categoria: "top", nombre: "Blusa con volados", art: "la", colorHex: "#F1C6CF", familiaColor: "pastel", formalidad: 3, estaciones: ["primavera", "verano"], estilos: ["romantico", "boho"], dibujo: "volados" },
+  { id: "top_01", sub: "Básicos", categoria: "top", nombre: "Remera blanca", art: "la", colorHex: "#F3F1EC", familiaColor: "neutro", formalidad: 2, estaciones: ["primavera", "verano", "otoño"], estilos: ["minimal", "urbano", "sporty"], dibujo: "remera", variantes: [{ id: "top_15", nombre: "Remera negra", colorHex: "#211F24", estilos: ["minimal", "urbano", "rocker"] }] },
+  { id: "top_02", sub: "Camisas y blusas", categoria: "top", nombre: "Blusa satinada", art: "la", colorHex: "#E8D5C4", familiaColor: "neutro", formalidad: 4, estaciones: ["primavera", "verano", "otoño"], estilos: ["romantico", "glam"], dibujo: "blusa" },
+  { id: "top_03", sub: "Camisas y blusas", categoria: "top", nombre: "Camisa a rayas", art: "la", colorHex: "#DCE6F2", familiaColor: "frio", formalidad: 3, estaciones: ["primavera", "verano", "otoño"], estilos: ["clasico", "minimal"], dibujo: "camisa", detalleHex: "#5B7DAB" },
+  { id: "top_04", sub: "Básicos", categoria: "top", nombre: "Musculosa de lino", art: "la", colorHex: "#D9A441", familiaColor: "calido", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["boho", "minimal"], dibujo: "musculosa" },
+  { id: "top_05", sub: "Tejidos", categoria: "top", nombre: "Sweater trenzado", art: "el", colorHex: "#9C4A2F", familiaColor: "calido", formalidad: 2, estaciones: ["otoño", "invierno"], estilos: ["clasico", "boho"], dibujo: "sweater" },
+  { id: "top_06", sub: "Para salir", categoria: "top", nombre: "Top corset", art: "el", colorHex: "#1E1B21", familiaColor: "neutro", formalidad: 4, estaciones: ["primavera", "verano", "otoño"], estilos: ["glam", "rocker"], dibujo: "corset" },
+  { id: "top_07", sub: "Básicos", categoria: "top", nombre: "Top deportivo", art: "el", colorHex: "#E2457A", familiaColor: "saturado", formalidad: 1, estaciones: ["primavera", "verano"], estilos: ["sporty", "urbano"], dibujo: "deportivo" },
+  { id: "top_08", sub: "Tejidos", categoria: "top", nombre: "Polera de cuello alto", art: "la", colorHex: "#2F3B5C", familiaColor: "frio", formalidad: 3, estaciones: ["otoño", "invierno"], estilos: ["minimal", "clasico"], dibujo: "polera" },
+  { id: "top_09", sub: "Camisas y blusas", categoria: "top", nombre: "Blusa con volados", art: "la", colorHex: "#F1C6CF", familiaColor: "pastel", formalidad: 3, estaciones: ["primavera", "verano"], estilos: ["romantico", "boho"], dibujo: "volados" },
   // BOTTOMS (7)
-  { id: "bot_01", categoria: "bottom", nombre: "Jean recto", art: "el", colorHex: "#4D6E98", familiaColor: "neutro", formalidad: 2, estaciones: TODAS, estilos: ["urbano", "clasico"], dibujo: "jean" },
-  { id: "bot_02", categoria: "bottom", nombre: "Pantalón sastrero", art: "el", colorHex: "#2A292E", familiaColor: "neutro", formalidad: 4, estaciones: ["primavera", "otoño", "invierno"], estilos: ["clasico", "minimal"], dibujo: "sastrero" },
-  { id: "bot_03", categoria: "bottom", nombre: "Falda midi plisada", art: "la", colorHex: "#C5D6C0", familiaColor: "pastel", formalidad: 3, estaciones: ["primavera", "verano"], estilos: ["romantico", "clasico"], dibujo: "plisada" },
-  { id: "bot_04", categoria: "bottom", nombre: "Short de jean", art: "el", colorHex: "#8CAAD0", familiaColor: "neutro", formalidad: 1, estaciones: ["verano"], estilos: ["urbano", "sporty", "boho"], dibujo: "short" },
-  { id: "bot_05", categoria: "bottom", nombre: "Calza deportiva", art: "la", colorHex: "#2C2B33", familiaColor: "neutro", formalidad: 1, estaciones: TODAS, estilos: ["sporty"], dibujo: "calza" },
-  { id: "bot_06", categoria: "bottom", nombre: "Pantalón palazzo", art: "el", colorHex: "#E6D8C3", familiaColor: "neutro", formalidad: 3, estaciones: ["primavera", "verano"], estilos: ["boho", "minimal"], dibujo: "palazzo" },
-  { id: "bot_07", categoria: "bottom", nombre: "Minifalda de cuero", art: "la", colorHex: "#6E1F30", familiaColor: "calido", formalidad: 3, estaciones: ["primavera", "otoño", "invierno"], estilos: ["rocker", "glam"], dibujo: "minifalda" },
+  { id: "bot_01", sub: "Pantalones", categoria: "bottom", nombre: "Jean recto", art: "el", colorHex: "#4D6E98", familiaColor: "neutro", formalidad: 2, estaciones: TODAS, estilos: ["urbano", "clasico"], dibujo: "jean", variantes: [{ id: "bot_14", nombre: "Jean negro", colorHex: "#2E2D33", estilos: ["urbano", "rocker", "clasico"] }] },
+  { id: "bot_02", sub: "Pantalones", categoria: "bottom", nombre: "Pantalón sastrero", art: "el", colorHex: "#2A292E", familiaColor: "neutro", formalidad: 4, estaciones: ["primavera", "otoño", "invierno"], estilos: ["clasico", "minimal"], dibujo: "sastrero" },
+  { id: "bot_03", sub: "Polleras", categoria: "bottom", nombre: "Falda midi plisada", art: "la", colorHex: "#C5D6C0", familiaColor: "pastel", formalidad: 3, estaciones: ["primavera", "verano"], estilos: ["romantico", "clasico"], dibujo: "plisada" },
+  { id: "bot_04", sub: "Shorts", categoria: "bottom", nombre: "Short de jean", art: "el", colorHex: "#8CAAD0", familiaColor: "neutro", formalidad: 1, estaciones: ["verano"], estilos: ["urbano", "sporty", "boho"], dibujo: "short" },
+  { id: "bot_05", sub: "Pantalones", categoria: "bottom", nombre: "Calza deportiva", art: "la", colorHex: "#2C2B33", familiaColor: "neutro", formalidad: 1, estaciones: TODAS, estilos: ["sporty"], dibujo: "calza" },
+  { id: "bot_06", sub: "Pantalones", categoria: "bottom", nombre: "Pantalón palazzo", art: "el", colorHex: "#E6D8C3", familiaColor: "neutro", formalidad: 3, estaciones: ["primavera", "verano"], estilos: ["boho", "minimal"], dibujo: "palazzo", variantes: [{ id: "bot_15", nombre: "Palazzo de satén", colorHex: "#CDB58A", formalidad: 5, estaciones: ["primavera", "verano", "otoño"], estilos: ["glam", "minimal"] }] },
+  { id: "bot_07", sub: "Polleras", categoria: "bottom", nombre: "Minifalda de cuero", art: "la", colorHex: "#6E1F30", familiaColor: "calido", formalidad: 3, estaciones: ["primavera", "otoño", "invierno"], estilos: ["rocker", "glam"], dibujo: "minifalda" },
   // VESTIDOS / ENTERITOS (6)
-  { id: "dre_01", categoria: "vestido", nombre: "Vestido slip de seda", art: "el", colorHex: "#B8A4D4", familiaColor: "pastel", formalidad: 4, estaciones: ["primavera", "verano"], estilos: ["romantico", "glam", "minimal"], dibujo: "slip" },
-  { id: "dre_02", categoria: "vestido", nombre: "Vestido largo de gala", art: "el", colorHex: "#1F3B63", familiaColor: "frio", formalidad: 5, estaciones: ["primavera", "otoño", "invierno"], estilos: ["glam", "clasico"], dibujo: "gala" },
-  { id: "dre_03", categoria: "vestido", nombre: "Vestido camisero", art: "el", colorHex: "#D6C2A3", familiaColor: "neutro", formalidad: 3, estaciones: ["primavera", "verano", "otoño"], estilos: ["clasico", "minimal"], dibujo: "camisero" },
-  { id: "dre_04", categoria: "vestido", nombre: "Enterito de lino", art: "el", colorHex: "#C46A48", familiaColor: "calido", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["boho", "urbano"], dibujo: "enterito" },
-  { id: "dre_05", categoria: "vestido", nombre: "Vestido corto con lunares", art: "el", colorHex: "#EE9B2F", familiaColor: "saturado", formalidad: 2, estaciones: ["verano"], estilos: ["boho", "romantico"], dibujo: "lunares", detalleHex: "#FFF6E8" },
-  { id: "dre_06", categoria: "vestido", nombre: "Vestido de punto", art: "el", colorHex: "#6B4A3A", familiaColor: "calido", formalidad: 3, estaciones: ["otoño", "invierno"], estilos: ["minimal", "clasico"], dibujo: "punto" },
+  { id: "dre_01", sub: "Cortos y midi", categoria: "vestido", nombre: "Vestido slip de seda", art: "el", colorHex: "#B8A4D4", familiaColor: "pastel", formalidad: 4, estaciones: ["primavera", "verano"], estilos: ["romantico", "glam", "minimal"], dibujo: "slip", variantes: [{ id: "dre_12", nombre: "Vestido slip negro", colorHex: "#1D1B20", familiaColor: "neutro", estaciones: ["primavera", "verano", "otoño"], estilos: ["glam", "minimal", "rocker"] }] },
+  { id: "dre_02", sub: "Largos", categoria: "vestido", nombre: "Vestido largo de gala", art: "el", colorHex: "#1F3B63", familiaColor: "frio", formalidad: 5, estaciones: ["primavera", "otoño", "invierno"], estilos: ["glam", "clasico"], dibujo: "gala" },
+  { id: "dre_03", sub: "Cortos y midi", categoria: "vestido", nombre: "Vestido camisero", art: "el", colorHex: "#D6C2A3", familiaColor: "neutro", formalidad: 3, estaciones: ["primavera", "verano", "otoño"], estilos: ["clasico", "minimal"], dibujo: "camisero" },
+  { id: "dre_04", sub: "Enteritos", categoria: "vestido", nombre: "Enterito de lino", art: "el", colorHex: "#C46A48", familiaColor: "calido", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["boho", "urbano"], dibujo: "enterito" },
+  { id: "dre_05", sub: "Cortos y midi", categoria: "vestido", nombre: "Vestido corto con lunares", art: "el", colorHex: "#EE9B2F", familiaColor: "saturado", formalidad: 2, estaciones: ["verano"], estilos: ["boho", "romantico"], dibujo: "lunares", detalleHex: "#FFF6E8" },
+  { id: "dre_06", sub: "Cortos y midi", categoria: "vestido", nombre: "Vestido de punto", art: "el", colorHex: "#6B4A3A", familiaColor: "calido", formalidad: 3, estaciones: ["otoño", "invierno"], estilos: ["minimal", "clasico"], dibujo: "punto" },
   // CALZADO (7)
-  { id: "sho_01", categoria: "calzado", nombre: "Zapatillas blancas", art: "las", colorHex: "#F4F3EF", familiaColor: "neutro", formalidad: 2, estaciones: TODAS, estilos: ["urbano", "sporty", "minimal"], dibujo: "zapatillas" },
-  { id: "sho_02", categoria: "calzado", nombre: "Stilettos", art: "los", colorHex: "#1D1A1F", familiaColor: "neutro", formalidad: 5, estaciones: TODAS, estilos: ["glam", "clasico"], dibujo: "stilettos" },
-  { id: "sho_03", categoria: "calzado", nombre: "Borcegos", art: "los", colorHex: "#2B2523", familiaColor: "neutro", formalidad: 2, estaciones: ["primavera", "otoño", "invierno"], estilos: ["rocker", "urbano"], dibujo: "borcegos" },
-  { id: "sho_04", categoria: "calzado", nombre: "Ojotas", art: "las", colorHex: "#3BA39B", familiaColor: "frio", formalidad: 1, estaciones: ["verano"], estilos: ["sporty", "boho"], dibujo: "ojotas" },
-  { id: "sho_05", categoria: "calzado", nombre: "Mocasines", art: "los", colorHex: "#6A3D25", familiaColor: "calido", formalidad: 3, estaciones: ["primavera", "otoño", "invierno"], estilos: ["clasico", "minimal"], dibujo: "mocasines" },
-  { id: "sho_06", categoria: "calzado", nombre: "Sandalias doradas", art: "las", colorHex: "#C9A45A", familiaColor: "neutro", formalidad: 4, estaciones: ["primavera", "verano"], estilos: ["glam", "romantico"], dibujo: "sandalias" },
-  { id: "sho_07", categoria: "calzado", nombre: "Botas de caña alta", art: "las", colorHex: "#4E3226", familiaColor: "calido", formalidad: 3, estaciones: ["otoño", "invierno"], estilos: ["boho", "clasico", "rocker"], dibujo: "botasAltas" },
+  { id: "sho_01", sub: "Zapatillas", categoria: "calzado", nombre: "Zapatillas blancas", art: "las", colorHex: "#F4F3EF", familiaColor: "neutro", formalidad: 2, estaciones: TODAS, estilos: ["urbano", "sporty", "minimal"], dibujo: "zapatillas" },
+  { id: "sho_02", sub: "Tacos", categoria: "calzado", nombre: "Stilettos", art: "los", colorHex: "#1D1A1F", familiaColor: "neutro", formalidad: 5, estaciones: TODAS, estilos: ["glam", "clasico"], dibujo: "stilettos" },
+  { id: "sho_03", sub: "Botas", categoria: "calzado", nombre: "Borcegos", art: "los", colorHex: "#2B2523", familiaColor: "neutro", formalidad: 2, estaciones: ["primavera", "otoño", "invierno"], estilos: ["rocker", "urbano"], dibujo: "borcegos" },
+  { id: "sho_04", sub: "Planos", categoria: "calzado", nombre: "Ojotas", art: "las", colorHex: "#3BA39B", familiaColor: "frio", formalidad: 1, estaciones: ["verano"], estilos: ["sporty", "boho"], dibujo: "ojotas" },
+  { id: "sho_05", sub: "Planos", categoria: "calzado", nombre: "Mocasines", art: "los", colorHex: "#6A3D25", familiaColor: "calido", formalidad: 3, estaciones: ["primavera", "otoño", "invierno"], estilos: ["clasico", "minimal"], dibujo: "mocasines" },
+  { id: "sho_06", sub: "Tacos", categoria: "calzado", nombre: "Sandalias doradas", art: "las", colorHex: "#C9A45A", familiaColor: "neutro", formalidad: 4, estaciones: ["primavera", "verano"], estilos: ["glam", "romantico"], dibujo: "sandalias" },
+  { id: "sho_07", sub: "Botas", categoria: "calzado", nombre: "Botas de caña alta", art: "las", colorHex: "#4E3226", familiaColor: "calido", formalidad: 3, estaciones: ["otoño", "invierno"], estilos: ["boho", "clasico", "rocker"], dibujo: "botasAltas" },
   // ABRIGOS (5)
-  { id: "coa_01", categoria: "abrigo", nombre: "Blazer oversize", art: "el", colorHex: "#CDBA9C", familiaColor: "neutro", formalidad: 4, estaciones: ["primavera", "otoño"], estilos: ["clasico", "minimal"], dibujo: "blazer" },
-  { id: "coa_02", categoria: "abrigo", nombre: "Campera de cuero", art: "la", colorHex: "#1F1D21", familiaColor: "neutro", formalidad: 2, estaciones: ["primavera", "otoño", "invierno"], estilos: ["rocker", "urbano"], dibujo: "cuero" },
-  { id: "coa_03", categoria: "abrigo", nombre: "Tapado de lana", art: "el", colorHex: "#B88A5E", familiaColor: "neutro", formalidad: 4, estaciones: ["otoño", "invierno"], estilos: ["clasico", "minimal"], dibujo: "tapado" },
-  { id: "coa_04", categoria: "abrigo", nombre: "Campera puffer", art: "la", colorHex: "#9FC3B2", familiaColor: "pastel", formalidad: 1, estaciones: ["invierno"], estilos: ["sporty", "urbano"], dibujo: "puffer" },
-  { id: "coa_05", categoria: "abrigo", nombre: "Kimono liviano", art: "el", colorHex: "#D9734E", familiaColor: "calido", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["boho"], dibujo: "kimono", detalleHex: "#F7D9B8" },
+  { id: "coa_01", sub: "Sacos y tapados", categoria: "abrigo", nombre: "Blazer oversize", art: "el", colorHex: "#CDBA9C", familiaColor: "neutro", formalidad: 4, estaciones: ["primavera", "otoño"], estilos: ["clasico", "minimal"], dibujo: "blazer", variantes: [{ id: "coa_10", nombre: "Blazer de terciopelo", colorHex: "#2B2230", formalidad: 5, estaciones: ["primavera", "otoño", "invierno"], estilos: ["glam", "clasico"] }] },
+  { id: "coa_02", sub: "Camperas", categoria: "abrigo", nombre: "Campera de cuero", art: "la", colorHex: "#1F1D21", familiaColor: "neutro", formalidad: 2, estaciones: ["primavera", "otoño", "invierno"], estilos: ["rocker", "urbano"], dibujo: "cuero" },
+  { id: "coa_03", sub: "Sacos y tapados", categoria: "abrigo", nombre: "Tapado de lana", art: "el", colorHex: "#B88A5E", familiaColor: "neutro", formalidad: 4, estaciones: ["otoño", "invierno"], estilos: ["clasico", "minimal"], dibujo: "tapado" },
+  { id: "coa_04", sub: "Camperas", categoria: "abrigo", nombre: "Campera puffer", art: "la", colorHex: "#9FC3B2", familiaColor: "pastel", formalidad: 1, estaciones: ["invierno"], estilos: ["sporty", "urbano"], dibujo: "puffer" },
+  { id: "coa_05", sub: "Kimonos y ponchos", categoria: "abrigo", nombre: "Kimono liviano", art: "el", colorHex: "#D9734E", familiaColor: "calido", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["boho"], dibujo: "kimono", detalleHex: "#F7D9B8" },
   // BOLSOS (4)
-  { id: "bag_01", categoria: "bolso", nombre: "Clutch metalizado", art: "el", colorHex: "#C9A45A", familiaColor: "neutro", formalidad: 5, estaciones: TODAS, estilos: ["glam"], dibujo: "clutch" },
-  { id: "bag_02", categoria: "bolso", nombre: "Tote de lona", art: "el", colorHex: "#E7DBC2", familiaColor: "neutro", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["boho", "urbano", "minimal"], dibujo: "tote" },
-  { id: "bag_03", categoria: "bolso", nombre: "Cartera estructurada", art: "la", colorHex: "#7A1F2B", familiaColor: "calido", formalidad: 4, estaciones: TODAS, estilos: ["clasico", "glam"], dibujo: "cartera" },
-  { id: "bag_04", categoria: "bolso", nombre: "Riñonera", art: "la", colorHex: "#E2457A", familiaColor: "saturado", formalidad: 1, estaciones: TODAS, estilos: ["sporty", "urbano"], dibujo: "rinonera" },
+  { id: "bag_01", sub: "De mano", categoria: "bolso", nombre: "Clutch metalizado", art: "el", colorHex: "#C9A45A", familiaColor: "neutro", formalidad: 5, estaciones: TODAS, estilos: ["glam"], dibujo: "clutch", variantes: [{ id: "bag_08", nombre: "Clutch plateado", colorHex: "#C4C8D0" }] },
+  { id: "bag_02", sub: "Al hombro", categoria: "bolso", nombre: "Tote de lona", art: "el", colorHex: "#E7DBC2", familiaColor: "neutro", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["boho", "urbano", "minimal"], dibujo: "tote" },
+  { id: "bag_03", sub: "De mano", categoria: "bolso", nombre: "Cartera estructurada", art: "la", colorHex: "#7A1F2B", familiaColor: "calido", formalidad: 4, estaciones: TODAS, estilos: ["clasico", "glam"], dibujo: "cartera", variantes: [{ id: "bag_07", nombre: "Cartera negra", colorHex: "#1F1D21", familiaColor: "neutro", estilos: ["clasico", "glam", "minimal"] }] },
+  { id: "bag_04", sub: "Manos libres", categoria: "bolso", nombre: "Riñonera", art: "la", colorHex: "#E2457A", familiaColor: "saturado", formalidad: 1, estaciones: TODAS, estilos: ["sporty", "urbano"], dibujo: "rinonera" },
   // JOYERÍA Y GAFAS (4)
-  { id: "jew_01", categoria: "joyeria", slot: "orejas", nombre: "Aros de perla", art: "los", colorHex: "#F4EFE6", familiaColor: "neutro", formalidad: 4, estaciones: TODAS, estilos: ["romantico", "clasico"], dibujo: "perlas" },
-  { id: "jew_02", categoria: "joyeria", slot: "cara", nombre: "Lentes de sol", art: "los", colorHex: "#1E1C1F", familiaColor: "neutro", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["urbano", "glam"], dibujo: "lentes" },
-  { id: "jew_03", categoria: "joyeria", slot: "cuello", nombre: "Collar de cadena", art: "el", colorHex: "#C9A45A", familiaColor: "neutro", formalidad: 3, estaciones: TODAS, estilos: ["rocker", "glam", "minimal"], dibujo: "collar" },
-  { id: "jew_04", categoria: "joyeria", slot: "orejas", nombre: "Argollas doradas", art: "las", colorHex: "#C9A45A", familiaColor: "neutro", formalidad: 3, estaciones: TODAS, estilos: ["urbano", "boho", "glam"], dibujo: "argollas" },
-];
-
+  { id: "jew_01", sub: "Joyas", categoria: "joyeria", slot: "orejas", nombre: "Aros de perla", art: "los", colorHex: "#F4EFE6", familiaColor: "neutro", formalidad: 4, estaciones: TODAS, estilos: ["romantico", "clasico"], dibujo: "perlas" },
+  { id: "jew_02", sub: "Gafas", categoria: "joyeria", slot: "cara", nombre: "Lentes de sol", art: "los", colorHex: "#1E1C1F", familiaColor: "neutro", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["urbano", "glam"], dibujo: "lentes" },
+  { id: "jew_03", sub: "Joyas", categoria: "joyeria", slot: "cuello", nombre: "Collar de cadena", art: "el", colorHex: "#C9A45A", familiaColor: "neutro", formalidad: 3, estaciones: TODAS, estilos: ["rocker", "glam", "minimal"], dibujo: "collar" },
+  { id: "jew_04", sub: "Joyas", categoria: "joyeria", slot: "orejas", nombre: "Argollas doradas", art: "las", colorHex: "#C9A45A", familiaColor: "neutro", formalidad: 3, estaciones: TODAS, estilos: ["urbano", "boho", "glam"], dibujo: "argollas" },
+  // ---- Bloque A: prendas nuevas ----
+  { id: "top_10", sub: "Básicos", categoria: "top", nombre: "Crop top", art: "el", colorHex: "#E9B949", familiaColor: "calido", formalidad: 1, estaciones: ["primavera", "verano"], estilos: ["urbano", "sporty"], dibujo: "crop" },
+  { id: "top_11", sub: "Para salir", categoria: "top", nombre: "Camisola de seda", art: "la", colorHex: "#E3CFAE", familiaColor: "neutro", formalidad: 5, estaciones: ["primavera", "verano", "otoño"], estilos: ["glam", "romantico", "minimal"], dibujo: "camisola" },
+  { id: "top_12", sub: "Tejidos", categoria: "top", nombre: "Cárdigan corto", art: "el", colorHex: "#B9C7DB", familiaColor: "pastel", formalidad: 3, estaciones: ["primavera", "otoño", "invierno"], estilos: ["romantico", "clasico"], dibujo: "cardigan" },
+  { id: "top_13", sub: "Para salir", categoria: "top", nombre: "Top halter", art: "el", colorHex: "#B8263B", familiaColor: "saturado", formalidad: 3, estaciones: ["primavera", "verano"], estilos: ["glam", "boho"], dibujo: "halter" },
+  { id: "top_14", sub: "Camisas y blusas", categoria: "top", nombre: "Chaleco sastrero", art: "el", colorHex: "#6B6B70", familiaColor: "neutro", formalidad: 4, estaciones: ["primavera", "otoño", "invierno"], estilos: ["clasico", "minimal", "urbano"], dibujo: "chaleco" },
+  { id: "bot_08", sub: "Pantalones", categoria: "bottom", nombre: "Jean wide leg", art: "el", colorHex: "#7C9CC4", familiaColor: "neutro", formalidad: 2, estaciones: TODAS, estilos: ["urbano", "boho"], dibujo: "wideLeg" },
+  { id: "bot_09", sub: "Polleras", categoria: "bottom", nombre: "Pollera lápiz", art: "la", colorHex: "#2F3A55", familiaColor: "frio", formalidad: 4, estaciones: ["primavera", "otoño", "invierno"], estilos: ["clasico", "minimal"], dibujo: "lapiz" },
+  { id: "bot_10", sub: "Polleras", categoria: "bottom", nombre: "Pollera larga boho", art: "la", colorHex: "#C98B5B", detalleHex: "#F3E3C8", familiaColor: "calido", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["boho", "romantico"], dibujo: "faldaLarga" },
+  { id: "bot_11", sub: "Pantalones", categoria: "bottom", nombre: "Jogger", art: "el", colorHex: "#9DA3AE", familiaColor: "neutro", formalidad: 1, estaciones: ["primavera", "otoño", "invierno"], estilos: ["sporty", "urbano"], dibujo: "jogger" },
+  { id: "bot_12", sub: "Pantalones", categoria: "bottom", nombre: "Pantalón cargo", art: "el", colorHex: "#7A7A52", familiaColor: "calido", formalidad: 2, estaciones: ["primavera", "otoño", "invierno"], estilos: ["urbano", "rocker"], dibujo: "cargo" },
+  { id: "bot_13", sub: "Shorts", categoria: "bottom", nombre: "Bermuda sastrera", art: "la", colorHex: "#D8CBB4", familiaColor: "neutro", formalidad: 3, estaciones: ["primavera", "verano"], estilos: ["clasico", "minimal"], dibujo: "bermuda" },
+  { id: "dre_07", sub: "Cortos y midi", categoria: "vestido", nombre: "Vestido de cóctel", art: "el", colorHex: "#127A68", familiaColor: "saturado", formalidad: 4, estaciones: ["primavera", "verano", "otoño"], estilos: ["glam", "romantico"], dibujo: "coctel" },
+  { id: "dre_08", sub: "Cortos y midi", categoria: "vestido", nombre: "Vestido cruzado", art: "el", colorHex: "#B5523B", detalleHex: "#F1D7C3", familiaColor: "calido", formalidad: 3, estaciones: ["primavera", "verano", "otoño"], estilos: ["romantico", "clasico"], dibujo: "wrap" },
+  { id: "dre_09", sub: "Largos", categoria: "vestido", nombre: "Vestido tejido largo", art: "el", colorHex: "#D7CDBF", familiaColor: "neutro", formalidad: 3, estaciones: ["otoño", "invierno"], estilos: ["minimal", "boho"], dibujo: "tejidoLargo" },
+  { id: "dre_10", sub: "Enteritos", categoria: "vestido", nombre: "Mono sastrero", art: "el", colorHex: "#1F2A44", familiaColor: "frio", formalidad: 4, estaciones: ["primavera", "otoño", "invierno"], estilos: ["clasico", "minimal", "glam"], dibujo: "mono" },
+  { id: "dre_11", sub: "Cortos y midi", categoria: "vestido", nombre: "Vestido remera a rayas", art: "el", colorHex: "#F4F2EE", detalleHex: "#2F3B5C", familiaColor: "neutro", formalidad: 1, estaciones: ["primavera", "verano"], estilos: ["urbano", "sporty", "minimal"], dibujo: "vCamiseta" },
+  { id: "coa_06", sub: "Sacos y tapados", categoria: "abrigo", nombre: "Trench", art: "el", colorHex: "#C9AE85", familiaColor: "neutro", formalidad: 3, estaciones: ["primavera", "otoño"], estilos: ["clasico", "minimal"], dibujo: "trench" },
+  { id: "coa_07", sub: "Camperas", categoria: "abrigo", nombre: "Chaleco inflable", art: "el", colorHex: "#3E4A3C", familiaColor: "frio", formalidad: 1, estaciones: ["otoño", "invierno"], estilos: ["sporty", "urbano"], dibujo: "chalecoInflable" },
+  { id: "coa_08", sub: "Camperas", categoria: "abrigo", nombre: "Campera de jean", art: "la", colorHex: "#6F8FBA", familiaColor: "neutro", formalidad: 2, estaciones: ["primavera", "otoño"], estilos: ["urbano", "boho", "rocker"], dibujo: "camperaJean" },
+  { id: "coa_09", sub: "Kimonos y ponchos", categoria: "abrigo", nombre: "Poncho", art: "el", colorHex: "#A35A3C", detalleHex: "#F2E6D0", familiaColor: "calido", formalidad: 2, estaciones: ["otoño", "invierno"], estilos: ["boho"], dibujo: "poncho" },
+  { id: "sho_08", sub: "Planos", categoria: "calzado", nombre: "Chatitas", art: "las", colorHex: "#D9B3A8", familiaColor: "neutro", formalidad: 3, estaciones: ["primavera", "verano", "otoño"], estilos: ["romantico", "clasico", "minimal"], dibujo: "chatitas" },
+  { id: "sho_09", sub: "Tacos", categoria: "calzado", nombre: "Mules", art: "los", colorHex: "#E8DCC6", familiaColor: "neutro", formalidad: 4, estaciones: ["primavera", "verano"], estilos: ["minimal", "glam"], dibujo: "mules" },
+  { id: "sho_10", sub: "Botas", categoria: "calzado", nombre: "Botinetas", art: "las", colorHex: "#2A2326", familiaColor: "neutro", formalidad: 3, estaciones: ["primavera", "otoño", "invierno"], estilos: ["rocker", "clasico", "urbano"], dibujo: "botineta" },
+  { id: "sho_11", sub: "Tacos", categoria: "calzado", nombre: "Plataformas de corcho", art: "las", colorHex: "#C8A06A", detalleHex: "#F1E6D2", familiaColor: "neutro", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["boho", "glam"], dibujo: "plataformas" },
+  { id: "sho_12", sub: "Planos", categoria: "calzado", nombre: "Sandalias bajas", art: "las", colorHex: "#8A5A3C", familiaColor: "calido", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["boho", "minimal"], dibujo: "sandaliasBajas" },
+  { id: "sho_13", sub: "Zapatillas", categoria: "calzado", nombre: "Zapatillas running", art: "las", colorHex: "#2F6FDB", detalleHex: "#FF7A59", familiaColor: "saturado", formalidad: 1, estaciones: TODAS, estilos: ["sporty"], dibujo: "running" },
+  { id: "bag_05", sub: "Manos libres", categoria: "bolso", nombre: "Bandolera", art: "la", colorHex: "#A8693F", familiaColor: "calido", formalidad: 3, estaciones: TODAS, estilos: ["urbano", "clasico", "boho"], dibujo: "bandolera" },
+  { id: "bag_06", sub: "Al hombro", categoria: "bolso", nombre: "Mochila chica", art: "la", colorHex: "#2F3440", familiaColor: "neutro", formalidad: 2, estaciones: TODAS, estilos: ["urbano", "sporty"], dibujo: "mochila" },
+  { id: "jew_05", sub: "Joyas", categoria: "joyeria", slot: "orejas", nombre: "Aros largos", art: "los", colorHex: "#C9A45A", familiaColor: "neutro", formalidad: 4, estaciones: TODAS, estilos: ["glam", "boho"], dibujo: "arosLargos" },
+  { id: "jew_06", sub: "Joyas", categoria: "joyeria", slot: "muñeca", nombre: "Pulsera dorada", art: "la", colorHex: "#C9A45A", familiaColor: "neutro", formalidad: 3, estaciones: TODAS, estilos: ["glam", "minimal", "boho"], dibujo: "pulsera" },
+  { id: "jew_07", sub: "Joyas", categoria: "joyeria", slot: "cuello", nombre: "Collar de perlas", art: "el", colorHex: "#F4EFE6", familiaColor: "neutro", formalidad: 5, estaciones: TODAS, estilos: ["clasico", "romantico", "glam"], dibujo: "collarPerlas" },
+  { id: "hat_01", sub: "Sombreros", categoria: "sombrero", nombre: "Capelina", art: "la", colorHex: "#D9C29A", familiaColor: "neutro", formalidad: 2, estaciones: ["primavera", "verano"], estilos: ["boho", "romantico"], dibujo: "capelina",
+    variantes: [{ id: "hat_03", nombre: "Capelina negra", colorHex: "#1F1D21", formalidad: 3, estaciones: ["primavera", "verano", "otoño"], estilos: ["glam", "clasico"] }] },
+  { id: "hat_02", sub: "Sombreros", categoria: "sombrero", nombre: "Gorro de lana", art: "el", colorHex: "#B23A48", familiaColor: "calido", formalidad: 1, estaciones: ["otoño", "invierno"], estilos: ["urbano", "sporty"], dibujo: "gorro" },
+  { id: "bel_01", sub: "Cinturones", categoria: "cinturon", nombre: "Cinturón ancho", art: "el", colorHex: "#6A3D25", familiaColor: "calido", formalidad: 3, estaciones: TODAS, estilos: ["boho", "clasico"], dibujo: "cinturonAncho",
+    variantes: [{ id: "bel_03", nombre: "Cinturón ancho negro", colorHex: "#1F1D21", familiaColor: "neutro", estilos: ["rocker", "clasico"] }] },
+  { id: "bel_02", sub: "Cinturones", categoria: "cinturon", nombre: "Cinturón fino", art: "el", colorHex: "#1F1D21", familiaColor: "neutro", formalidad: 4, estaciones: TODAS, estilos: ["minimal", "clasico", "glam"], dibujo: "cinturonFino" },
+  { id: "med_01", sub: "Medias", categoria: "medias", nombre: "Medias negras", art: "las", colorHex: "#1F1D21", familiaColor: "neutro", formalidad: 3, estaciones: ["otoño", "invierno"], estilos: ["clasico", "rocker", "minimal"], dibujo: "medias",
+    variantes: [{ id: "med_03", nombre: "Medias de lana bordó", colorHex: "#6E1F30", familiaColor: "calido", formalidad: 2, estilos: ["boho", "urbano"] }] },
+  { id: "med_02", sub: "Medias", categoria: "medias", nombre: "Panty nude", art: "la", colorHex: "#C99E86", familiaColor: "neutro", formalidad: 4, estaciones: ["primavera", "otoño", "invierno"], estilos: ["clasico", "romantico", "glam"], dibujo: "panty" },
+  { id: "pan_01", sub: "Pañuelos", categoria: "panuelo", nombre: "Pañuelo de seda", art: "el", colorHex: "#E3B23C", detalleHex: "#7A1F2B", familiaColor: "calido", formalidad: 4, estaciones: ["primavera", "otoño"], estilos: ["clasico", "romantico"], dibujo: "panuelo",
+    variantes: [{ id: "pan_03", nombre: "Pañuelo azul", colorHex: "#2F4E86", detalleHex: "#F4EFE6", familiaColor: "frio" }] },
+  { id: "pan_02", sub: "Pañuelos", categoria: "panuelo", nombre: "Bufanda tejida", art: "la", colorHex: "#9E8F80", familiaColor: "neutro", formalidad: 2, estaciones: ["otoño", "invierno"], estilos: ["boho", "urbano", "clasico"], dibujo: "bufanda" },
+]);
 /* =====================================================================
    4) DATOS: CONSIGNAS. "para" es la frase que usan los comentarios.
    ===================================================================== */
@@ -1256,7 +1505,7 @@ function puntuarLook(ids, consigna) {
    6) AVATAR (string SVG; sirve para DOM, miniaturas y canvas)
    ===================================================================== */
 const VIEWBOX = "0 4 200 434", VB_W = 200, VB_H = 434;
-const enCabeza = i => i.categoria === "joyeria" && (i.slot === "orejas" || i.slot === "cara");
+const enCabeza = i => i.categoria === "sombrero" || (i.categoria === "joyeria" && (i.slot === "orejas" || i.slot === "cara"));
 /** Prenda puesta. Si la prenda trae imgPuesta {href,x,y,w,h} se usa esa imagen. */
 function prendaPuesta(it, A) {
   if (it.imgPuesta) { const m = it.imgPuesta; return `<image href="${m.href}" x="${m.x}" y="${m.y}" width="${m.w}" height="${m.h}" preserveAspectRatio="xMidYMid meet"/>`; }
@@ -1272,11 +1521,12 @@ function avatarSVG({ piel = 2, silueta = 0, peinado = 1, pelo = 1, puestas = [],
   const A = CUERPOS[silueta], sk = PIELES[piel], hc = PELOS[pelo].hex, P = PEINADOS[peinado];
   const items = puestas.map(id => POR_ID[id]).filter(Boolean).sort((a, b) => CAPA[a.categoria] - CAPA[b.categoria]);
   const calz = items.find(i => i.categoria === "calzado"), pie = (calz && DIBUJOS[calz.dibujo].pie) || "plano";
-  const capa = i => `<g class="capa${i.id === nueva ? " cae" : ""}">${prendaPuesta(i, A)}</g>`;
+  const Ap = { ...A, pie }, conSombrero = items.some(i => i.categoria === "sombrero"), atras = (conSombrero && P.atrasSombrero) || P.atras;
+  const capa = i => `<g class="capa${i.id === nueva ? " cae" : ""}">${prendaPuesta(i, Ap)}</g>`;
   const size = w ? ` width="${w}" height="${h}"` : "";
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${VIEWBOX}"${size} role="img" aria-label="Avatar">`
     + `<ellipse cx="104" cy="425" rx="${f1(40 * SILUETAS[silueta].k.hi)}" ry="5" fill="#000" opacity=".08"/>`
-    + pintar({ p: P.atras }, hc, OPC_PELO(hc))
+    + pintar({ p: atras }, hc, OPC_PELO(hc))
     + pintar({ p: cuerpoPiezas(A, pie) }, sk, OPC_PIEL(sk))
     + pintar(ropaInterior(A), BASE_HEX, { sh: 0.5, ancho: 2 })
     + items.filter(i => !enCabeza(i)).map(capa).join("")
@@ -1369,7 +1619,7 @@ function boot() {
   }
   function empezarRonda() {
     const c = S.consignas[S.ronda];
-    S.puestas = []; S.historial = []; S.nueva = null; S.tab = "top";
+    S.puestas = []; S.historial = []; S.nueva = null; S.tab = "top"; S.sub = null;
     $("#r-num").textContent = `Look ${S.ronda + 1} de ${CONFIG.rondas}`;
     document.querySelectorAll("#r-dots i").forEach((d, i) => d.classList.toggle("on", i <= S.ronda));
     $("#r-ico").textContent = c.icono; $("#r-tit").textContent = c.titulo;
@@ -1390,15 +1640,22 @@ function boot() {
     }
   }
 
+  const tabDe = it => TABS.find(t => t.cats.includes(it.categoria));
   function pintarTabs() {
-    const cats = new Set(S.puestas.map(id => POR_ID[id].categoria));
-    $("#tabs").innerHTML = CATEGORIAS.map(c => `<button class="tab" role="tab" id="tab-${c.id}" aria-selected="${c.id === S.tab}" aria-controls="rail" tabindex="${c.id === S.tab ? 0 : -1}" data-cat="${c.id}">${c.nombre}${cats.has(c.id) ? '<span class="pip" aria-hidden="true"></span><span class="sr-only"> (en uso)</span>' : ""}</button>`).join("");
+    const usadas = new Set(S.puestas.map(id => tabDe(POR_ID[id]).id));
+    $("#tabs").innerHTML = TABS.map(t => `<button class="tab" role="tab" id="tab-${t.id}" aria-selected="${t.id === S.tab}" aria-controls="rail" tabindex="${t.id === S.tab ? 0 : -1}" data-cat="${t.id}">${t.nombre}${usadas.has(t.id) ? '<span class="pip" aria-hidden="true"></span><span class="sr-only"> (en uso)</span>' : ""}</button>`).join("");
   }
   function pintarRail() {
-    const cat = CATEGORIAS.find(c => c.id === S.tab);
-    $("#rack").dataset.modo = cat.modo;
-    $("#rail").setAttribute("aria-labelledby", "tab-" + cat.id);
-    $("#rail").innerHTML = CATALOGO.filter(i => i.categoria === S.tab).map(i => {
+    const tab = TABS.find(t => t.id === S.tab);
+    const enTab = CATALOGO.filter(i => tab.cats.includes(i.categoria));
+    const subs = [...new Set(enTab.map(i => i.sub).filter(Boolean))];
+    if (S.sub && !subs.includes(S.sub)) S.sub = null;
+    const lista = enTab.filter(i => !S.sub || i.sub === S.sub).sort((a, b) => a.formalidad - b.formalidad || a.nombre.localeCompare(b.nombre, "es"));
+    $("#subs").innerHTML = `<div class="chips">${subs.length > 1 ? [null, ...subs].map(x => `<button class="chip" data-sub="${x || ""}" aria-pressed="${(S.sub || null) === x}">${x || "Todo"}</button>`).join("") : ""}</div>`
+      + `<span class="cuenta num" aria-live="polite">${lista.length} ${lista.length === 1 ? "prenda" : "prendas"}</span>`;
+    $("#rack").dataset.modo = tab.modo;
+    $("#rail").setAttribute("aria-labelledby", "tab-" + tab.id);
+    $("#rail").innerHTML = lista.map(i => {
       const on = S.puestas.includes(i.id);
       return `<button class="prenda" data-id="${i.id}" aria-pressed="${on}" aria-label="${i.nombre}. Formalidad ${i.formalidad} de 5. ${on ? "Puesta: tocá para sacarla" : "Tocá para ponértela"}">`
         + `<span class="chk" aria-hidden="true">✓</span>${thumb(i)}<span class="pn">${i.nombre}</span>`
@@ -1430,12 +1687,13 @@ function boot() {
     cambiar(r.puestas, r.puestas.includes(id) ? id : null, r.aviso);
   }
 
-  $("#tabs").addEventListener("click", e => { const t = e.target.closest(".tab"); if (!t) return; S.tab = t.dataset.cat; pintarTabs(); pintarRail(); $("#tab-" + S.tab).focus(); });
+  $("#tabs").addEventListener("click", e => { const t = e.target.closest(".tab"); if (!t) return; S.tab = t.dataset.cat; S.sub = null; pintarTabs(); pintarRail(); $("#tab-" + S.tab).focus(); });
   $("#tabs").addEventListener("keydown", e => {
     if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-    const i = CATEGORIAS.findIndex(c => c.id === S.tab), n = CATEGORIAS.length;
-    S.tab = CATEGORIAS[(i + (e.key === "ArrowRight" ? 1 : n - 1)) % n].id; pintarTabs(); pintarRail(); $("#tab-" + S.tab).focus();
+    const i = TABS.findIndex(c => c.id === S.tab), n = TABS.length;
+    S.tab = TABS[(i + (e.key === "ArrowRight" ? 1 : n - 1)) % n].id; S.sub = null; pintarTabs(); pintarRail(); $("#tab-" + S.tab).focus();
   });
+  $("#subs").addEventListener("click", e => { const b = e.target.closest(".chip"); if (!b) return; S.sub = b.dataset.sub || null; pintarRail(); });
   let suprimirClick = false;
   $("#rail").addEventListener("click", e => { const p = e.target.closest(".prenda"); if (!p) return; if (suprimirClick) { suprimirClick = false; return; } tocarPrenda(p.dataset.id); });
   $("#btn-undo").onclick = () => { if (!S.historial.length) { toast("No hay nada para deshacer."); return; } S.puestas = S.historial.pop(); S.nueva = null; pintarAvatar(); pintarTabs(); pintarRail(); pintarListo(); };
