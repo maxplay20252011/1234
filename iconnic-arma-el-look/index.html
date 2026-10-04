@@ -241,6 +241,18 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
 .ad-form[hidden]{display:none}
 .ad-form label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
 .ad-form .fila-btn{display:flex;gap:6px;flex-wrap:wrap}
+.btn-inicio{appearance:none;display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:5px 10px 5px 8px;font:inherit;font-size:12px;cursor:pointer;min-height:32px}
+.btn-inicio svg{width:16px;height:16px}
+.brief-top{gap:8px}
+.brief-top #r-num{margin-right:auto}
+.res-head .btn-inicio{margin-right:8px}
+.res-head #res-num{margin-right:auto}
+.head-row{display:flex;align-items:center;gap:10px}
+.fin-nav{grid-template-columns:1fr 1fr}
+.dlg-fondo{position:fixed;inset:0;z-index:80;background:rgba(31,26,33,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+.dlg{background:var(--paper);border-radius:14px;padding:20px;max-width:360px;width:100%;box-shadow:0 18px 40px rgba(31,26,33,.3);display:flex;flex-direction:column;gap:8px}
+.dlg h3{font-size:26px;font-style:italic}
+.dlg .fila-btn{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 132px);transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:9px 14px;border-radius:99px;font-size:13px;z-index:60;max-width:calc(100% - 32px);text-align:center;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
 #confeti{position:fixed;inset:0;pointer-events:none;z-index:70;width:100%;height:100%}
@@ -279,7 +291,7 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
   <!-- 2. AVATAR -->
   <section class="screen" id="s-avatar" hidden aria-labelledby="t-avatar">
     <div class="setup-head">
-      <span class="eyebrow">Antes de empezar</span>
+      <div class="head-row"><button class="btn-inicio" id="av-inicio" aria-label="Volver al inicio"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 11 12 4l8 7"/><path d="M6.5 9.5V20h11V9.5"/></svg><span>Inicio</span></button><span class="eyebrow">Antes de empezar</span></div>
       <h2 id="t-avatar">Elegí tu avatar</h2>
     </div>
     <div class="setup-body">
@@ -311,6 +323,7 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
   <section class="screen" id="s-ronda" hidden aria-labelledby="t-consigna">
     <header class="brief">
       <div class="brief-top">
+        <button class="btn-inicio" id="r-inicio" data-salir aria-label="Volver al inicio"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 11 12 4l8 7"/><path d="M6.5 9.5V20h11V9.5"/></svg><span>Inicio</span></button>
         <span class="eyebrow num" id="r-num">Look 1 de 3</span>
         <span class="dots" id="r-dots" aria-hidden="true"><i></i><i></i><i></i></span>
         <span class="timer" id="r-timer" hidden aria-live="off"></span>
@@ -337,7 +350,7 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
 
   <!-- 4. RESULTADO DE RONDA -->
   <section class="screen" id="s-res" hidden aria-labelledby="t-res">
-    <div class="res-head"><span class="eyebrow num" id="res-num">Look 1 de 3</span><span class="wordmark">ICON</span></div>
+    <div class="res-head"><button class="btn-inicio" id="res-inicio" data-salir aria-label="Volver al inicio"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 11 12 4l8 7"/><path d="M6.5 9.5V20h11V9.5"/></svg><span>Inicio</span></button><span class="eyebrow num" id="res-num">Look 1 de 3</span><span class="wordmark">ICON</span></div>
     <h2 id="t-res" style="font-size:28px;font-style:italic;margin-top:12px"></h2>
     <div class="res-main">
       <div class="espejo" id="res-avatar" aria-hidden="true"></div>
@@ -359,13 +372,16 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
     <div class="envio" id="fin-envio" aria-live="polite" hidden></div>
     <div class="card-prev" id="card-prev">Armando tu tarjeta…</div>
     <div class="fin-ctas">
+      <div class="row fin-nav">
+        <button class="btn btn-dark" id="btn-otra" aria-label="Volver a jugar con otras consignas">Volver a jugar</button>
+        <button class="btn btn-ghost" id="btn-fin-inicio" aria-label="Volver a la pantalla de inicio">Volver al inicio</button>
+      </div>
       <a class="btn btn-primary" id="cta-espejo" target="_blank" rel="noopener" aria-label="Probá tus looks en el espejo de ICON (abre en otra pestaña)">Probá tus looks en el espejo de ICON</a>
       <div class="row single" id="row-sec">
         <button class="btn btn-ghost" id="btn-desc" aria-label="Descargar mi tarjeta en PNG">Descargar mi tarjeta</button>
         <button class="btn btn-ghost" id="btn-share" hidden aria-label="Compartir mi tarjeta">Compartir</button>
       </div>
       <p class="note" style="text-align:center">¿No se descargó? Mantené apretada la tarjeta para guardarla.</p>
-      <button class="btn btn-link" id="btn-otra" aria-label="Jugar de nuevo con otras consignas">Jugar de nuevo</button>
     </div>
   </section>
 
@@ -453,6 +469,16 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
     <button class="btn btn-ghost" id="btn-debug-salir" style="margin-top:16px" aria-label="Volver al juego">Volver al juego</button>
   </section>
 
+  <div class="dlg-fondo" id="dlg-salir" hidden>
+    <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlg-t" aria-describedby="dlg-d">
+      <h3 id="dlg-t">¿Volver al inicio?</h3>
+      <p class="note" id="dlg-d">Vas a perder la partida en curso.</p>
+      <div class="fila-btn">
+        <button class="btn btn-ghost" id="dlg-seguir">Seguir jugando</button>
+        <button class="btn btn-dark" id="dlg-ok">Volver al inicio</button>
+      </div>
+    </div>
+  </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </div>
 <canvas id="confeti" aria-hidden="true"></canvas>
@@ -1724,8 +1750,30 @@ function boot() {
 
   /* ---------- Inicio ---------- */
   $("#hero-avatar").innerHTML = avatarSVG({ piel: 2, silueta: 0, peinado: 1, pelo: 1, puestas: ["top_01", "bot_01", "coa_01", "sho_05", "jew_02", "bag_03"] });
-  const best = store.get();
-  if (best) { $("#best-inicio").hidden = false; $("#best-inicio").textContent = `Tu mejor marca: ${best}/300`; }
+  function pintarMejor() { const b = store.get(); $("#best-inicio").hidden = !b; if (b) $("#best-inicio").textContent = `Tu mejor marca: ${b}/300`; }
+  pintarMejor();
+
+  /* ---------- Volver al inicio ---------- */
+  function irAlInicio() {
+    clearInterval(S.timer); S.pausa = false; S.gameId = null; S.resultados = []; S.ronda = 0;
+    $("#dlg-salir").hidden = true; pintarMejor(); show("s-inicio");
+  }
+  let focoPrevio = null;
+  function pedirSalir() { // confirmación dentro de la página; el reloj se pausa mientras tanto
+    S.pausa = true; focoPrevio = document.activeElement;
+    $("#dlg-salir").hidden = false; $("#dlg-seguir").focus();
+  }
+  function cerrarDialogo() { S.pausa = false; $("#dlg-salir").hidden = true; if (focoPrevio) focoPrevio.focus(); }
+  document.querySelectorAll("[data-salir]").forEach(b => { b.onclick = pedirSalir; });
+  $("#av-inicio").onclick = irAlInicio; // en el avatar todavía no hay partida que perder
+  $("#btn-fin-inicio").onclick = irAlInicio; // al final la partida ya está guardada
+  $("#dlg-seguir").onclick = cerrarDialogo;
+  $("#dlg-ok").onclick = irAlInicio;
+  $("#dlg-salir").addEventListener("click", e => { if (e.target.id === "dlg-salir") cerrarDialogo(); });
+  $("#dlg-salir").addEventListener("keydown", e => {
+    if (e.key === "Escape") cerrarDialogo();
+    if (e.key === "Tab") { const a = $("#dlg-seguir"), b = $("#dlg-ok"); if (e.shiftKey && document.activeElement === a) { e.preventDefault(); b.focus(); } else if (!e.shiftKey && document.activeElement === b) { e.preventDefault(); a.focus(); } }
+  });
   /* ---------- Ranking online: conexión ---------- */
   const RANKING_ON = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
   const ls = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* sin storage */ } } };
@@ -1832,6 +1880,7 @@ function boot() {
     if (S.reloj) {
       S.restante = CONFIG.segundosContrarreloj; tm.textContent = S.restante + "s"; tm.classList.remove("urge");
       S.timer = setInterval(() => {
+        if (S.pausa) return;
         S.restante--; tm.textContent = S.restante + "s"; tm.classList.toggle("urge", S.restante <= 10);
         if (S.restante === 10) toast("¡Quedan 10 segundos!");
         if (S.restante <= 0) { clearInterval(S.timer); terminarRonda(true); }
