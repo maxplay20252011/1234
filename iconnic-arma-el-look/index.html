@@ -381,12 +381,6 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
         <button class="btn btn-dark" id="btn-otra" aria-label="Volver a jugar con otras consignas">Volver a jugar</button>
         <button class="btn btn-ghost" id="btn-fin-inicio" aria-label="Volver a la pantalla de inicio">Volver al inicio</button>
       </div>
-      <a class="btn btn-primary" id="cta-espejo" target="_blank" rel="noopener" aria-label="Probá tus looks en el espejo de ICON (abre en otra pestaña)">Probá tus looks en el espejo de ICON</a>
-      <div class="row single" id="row-sec">
-        <button class="btn btn-ghost" id="btn-desc" aria-label="Descargar mi tarjeta en PNG">Descargar mi tarjeta</button>
-        <button class="btn btn-ghost" id="btn-share" hidden aria-label="Compartir mi tarjeta">Compartir</button>
-      </div>
-      <p class="note" style="text-align:center">¿No se descargó? Mantené apretada la tarjeta para guardarla.</p>
     </div>
   </section>
 
@@ -527,7 +521,7 @@ const REGLAS = {
 /* Pestañas del placard: cada una agrupa una o más categorías. Los subfiltros salen del campo "sub". */
 const TABS = [
   { id: "top", nombre: "Tops", cats: ["top"], modo: "percha" },
-  { id: "bottom", nombre: "Bottoms", cats: ["bottom"], modo: "percha" },
+  { id: "bottom", nombre: "Pantalones", cats: ["bottom"], modo: "percha" },
   { id: "vestido", nombre: "Vestidos", cats: ["vestido"], modo: "percha" },
   { id: "calzado", nombre: "Calzado", cats: ["calzado"], modo: "estante" },
   { id: "abrigo", nombre: "Abrigos", cats: ["abrigo"], modo: "percha" },
@@ -1486,9 +1480,9 @@ function faltantes(puestas) {
   const cats = new Set(puestas.map(id => POR_ID[id].categoria));
   const f = [];
   if (!cats.has("vestido")) {
-    if (!cats.has("top") && !cats.has("bottom")) f.push("top y bottom (o un vestido)");
+    if (!cats.has("top") && !cats.has("bottom")) f.push("top y pantalón o pollera (o un vestido)");
     else if (!cats.has("top")) f.push("un top");
-    else if (!cats.has("bottom")) f.push("un bottom");
+    else if (!cats.has("bottom")) f.push("un pantalón o pollera");
   }
   if (!cats.has("calzado")) f.push("calzado");
   return f;
@@ -2064,7 +2058,6 @@ function boot() {
   $("#btn-next").onclick = () => { S.ronda++; if (S.ronda < CONFIG.rondas) empezarRonda(); else pintarFinal(); };
 
   /* ---------- Final ---------- */
-  let cardBlob = null;
   function pintarFinal() {
     const total = S.resultados.reduce((s, r) => s + r.res.total, 0);
     const titulo = tituloFinal(total);
@@ -2072,44 +2065,14 @@ function boot() {
     if (total > prev) store.set(total);
     $("#t-final").textContent = titulo;
     $("#fin-best").textContent = total > prev && prev > 0 ? "¡Nuevo récord!" : prev ? `Tu mejor marca: ${Math.max(prev, total)}` : "";
-    $("#cta-espejo").href = CONFIG.ctaUrl;
     show("s-final");
     enviarPuntaje();
     contar($("#fin-pts"), total, 1100, () => { if (total >= 270) confeti(); });
-    $("#card-prev").textContent = "Armando tu tarjeta…"; cardBlob = null;
-    $("#btn-share").hidden = true; $("#row-sec").classList.add("single");
+    $("#card-prev").textContent = "Armando tu tarjeta…";
     generarTarjeta(total, titulo).then(canvas => {
-      const url = canvas.toDataURL("image/png");
-      $("#card-prev").innerHTML = `<img src="${url}" alt="Tarjeta: ${titulo}, ${total} de 300 puntos, con tus 3 looks">`;
-      canvas.toBlob(b => {
-        cardBlob = b;
-        try {
-          const file = new File([b], "mi-look-icon.png", { type: "image/png" });
-          if (navigator.canShare && navigator.canShare({ files: [file] })) { $("#btn-share").hidden = false; $("#row-sec").classList.remove("single"); }
-        } catch (e) { /* sin Web Share */ }
-      }, "image/png");
+      $("#card-prev").innerHTML = `<img src="${canvas.toDataURL("image/png")}" alt="Tarjeta: ${titulo}, ${total} de 300 puntos, con tus 3 looks">`;
     }).catch(() => { $("#card-prev").textContent = "No pudimos generar la tarjeta en este navegador."; });
   }
-  // Dentro del visor de Artifacts de Claude la descarga pasa por la capacidad "downloads";
-  // hosteado en cualquier otro lado, usa un <a download> común.
-  const dlCap = window.claude && window.claude.use ? window.claude.use("downloads").catch(() => null) : Promise.resolve(null);
-  $("#btn-desc").onclick = async () => {
-    if (!cardBlob) { toast("La tarjeta todavía se está armando."); return; }
-    const cap = await dlCap;
-    if (cap) {
-      try { await cap.save({ filename: "mi-look-icon.png", data: cardBlob }); toast("Tarjeta guardada."); }
-      catch (e) { if (e && e.code === "rate_limited") toast("Ya hay una descarga pendiente."); else if (!e || e.code !== "declined") toast("No se pudo descargar: mantené apretada la tarjeta para guardarla."); }
-      return;
-    }
-    const a = document.createElement("a"); a.href = URL.createObjectURL(cardBlob); a.download = "mi-look-icon.png";
-    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-  };
-  $("#btn-share").onclick = async () => {
-    try {
-      const file = new File([cardBlob], "mi-look-icon.png", { type: "image/png" });
-      await navigator.share({ files: [file], title: "Armá el look · ICON", text: `Saqué ${$("#fin-pts").textContent}/300 en Armá el look de ICON. ¿Te animás? ${CONFIG.ctaUrl}` });
-    } catch (e) { /* cancelado o no disponible */ }
-  };
   $("#btn-otra").onclick = nuevaPartida;
 
   /* ---------- Envío del puntaje ---------- */
@@ -2312,11 +2275,11 @@ function boot() {
       wrap(x, r.consigna.titulo, px + pw / 2, y0 + ph + 44, pw - 10, 30);
       x.fillStyle = tk("--accent"); x.font = `600 40px ${disp}`; x.fillText(`${r.res.total}`, px + pw / 2, y0 + ph + 122);
     });
-    const by = 1180;
-    x.fillStyle = tk("--accent"); roundRect(x, 72, by, W - 144, 118, 59); x.fill();
-    x.fillStyle = tk("--on-accent"); x.textAlign = "center"; x.font = `600 36px ${body}`;
-    x.fillText(CONFIG.ctaTexto, W / 2, by + 56);
-    x.font = `500 24px ${body}`; x.fillText("Descargá la app ICON y probate la ropa antes de tenerla", W / 2, by + 94);
+    x.fillStyle = tk("--ink"); x.fillRect(72, 1210, W - 144, 2);
+    x.fillStyle = tk("--muted"); x.textAlign = "center"; x.font = `500 26px ${body}`;
+    if ("letterSpacing" in x) x.letterSpacing = "5px";
+    x.fillText("ARMÁ EL LOOK · ICON", W / 2, 1268);
+    if ("letterSpacing" in x) x.letterSpacing = "0px";
     return cv;
   }
   function roundRect(x, a, b, w, h, r) { x.beginPath(); if (x.roundRect) x.roundRect(a, b, w, h, r); else x.rect(a, b, w, h); }

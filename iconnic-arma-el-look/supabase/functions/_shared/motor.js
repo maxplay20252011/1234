@@ -27,7 +27,7 @@ const REGLAS = {
 /* Pestañas del placard: cada una agrupa una o más categorías. Los subfiltros salen del campo "sub". */
 const TABS = [
   { id: "top", nombre: "Tops", cats: ["top"], modo: "percha" },
-  { id: "bottom", nombre: "Bottoms", cats: ["bottom"], modo: "percha" },
+  { id: "bottom", nombre: "Pantalones", cats: ["bottom"], modo: "percha" },
   { id: "vestido", nombre: "Vestidos", cats: ["vestido"], modo: "percha" },
   { id: "calzado", nombre: "Calzado", cats: ["calzado"], modo: "estante" },
   { id: "abrigo", nombre: "Abrigos", cats: ["abrigo"], modo: "percha" },
@@ -207,9 +207,9 @@ function faltantes(puestas) {
   const cats = new Set(puestas.map(id => POR_ID[id].categoria));
   const f = [];
   if (!cats.has("vestido")) {
-    if (!cats.has("top") && !cats.has("bottom")) f.push("top y bottom (o un vestido)");
+    if (!cats.has("top") && !cats.has("bottom")) f.push("top y pantalón o pollera (o un vestido)");
     else if (!cats.has("top")) f.push("un top");
-    else if (!cats.has("bottom")) f.push("un bottom");
+    else if (!cats.has("bottom")) f.push("un pantalón o pollera");
   }
   if (!cats.has("calzado")) f.push("calzado");
   return f;
