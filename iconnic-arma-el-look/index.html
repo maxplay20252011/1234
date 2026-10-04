@@ -61,7 +61,10 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
 .btn svg{width:18px;height:18px}
 
 /* ---------- inicio ---------- */
-.home-top{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--ink);padding-bottom:8px}
+.home-der{display:flex;align-items:center;gap:6px}
+.home-top{gap:12px}
+@media (max-width:400px){.home-der .eyebrow{display:none}}
+.home-top{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--ink);padding-bottom:8px}
 .home{display:grid;grid-template-columns:1fr 42%;gap:8px;align-items:end;flex:1;min-height:0;padding-top:18px}
 .home-copy{display:flex;flex-direction:column;gap:16px;align-self:center;min-width:0}
 .home-figure{height:100%;min-height:280px;max-height:520px;display:flex;align-items:flex-end;justify-content:center}
@@ -273,7 +276,7 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
 
   <!-- 1. INICIO -->
   <section class="screen" id="s-inicio" aria-labelledby="t-inicio">
-    <div class="home-top"><span class="wordmark">ICON</span><span class="eyebrow">by ICONNIC · Juego de estilo</span></div>
+    <div class="home-top"><span class="wordmark">ICON</span><span class="home-der"><span class="eyebrow">by ICONNIC · Juego de estilo</span><button class="btn-icono tuerca" id="home-admin" aria-label="Administración"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/><circle cx="12" cy="12" r="6.4"/></svg></button></span></div>
     <div class="home">
       <div class="home-copy">
         <span class="eyebrow">3 consignas · menos de 2 min</span>
@@ -1809,13 +1812,13 @@ function boot() {
   function rankingLocal({ p_desde = null, p_limite = 50 } = {}) {
     const desde = p_desde ? new Date(p_desde).getTime() : 0, mejores = new Map();
     for (const p of local.leer()) { // mejor partida por nombre; en empate, la que llegó primero
-      if (!p || typeof p.nombre !== "string" || typeof p.total !== "number" || new Date(p.fecha).getTime() < desde) continue;
+      if (!p || p.borrada || typeof p.nombre !== "string" || typeof p.total !== "number" || new Date(p.fecha).getTime() < desde) continue;
       const k = p.nombre.toLowerCase(), m = mejores.get(k);
       if (!m || p.total > m.total || (p.total === m.total && p.fecha < m.fecha)) mejores.set(k, p);
     }
-    const yo = (S.nombre || "").toLowerCase();
-    const tabla = [...mejores.values()].sort((a, b) => b.total - a.total || a.fecha.localeCompare(b.fecha))
-      .map((p, i) => ({ posicion: i + 1, nombre: p.nombre, puntaje: p.total, fecha: p.fecha, esVos: !!yo && p.nombre.toLowerCase() === yo }));
+    const yo = (S.nombre || "").toLowerCase(), bonus = leerJSON(LOCAL_BONUS, {}), pts = p => p.total + (bonus[p.nombre.toLowerCase()] || 0);
+    const tabla = [...mejores.values()].sort((a, b) => pts(b) - pts(a) || a.fecha.localeCompare(b.fecha))
+      .map((p, i) => ({ posicion: i + 1, nombre: p.nombre, puntaje: Math.max(0, pts(p)), fecha: p.fecha, esVos: !!yo && p.nombre.toLowerCase() === yo }));
     return { ok: true, json: { total: tabla.length, filas: tabla.slice(0, p_limite), yo: tabla.find(f => f.esVos) || null } };
   }
   const obtenerRanking = args => (RANKING_ON ? rpcRanking({ ...args, p_device: deviceId }) : Promise.resolve(rankingLocal(args)));
@@ -1845,7 +1848,6 @@ function boot() {
   const irAlAvatar = () => { pintarSetup(); show("s-avatar"); };
   $("#btn-jugar").onclick = () => { S.reloj = $("#chk-reloj").checked; if (!S.nombre) pedirNombre(irAlAvatar); else irAlAvatar(); };
   $("#btn-ranking-inicio").hidden = false;
-  $("#rk-admin").hidden = !RANKING_ON; // la administración necesita el servidor
   if (!RANKING_ON) document.querySelector(".privacidad p").textContent = "Este ranking se guarda solo en este dispositivo: tu nombre, tu puntaje y la fecha. No se envía nada a internet ni pedimos mail, teléfono ni fotos.";
   $("#btn-ranking-inicio").onclick = () => abrirRanking("s-inicio");
 
@@ -2155,8 +2157,49 @@ function boot() {
 
   /* ---------- Administración (el token vive solo en memoria) ---------- */
   let adminToken = null, jugadoras = [], historial = [], vistaAdmin = "jugadoras";
-  $("#rk-admin").onclick = () => { show("s-admin"); mostrarAdmin(); };
-  $("#ad-volver").onclick = () => abrirRanking();
+  let adminVolverA = "s-inicio";
+  const abrirAdmin = desde => { adminVolverA = desde; show("s-admin"); mostrarAdmin(); };
+  $("#home-admin").onclick = () => abrirAdmin("s-inicio");
+  $("#rk-admin").onclick = () => abrirAdmin("s-ranking");
+  $("#ad-volver").onclick = () => { if (adminVolverA === "s-ranking") abrirRanking(); else { pintarMejor(); show("s-inicio"); } };
+
+  /* Sin servidor (ranking de este dispositivo) la contraseña se comprueba acá, comparando su huella SHA-256:
+     la contraseña no está escrita en el código. Con Supabase la valida el servidor. */
+  const HUELLA_ADMIN_LOCAL = "b63ca3ce1cbbb4386788048a4b7f193b9b3c9cf17034b75b746b6fbedc1f7c9b";
+  let fallosLocal = 0, bloqueoLocal = 0;
+  async function sha256hex(t) { const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return Array.from(new Uint8Array(d), x => x.toString(16).padStart(2, "0")).join(""); }
+  const LOCAL_BONUS = "icon_ranking_bonus_v1", LOCAL_LOG = "icon_admin_log_v1";
+  const leerJSON = (k, def) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? def; } catch (e) { return def; } };
+  const guardarJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
+  // Mismas acciones que el servidor, sobre los datos de este dispositivo. La "cuenta" es el nombre.
+  function accionLocal(b) {
+    const lista = local.leer(), bonus = leerJSON(LOCAL_BONUS, {}), log = leerJSON(LOCAL_LOG, []);
+    const nombreDe = k => (lista.find(p => p.nombre.toLowerCase() === k) || {}).nombre || k;
+    const anotar = (accion, k, cantidad, motivo) => { log.unshift({ id: Date.now(), accion, deviceId: k, nombre: nombreDe(k), cantidad, motivo: motivo || null, fecha: new Date().toISOString() }); guardarJSON(LOCAL_LOG, log.slice(0, 300)); };
+    if (b.accion === "list") {
+      const m = new Map();
+      for (const p of lista) {
+        const k = p.nombre.toLowerCase(), j = m.get(k) || { deviceId: k, nombre: p.nombre, bonus: bonus[k] || 0, mejor: null, partidas: 0, borradas: 0 };
+        if (p.borrada) j.borradas++; else { j.partidas++; j.mejor = Math.max(j.mejor ?? 0, p.total); }
+        m.set(k, j);
+      }
+      return { jugadoras: [...m.values()] };
+    }
+    if (b.accion === "history") return { historial: log };
+    if (b.accion === "add_points") {
+      const n = Number(b.cantidad);
+      if (!Number.isInteger(n) || !n || n < -300 || n > 300 || !String(b.motivo || "").trim()) { toast("Revisá la cantidad y el motivo."); return null; }
+      bonus[b.deviceId] = (bonus[b.deviceId] || 0) + n; guardarJSON(LOCAL_BONUS, bonus); anotar("bonus", b.deviceId, n, String(b.motivo).trim().slice(0, 200));
+      return { ok: true, bonus: bonus[b.deviceId] };
+    }
+    if (b.accion === "delete_player" || b.accion === "restore_player") {
+      const eliminar = b.accion === "delete_player"; let c = 0;
+      for (const p of lista) if (p.nombre.toLowerCase() === b.deviceId && !!p.borrada !== eliminar) { p.borrada = eliminar; c++; }
+      local.guardar(lista); anotar(eliminar ? "delete" : "restore", b.deviceId, c);
+      return { ok: true, partidas: c };
+    }
+    return null;
+  }
   function mostrarAdmin(msg) {
     $("#ad-login").hidden = !!adminToken; $("#ad-panel").hidden = !adminToken;
     $("#ad-error").textContent = msg || "";
@@ -2165,7 +2208,16 @@ function boot() {
   $("#ad-login").addEventListener("submit", async e => {
     e.preventDefault();
     const pass = $("#in-pass").value; if (!pass) return;
-    const b = $("#ad-entrar"); b.disabled = true; b.textContent = "Entrando…";
+    const b = $("#ad-entrar");
+    if (!RANKING_ON) {
+      $("#in-pass").value = "";
+      if (Date.now() < bloqueoLocal) { $("#ad-error").textContent = "Demasiados intentos. Probá en 10 minutos."; return; }
+      if ((await sha256hex(pass)) === HUELLA_ADMIN_LOCAL) { fallosLocal = 0; adminToken = "local"; mostrarAdmin(); return; }
+      if (++fallosLocal >= 5) { fallosLocal = 0; bloqueoLocal = Date.now() + 10 * 60 * 1000; $("#ad-error").textContent = "Demasiados intentos. Probá en 10 minutos."; }
+      else $("#ad-error").textContent = "Contraseña incorrecta";
+      return;
+    }
+    b.disabled = true; b.textContent = "Entrando…";
     const r = await funcion("admin-login", { password: pass });
     b.disabled = false; b.textContent = "Entrar"; $("#in-pass").value = "";
     if (r.ok && r.json.token) { adminToken = r.json.token; mostrarAdmin(); return; }
@@ -2173,6 +2225,7 @@ function boot() {
   });
   $("#ad-salir").onclick = () => { adminToken = null; jugadoras = []; historial = []; mostrarAdmin(); };
   async function accion(body) {
+    if (!RANKING_ON) return accionLocal(body);
     const r = await funcion("admin-action", { token: adminToken, ...body });
     if (r.status === 401) { adminToken = null; mostrarAdmin("Tu sesión venció. Entrá de nuevo."); return null; }
     if (!r.ok) toast(r.json.mensaje || "No se pudo completar.");
@@ -2192,12 +2245,12 @@ function boot() {
     $("#ad-lista").innerHTML = lista.length ? lista.map(j => {
       const borrada = j.partidas === 0 && j.borradas > 0, final = (j.mejor ?? 0) + j.bonus;
       return `<li class="ad-fila${borrada ? " borrada" : ""}" data-d="${esc(j.deviceId)}" data-n="${esc(j.nombre)}" data-final="${final}">`
-        + `<div class="ad-cab"><div><b>${esc(j.nombre)}</b><div class="note num">Mejor ${j.mejor ?? "—"} · Bonus ${signo(j.bonus)} · ${j.partidas} ${j.partidas === 1 ? "partida" : "partidas"}${borrada ? " · Borrada" : ""}</div></div>`
+        + `<div class="ad-cab"><div><b>${esc(j.nombre)}</b><div class="note num">Mejor ${j.mejor ?? "—"} · Bonus ${signo(j.bonus)} · ${j.partidas} ${j.partidas === 1 ? "partida" : "partidas"}${borrada ? " · Eliminada" : ""}</div></div>`
         + `<div class="ad-acc"><button class="btn btn-ghost sm" data-a="puntos" aria-label="Sumar o restar puntos a ${esc(j.nombre)}">± Puntos</button>`
-        + (borrada ? `<button class="btn btn-ghost sm" data-a="restaurar" aria-label="Restaurar a ${esc(j.nombre)}">Restaurar</button>` : `<button class="btn btn-ghost sm" data-a="borrar" aria-label="Borrar a ${esc(j.nombre)}">Borrar</button>`)
+        + (borrada ? `<button class="btn btn-ghost sm" data-a="restaurar" aria-label="Restaurar a ${esc(j.nombre)}">Restaurar</button>` : `<button class="btn btn-ghost sm" data-a="borrar" aria-label="Eliminar a ${esc(j.nombre)}">Eliminar</button>`)
         + `</div></div><div class="ad-form" hidden></div></li>`;
     }).join("") : `<li class="rk-vacio">${jugadoras.length ? "No hay jugadoras con ese nombre." : "Todavía no hay jugadoras."}</li>`;
-    const ACC = { bonus: c => `${signo(c)} puntos`, delete: c => `Borrada (${c} ${c === 1 ? "partida" : "partidas"})`, restore: c => `Restaurada (${c} ${c === 1 ? "partida" : "partidas"})` };
+    const ACC = { bonus: c => `${signo(c)} puntos`, delete: c => `Eliminada (${c} ${c === 1 ? "partida" : "partidas"})`, restore: c => `Restaurada (${c} ${c === 1 ? "partida" : "partidas"})` };
     $("#ad-log").innerHTML = historial.length ? historial.map(h => `<li class="ad-fila"><div class="ad-cab"><div><b>${esc(h.nombre || "—")}</b>`
       + `<div class="note num">${new Date(h.fecha).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} · ${ACC[h.accion](h.cantidad)}${h.motivo ? " · " + esc(h.motivo) : ""}</div></div>`
       + (h.accion === "delete" ? `<button class="btn btn-ghost sm" data-a="restaurar-log" data-d="${esc(h.deviceId)}">Restaurar</button>` : "") + `</div></li>`).join("")
@@ -2219,8 +2272,8 @@ function boot() {
         + `<div class="fila-btn"><button class="btn btn-dark sm" data-a="aplicar">Aplicar</button><button class="btn btn-ghost sm" data-a="cancelar">Cancelar</button></div>`;
       form.hidden = false; form.querySelector("input").focus();
     } else if (a === "borrar") {
-      form.innerHTML = `<p>¿Borrar a ${esc(nombre)} del ranking? Esta acción se puede deshacer desde el historial.</p>`
-        + `<div class="fila-btn"><button class="btn peligro sm" data-a="confirmar-borrar">Borrar</button><button class="btn btn-ghost sm" data-a="cancelar">Cancelar</button></div>`;
+      form.innerHTML = `<p>¿Eliminar a ${esc(nombre)} del ranking? Se puede deshacer desde el historial.</p>`
+        + `<div class="fila-btn"><button class="btn peligro sm" data-a="confirmar-borrar">Eliminar</button><button class="btn btn-ghost sm" data-a="cancelar">Cancelar</button></div>`;
       form.hidden = false;
     } else if (a === "cancelar") { form.hidden = true; form.innerHTML = ""; }
     else if (a === "aplicar") {

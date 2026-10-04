@@ -117,7 +117,7 @@ check(/Ganó el sorteo del evento/.test(await p.textContent("#ad-log")), "la acc
 await p.tap("#ad-panel .chip[data-v=jugadoras]");
 const filaSofi = p.locator(".ad-fila", { hasText: "Sofi" }).first();
 await filaSofi.locator("[data-a=borrar]").tap();
-check(/¿Borrar a Sofi del ranking\? Esta acción se puede deshacer desde el historial\./.test(await filaSofi.textContent()), "confirmación dentro de la página");
+check(/¿Eliminar a Sofi del ranking\? Se puede deshacer desde el historial\./.test(await filaSofi.textContent()), "confirmación dentro de la página");
 await filaSofi.locator("[data-a=confirmar-borrar]").tap(); await espera(800);
 const rank2 = (await api("/rest/v1/rpc/ranking", { p_device: null })).json.filas.map(f => f.nombre);
 check(!rank2.includes("Sofi"), `Sofi borrada: ${JSON.stringify(rank2)}`);
