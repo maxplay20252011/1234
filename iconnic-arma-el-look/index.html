@@ -1804,6 +1804,28 @@ function boot() {
   const rpcRanking = body => llamar(`${SUPABASE_URL}/rest/v1/rpc/ranking`, body);
   const ordinal = n => `${n}ª`;
 
+  /* ---------- Ranking de este dispositivo (cuando no hay Supabase configurado) ----------
+     Funciona en cualquier lado, también en el link de Claude: junta a todas las que
+     jugaron en este navegador (ideal para una tablet en un evento). */
+  const LOCAL_KEY = "icon_ranking_local_v1";
+  const local = {
+    leer() { try { const a = JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } },
+    guardar(lista) { try { localStorage.setItem(LOCAL_KEY, JSON.stringify(lista.slice(-500))); return true; } catch (e) { return false; } },
+  };
+  function rankingLocal({ p_desde = null, p_limite = 50 } = {}) {
+    const desde = p_desde ? new Date(p_desde).getTime() : 0, mejores = new Map();
+    for (const p of local.leer()) { // mejor partida por apodo; en empate, la que llegó primero
+      if (!p || typeof p.nombre !== "string" || typeof p.total !== "number" || new Date(p.fecha).getTime() < desde) continue;
+      const k = p.nombre.toLowerCase(), m = mejores.get(k);
+      if (!m || p.total > m.total || (p.total === m.total && p.fecha < m.fecha)) mejores.set(k, p);
+    }
+    const yo = (S.nombre || "").toLowerCase();
+    const tabla = [...mejores.values()].sort((a, b) => b.total - a.total || a.fecha.localeCompare(b.fecha))
+      .map((p, i) => ({ posicion: i + 1, nombre: p.nombre, puntaje: p.total, fecha: p.fecha, esVos: !!yo && p.nombre.toLowerCase() === yo }));
+    return { ok: true, json: { total: tabla.length, filas: tabla.slice(0, p_limite), yo: tabla.find(f => f.esVos) || null } };
+  }
+  const obtenerRanking = args => (RANKING_ON ? rpcRanking({ ...args, p_device: deviceId }) : Promise.resolve(rankingLocal(args)));
+
   /* ---------- Apodo ---------- */
   let trasNombre = null;
   function pedirNombre(despues) { trasNombre = despues; $("#in-nombre").value = S.nombre; $("#nombre-error").textContent = ""; show("s-nombre"); setTimeout(() => $("#in-nombre").focus(), 50); }
@@ -1817,8 +1839,10 @@ function boot() {
   });
 
   const irAlAvatar = () => { pintarSetup(); show("s-avatar"); };
-  $("#btn-jugar").onclick = () => { S.reloj = $("#chk-reloj").checked; if (RANKING_ON && !S.nombre) pedirNombre(irAlAvatar); else irAlAvatar(); };
-  $("#btn-ranking-inicio").hidden = !RANKING_ON;
+  $("#btn-jugar").onclick = () => { S.reloj = $("#chk-reloj").checked; if (!S.nombre) pedirNombre(irAlAvatar); else irAlAvatar(); };
+  $("#btn-ranking-inicio").hidden = false;
+  $("#rk-admin").hidden = !RANKING_ON; // la administración necesita el servidor
+  if (!RANKING_ON) document.querySelector(".privacidad p").textContent = "Este ranking se guarda solo en este dispositivo: tu apodo, tu puntaje y la fecha. No se envía nada a internet ni pedimos mail, teléfono ni fotos.";
   $("#btn-ranking-inicio").onclick = () => abrirRanking("s-inicio");
 
   /* ---------- Avatar ---------- */
@@ -2081,8 +2105,16 @@ function boot() {
   /* ---------- Envío del puntaje ---------- */
   function enviarPuntaje() {
     const box = $("#fin-envio");
-    box.hidden = !RANKING_ON; box.classList.remove("con-rk");
-    if (!RANKING_ON) return;
+    box.hidden = false; box.classList.remove("con-rk");
+    if (!RANKING_ON) { // ranking de este dispositivo
+      const lista = local.leer();
+      lista.push({ nombre: S.nombre || "Sin apodo", total: S.resultados.reduce((t, r) => t + r.res.total, 0), fecha: new Date().toISOString() });
+      if (!local.guardar(lista)) { box.innerHTML = `<p class="note">Este navegador no deja guardar el ranking (¿modo privado?).</p>`; return; }
+      const yo = rankingLocal({ p_limite: 1 }).json.yo;
+      box.innerHTML = `<p class="lugar">Quedaste <b>${ordinal(yo ? yo.posicion : 1)}</b></p><button class="btn btn-ghost sm" data-a="ver">Ver ranking</button>`;
+      mostrarRankingFinal({ posicion: yo ? yo.posicion : 1 });
+      return;
+    }
     if (!S.gameId) { box.innerHTML = `<p class="note">Jugaste sin conexión: esta partida no entra al ranking.</p><button class="btn btn-ghost sm" data-a="ver">Ver ranking</button>`; return; }
     box.innerHTML = `<p class="note">Guardando tu puntaje…</p>`;
     const rondas = S.resultados.map(r => ({ consigna: r.consigna.id, prendas: r.puestas }));
@@ -2102,7 +2134,7 @@ function boot() {
   }
   // Al terminar, el ranking aparece solo: top 10 con tu fila resaltada (y tu puesto si quedaste más abajo).
   async function mostrarRankingFinal(res) {
-    const k = await rpcRanking({ p_desde: null, p_device: deviceId, p_limite: 10 });
+    const k = await obtenerRanking({ p_desde: null, p_limite: 10 });
     if (!k.ok || !k.json.filas) return; // queda el "Quedaste Xª de N"
     const { filas, yo, total } = k.json, box = $("#fin-envio");
     box.classList.add("con-rk");
@@ -2136,11 +2168,11 @@ function boot() {
     document.querySelectorAll("#s-ranking .seg .chip").forEach(c => c.setAttribute("aria-pressed", c.dataset.p === periodo));
     const lista = $("#rk-lista"), estado = $("#rk-estado");
     estado.textContent = "Cargando…"; lista.innerHTML = "";
-    const r = await rpcRanking({ p_desde: desdePeriodo(periodo), p_device: deviceId, p_limite: 50 });
+    const r = await obtenerRanking({ p_desde: desdePeriodo(periodo), p_limite: 50 });
     if (!r.ok) { estado.textContent = "No pudimos cargar el ranking. Revisá tu conexión y tocá Actualizar."; return; }
     const { total, filas, yo } = r.json;
     if (!total) { estado.textContent = ""; lista.innerHTML = `<li class="rk-vacio">Todavía nadie jugó. ¡Estrenalo vos!</li>`; return; }
-    estado.textContent = `${total} ${total === 1 ? "participante" : "participantes"}`;
+    estado.textContent = `${RANKING_ON ? "" : "En este dispositivo · "}${total} ${total === 1 ? "participante" : "participantes"}`;
     lista.innerHTML = filas.map(filaRanking).join("") + (yo && yo.posicion > filas.length ? `<li class="rk-sep" aria-hidden="true">…</li>${filaRanking(yo)}` : "");
   }
   document.querySelector("#s-ranking .seg").addEventListener("click", e => { const c = e.target.closest(".chip"); if (c) { periodo = c.dataset.p; cargarRanking(); } });
