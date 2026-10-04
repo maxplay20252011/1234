@@ -187,10 +187,10 @@ Subí **solo** `index.html`, sin las carpetas `supabase`, `scripts` ni `pruebas`
 
 1. **Desde tu celular:**
    - Abrí la dirección y tocá **Jugar**.
-   - Te pide un apodo: escribilo y jugá las 3 rondas.
+   - Te pide un nombre: escribilo y jugá las 3 rondas.
    - Al final tiene que decir **"Quedaste 1ª de 1"**.
 2. **Desde otro celular, o en modo incógnito:**
-   - Jugá con otro apodo.
+   - Jugá con otro nombre.
    - Tocá **Ver ranking**: tienen que aparecer los dos.
 3. **La tuerquita:**
    - En el ranking, tocá ⚙ (arriba a la derecha).
@@ -226,7 +226,7 @@ Subí **solo** `index.html`, sin las carpetas `supabase`, `scripts` ni `pruebas`
   - Al terminar, recalcula el puntaje con el mismo motor del juego e ignora el número que manda el celular.
   - Rechaza las partidas de menos de 15 segundos y los looks imposibles.
   - Admite una partida guardada por minuto por celular.
-- **Límite que no se puede cerrar sin login:** alguien insistente puede borrar los datos de su navegador y aparecer como otra jugadora. Para eso está el botón **Borrar**.
+- **Límite que no se puede cerrar sin login:** alguien insistente puede borrar los datos de su navegador y aparecer con otro nombre. Para eso está el botón **Borrar**.
 
 ## Si cambiás prendas, consignas o reglas
 El servidor tiene una copia del motor del juego. Después de editar `index.html`, actualizala y volvé a publicar `submit-score` y `start-game`:

@@ -10,19 +10,14 @@ const err = (status, error, mensaje, extra = {}) => ({ status, json: { error, me
 const DEVICE_RE = /^[A-Za-z0-9_-]{8,64}$/;
 export const deviceValido = d => typeof d === "string" && DEVICE_RE.test(d);
 
-// Filtro básico de malas palabras. Se compara sin tildes, sin espacios ni signos y con "leet" básico (4→a, 3→e, 0→o...).
-const MALAS = ["puta", "puto", "pija", "poronga", "concha", "mierda", "forro", "pelotud", "boludo", "garca", "trolo",
-  "verga", "chupala", "sorete", "culiad", "cogi", "coger", "pajer", "nazi", "hitler", "violad", "mogolic", "negrodemierda", "putita", "zorra", "trola"];
-const normalizar = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
-  .replace(/[4@]/g, "a").replace(/3/g, "e").replace(/[1!|]/g, "i").replace(/0/g, "o").replace(/[5$]/g, "s").replace(/7/g, "t")
-  .replace(/[^a-z]/g, "");
+// Nombre: cualquiera (letras, emojis, símbolos), de 1 a 20 caracteres. La única regla es que no se repita
+// (eso lo controla la base). Se quitan caracteres invisibles para que "Sofi" y "So​fi" no cuenten como distintos.
+const INVISIBLES = /[\u0000-\u001f\u007f-\u009f\u200b\u200c\u200e\u200f\u2028-\u202e\u2060-\u206f\ufeff]/g;
+export const limpiarNombre = n => n.normalize("NFC").replace(INVISIBLES, "").replace(/\s+/g, " ").trim();
 export function validarNombre(n) {
-  if (typeof n !== "string") return { ok: false, mensaje: "Escribí un apodo." };
-  const limpio = n.normalize("NFC").replace(/\s+/g, " ").trim();
-  if (limpio.length < 2 || limpio.length > 20) return { ok: false, mensaje: "El apodo tiene que tener entre 2 y 20 caracteres." };
-  if (!/^[\p{L}\p{N} ._'-]+$/u.test(limpio)) return { ok: false, mensaje: "Usá solo letras, números, espacios, punto, guion o apóstrofo." };
-  const plano = normalizar(limpio);
-  if (MALAS.some(m => plano.includes(m))) return { ok: false, mensaje: "Elegí otro apodo, por favor." };
+  if (typeof n !== "string") return { ok: false, mensaje: "Escribí tu nombre." };
+  const limpio = limpiarNombre(n), largo = Array.from(limpio).length;
+  if (largo < 1 || largo > 20) return { ok: false, mensaje: "El nombre puede tener hasta 20 caracteres." };
   return { ok: true, nombre: limpio };
 }
 
@@ -41,6 +36,7 @@ const MENSAJES = {
   partida_invalida: "Esta partida no es válida.", partida_usada: "Esta partida ya se guardó.",
   consignas_distintas: "Las consignas no coinciden con la partida.", muy_rapida: "La partida terminó demasiado rápido.",
   partida_vencida: "La partida venció.", espera: "Esperá un minuto entre partidas para guardar.",
+  nombre_en_uso: "Ese nombre ya lo usa otra persona. Elegí otro.",
 };
 export async function submitScore(body, ctx) {
   if (!deviceValido(body?.deviceId)) return err(400, "device_invalido", "Dispositivo inválido.");
@@ -54,7 +50,7 @@ export async function submitScore(body, ctx) {
     p_game: body.gameId, p_device: body.deviceId, p_nombre: nombre.nombre, p_consignas: calculo.rondas.map(x => x.consigna),
     p_total: calculo.total, p_rounds: calculo.rondas, p_ip: ctx.ip,
   });
-  if (!r.ok) return err(r.error === "espera" ? 429 : 400, r.error, MENSAJES[r.error] || "No se pudo guardar.", r.segundos ? { segundos: r.segundos } : {});
+  if (!r.ok) return err(r.error === "espera" ? 429 : r.error === "nombre_en_uso" ? 409 : 400, r.error, MENSAJES[r.error] || "No se pudo guardar.", r.segundos ? { segundos: r.segundos } : {});
   return ok({ total: r.total, posicion: r.posicion, de: r.de, nombre: nombre.nombre });
 }
 

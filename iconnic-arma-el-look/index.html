@@ -390,17 +390,17 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
     </div>
   </section>
 
-  <!-- APODO PARA EL RANKING -->
+  <!-- NOMBRE PARA EL RANKING -->
   <section class="screen" id="s-nombre" hidden aria-labelledby="t-nombre">
     <div class="setup-head">
       <span class="eyebrow">Ranking</span>
       <h2 id="t-nombre">¿Cómo te llamamos en el ranking?</h2>
     </div>
     <form class="form-col" id="f-nombre" novalidate>
-      <label class="eyebrow" for="in-nombre">Tu apodo</label>
+      <label class="eyebrow" for="in-nombre">Tu nombre</label>
       <input class="campo" id="in-nombre" maxlength="20" autocomplete="nickname" spellcheck="false" aria-describedby="nombre-aviso nombre-error">
       <p class="note err" id="nombre-error" role="alert"></p>
-      <p class="note" id="nombre-aviso">Tu nombre se muestra en el ranking público. Usá un apodo si preferís.</p>
+      <p class="note" id="nombre-aviso">Ponete el nombre que quieras: sale en el ranking y solo tiene que ser distinto al de las demás.</p>
       <button class="btn btn-primary" type="submit">Seguir</button>
     </form>
   </section>
@@ -422,10 +422,10 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
     <ol class="rk-lista" id="rk-lista"></ol>
     <div class="rk-pie">
       <button class="btn btn-ghost" id="rk-actualizar">Actualizar</button>
-      <p class="note">Tu apodo: <b id="rk-apodo"></b> · <button class="link-inline" id="rk-cambiar">Cambiar</button></p>
+      <p class="note">Tu nombre: <b id="rk-apodo"></b> · <button class="link-inline" id="rk-cambiar">Cambiar</button></p>
       <details class="privacidad">
         <summary>Privacidad</summary>
-        <p>Para el ranking guardamos solo tu apodo, un número al azar que identifica este dispositivo y tus partidas (prendas, consignas y puntaje). No pedimos mail, teléfono ni fotos. Si cambiás tu apodo, se actualiza en tu próxima partida. Para que borren tus datos, pedíselo a ICONNIC.</p>
+        <p>Para el ranking guardamos solo tu nombre, un número al azar que identifica este dispositivo y tus partidas (prendas, consignas y puntaje). No pedimos mail, teléfono ni fotos. Si cambiás tu nombre, se actualiza en tu próxima partida. Para que borren tus datos, pedíselo a ICONNIC.</p>
       </details>
     </div>
   </section>
@@ -1814,7 +1814,7 @@ function boot() {
   };
   function rankingLocal({ p_desde = null, p_limite = 50 } = {}) {
     const desde = p_desde ? new Date(p_desde).getTime() : 0, mejores = new Map();
-    for (const p of local.leer()) { // mejor partida por apodo; en empate, la que llegó primero
+    for (const p of local.leer()) { // mejor partida por nombre; en empate, la que llegó primero
       if (!p || typeof p.nombre !== "string" || typeof p.total !== "number" || new Date(p.fecha).getTime() < desde) continue;
       const k = p.nombre.toLowerCase(), m = mejores.get(k);
       if (!m || p.total > m.total || (p.total === m.total && p.fecha < m.fecha)) mejores.set(k, p);
@@ -1826,14 +1826,24 @@ function boot() {
   }
   const obtenerRanking = args => (RANKING_ON ? rpcRanking({ ...args, p_device: deviceId }) : Promise.resolve(rankingLocal(args)));
 
-  /* ---------- Apodo ---------- */
+  /* ---------- Nombre (cualquiera; solo no se puede repetir) ---------- */
   let trasNombre = null;
   function pedirNombre(despues) { trasNombre = despues; $("#in-nombre").value = S.nombre; $("#nombre-error").textContent = ""; show("s-nombre"); setTimeout(() => $("#in-nombre").focus(), 50); }
-  $("#f-nombre").addEventListener("submit", e => {
+  const INVISIBLES = /[\u0000-\u001f\u007f-\u009f\u200b\u200c\u200e\u200f\u2028-\u202e\u2060-\u206f\ufeff]/g;
+  const limpiarNombre = t => t.normalize("NFC").replace(INVISIBLES, "").replace(/\s+/g, " ").trim();
+  const igual = (a, b) => a.toLocaleLowerCase("es") === b.toLocaleLowerCase("es");
+  async function nombreLibre(n) {
+    if (S.nombre && igual(n, S.nombre)) return true; // es el tuyo
+    if (!RANKING_ON) return !rankingLocal({ p_limite: 1000 }).json.filas.some(f => igual(f.nombre, n));
+    const r = await llamar(`${SUPABASE_URL}/rest/v1/rpc/nombre_disponible`, { p_nombre: n, p_device: deviceId }, 5000);
+    return r.ok ? r.json !== false : true; // sin conexión: lo vuelve a controlar el servidor al guardar
+  }
+  $("#f-nombre").addEventListener("submit", async e => {
     e.preventDefault();
-    const n = $("#in-nombre").value.normalize("NFC").replace(/\s+/g, " ").trim();
-    if (n.length < 2 || n.length > 20) { $("#nombre-error").textContent = "El apodo tiene que tener entre 2 y 20 caracteres."; return; }
-    if (!/^[\p{L}\p{N} ._'-]+$/u.test(n)) { $("#nombre-error").textContent = "Usá solo letras, números, espacios, punto, guion o apóstrofo."; return; }
+    const n = limpiarNombre($("#in-nombre").value), largo = Array.from(n).length;
+    if (!largo) { $("#nombre-error").textContent = "Escribí tu nombre."; return; }
+    if (largo > 20) { $("#nombre-error").textContent = "El nombre puede tener hasta 20 caracteres."; return; }
+    if (!(await nombreLibre(n))) { $("#nombre-error").textContent = `"${n}" ya lo usa otra persona. Elegí otro.`; return; }
     S.nombre = n; ls.set("icon_apodo", n);
     const f = trasNombre; trasNombre = null; if (f) f();
   });
@@ -1842,7 +1852,7 @@ function boot() {
   $("#btn-jugar").onclick = () => { S.reloj = $("#chk-reloj").checked; if (!S.nombre) pedirNombre(irAlAvatar); else irAlAvatar(); };
   $("#btn-ranking-inicio").hidden = false;
   $("#rk-admin").hidden = !RANKING_ON; // la administración necesita el servidor
-  if (!RANKING_ON) document.querySelector(".privacidad p").textContent = "Este ranking se guarda solo en este dispositivo: tu apodo, tu puntaje y la fecha. No se envía nada a internet ni pedimos mail, teléfono ni fotos.";
+  if (!RANKING_ON) document.querySelector(".privacidad p").textContent = "Este ranking se guarda solo en este dispositivo: tu nombre, tu puntaje y la fecha. No se envía nada a internet ni pedimos mail, teléfono ni fotos.";
   $("#btn-ranking-inicio").onclick = () => abrirRanking("s-inicio");
 
   /* ---------- Avatar ---------- */
@@ -2108,7 +2118,7 @@ function boot() {
     box.hidden = false; box.classList.remove("con-rk");
     if (!RANKING_ON) { // ranking de este dispositivo
       const lista = local.leer();
-      lista.push({ nombre: S.nombre || "Sin apodo", total: S.resultados.reduce((t, r) => t + r.res.total, 0), fecha: new Date().toISOString() });
+      lista.push({ nombre: S.nombre || "Sin nombre", total: S.resultados.reduce((t, r) => t + r.res.total, 0), fecha: new Date().toISOString() });
       if (!local.guardar(lista)) { box.innerHTML = `<p class="note">Este navegador no deja guardar el ranking (¿modo privado?).</p>`; return; }
       const yo = rankingLocal({ p_limite: 1 }).json.yo;
       box.innerHTML = `<p class="lugar">Quedaste <b>${ordinal(yo ? yo.posicion : 1)}</b></p><button class="btn btn-ghost sm" data-a="ver">Ver ranking</button>`;
@@ -2124,8 +2134,8 @@ function boot() {
         mostrarRankingFinal(r.json);
       } else if (r.json.error === "partida_usada") {
         box.innerHTML = `<p class="note">Esta partida ya está guardada.</p><button class="btn btn-ghost sm" data-a="ver">Ver ranking</button>`;
-      } else if (r.json.error === "nombre_invalido") {
-        box.innerHTML = `<p class="note err">${esc(r.json.mensaje || "Elegí otro apodo.")}</p><button class="btn btn-ghost sm" data-a="apodo">Cambiar apodo</button>`;
+      } else if (r.json.error === "nombre_invalido" || r.json.error === "nombre_en_uso") {
+        box.innerHTML = `<p class="note err">${esc(r.json.mensaje || "Elegí otro nombre.")}</p><button class="btn btn-ghost sm" data-a="apodo">Cambiar nombre</button>`;
       } else {
         const detalle = r.status === 0 ? "" : r.json.mensaje ? ` ${esc(r.json.mensaje)}` : "";
         box.innerHTML = `<p class="note err">No pudimos guardar tu puntaje.${detalle}</p><button class="btn btn-ghost sm" data-a="reintentar">Reintentar</button>`;

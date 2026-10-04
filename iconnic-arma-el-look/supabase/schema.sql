@@ -15,7 +15,7 @@ create extension if not exists pgcrypto;
 -- Una fila por jugadora (por dispositivo). El bonus de la admin vive acá.
 create table if not exists public.players (
   device_id  text primary key check (char_length(device_id) between 8 and 64),
-  name       text not null check (char_length(name) between 2 and 20),
+  name       text not null check (char_length(name) between 1 and 20),
   bonus      int  not null default 0 check (bonus between -3000 and 3000),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -35,7 +35,7 @@ create table if not exists public.games (
 create table if not exists public.scores (
   id          uuid primary key default gen_random_uuid(),
   device_id   text not null references public.players(device_id) on delete cascade,
-  player_name text not null check (char_length(player_name) between 2 and 20),
+  player_name text not null check (char_length(player_name) between 1 and 20),
   game_id     uuid unique references public.games(id) on delete set null,
   total       int  not null check (total between 0 and 300),
   rounds      jsonb not null,  -- [{consigna, prendas:[ids], puntaje}]
@@ -71,7 +71,15 @@ create table if not exists public.login_locks (
   until timestamptz not null
 );
 
+-- Si la base es de una versión anterior: nombres de 1 a 20 caracteres.
+alter table public.players drop constraint if exists players_name_check;
+alter table public.players add constraint players_name_check check (char_length(name) between 1 and 20);
+alter table public.scores drop constraint if exists scores_player_name_check;
+alter table public.scores add constraint scores_player_name_check check (char_length(player_name) between 1 and 20);
+
 -- ---------- Índices ----------
+-- Un nombre por persona: no se repite (sin distinguir mayúsculas).
+create unique index if not exists players_nombre_unico on public.players (lower(name));
 create index if not exists scores_device_idx  on public.scores (device_id, created_at desc);
 create index if not exists scores_rank_idx    on public.scores (created_at) where not deleted;
 create index if not exists games_device_idx   on public.games (device_id, created_at desc);
@@ -121,6 +129,12 @@ returns jsonb language sql stable security definer set search_path = public as $
   );
 $$;
 
+-- ¿Está libre este nombre? (público: los nombres ya se ven en el ranking). Tu propio nombre cuenta como libre.
+create or replace function public.nombre_disponible(p_nombre text, p_device text default null)
+returns boolean language sql stable security definer set search_path = public as $$
+  select not exists (select 1 from players where lower(name) = lower(btrim(p_nombre)) and device_id is distinct from p_device);
+$$;
+
 -- =====================================================================
 --  PARTIDAS (solo Edge Functions, con clave de servicio)
 -- =====================================================================
@@ -152,8 +166,15 @@ begin
   if v_ult is not null and now() - v_ult < interval '60 seconds' then
     return jsonb_build_object('ok', false, 'error', 'espera', 'segundos', ceil(60 - extract(epoch from now() - v_ult)));
   end if;
-  insert into players (device_id, name) values (p_device, p_nombre)
-    on conflict (device_id) do update set name = excluded.name, updated_at = now();
+  if exists (select 1 from players where lower(name) = lower(p_nombre) and device_id <> p_device) then
+    return jsonb_build_object('ok', false, 'error', 'nombre_en_uso');
+  end if;
+  begin
+    insert into players (device_id, name) values (p_device, p_nombre)
+      on conflict (device_id) do update set name = excluded.name, updated_at = now();
+  exception when unique_violation then  -- otra persona lo tomó en el mismo instante
+    return jsonb_build_object('ok', false, 'error', 'nombre_en_uso');
+  end;
   insert into scores (device_id, player_name, game_id, total, rounds, ip) values (p_device, p_nombre, p_game, p_total, p_rounds, p_ip);
   update games set used_at = now() where id = p_game;
   r := ranking(null, p_device, 1);
@@ -275,5 +296,7 @@ begin
     execute format('grant execute on function public.%s to service_role', f);
   end loop;
 end $$;
--- La única función pública:
+-- Las únicas funciones públicas (solo leen):
+revoke all on function public.nombre_disponible(text, text) from public;
 grant execute on function public.ranking(timestamptz, text, int) to anon, authenticated;
+grant execute on function public.nombre_disponible(text, text) to anon, authenticated, service_role;
