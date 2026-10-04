@@ -40,6 +40,7 @@ h1[tabindex="-1"]:focus,h2[tabindex="-1"]:focus{outline:none}
 #app{height:100%;max-width:480px;margin:0 auto;position:relative}
 .screen{height:100%;display:flex;flex-direction:column;padding-inline:16px;padding-block:14px 16px;overflow-y:auto;overflow-x:hidden}
 .screen[hidden]{display:none!important}
+.screen:not(#s-ronda)>*{flex-shrink:0} /* con contenido largo, la pantalla scrollea en vez de aplastar */
 
 /* tipografía */
 .wordmark{font-family:var(--f-display);font-weight:700;letter-spacing:.18em;font-size:18px}
@@ -214,6 +215,10 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
 .envio p{margin:0}
 .envio .lugar{font-size:17px}
 .envio .lugar b{font-family:var(--f-display);color:var(--accent);font-size:24px}
+.envio.con-rk{display:flex;flex-direction:column;align-items:stretch;gap:6px}
+.envio .rk-cab{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.rk-lista.mini .rk-fila{padding-block:8px}
+.rk-lista.mini .rk-pts{font-size:18px}
 .rk-lista{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column}
 .rk-fila{display:grid;grid-template-columns:34px 1fr auto 48px;gap:10px;align-items:center;padding:11px 4px;border-bottom:1px solid var(--line)}
 .rk-fila.vos{background:var(--blush);border-radius:8px;border-bottom-color:transparent;padding-inline:8px}
@@ -2076,7 +2081,7 @@ function boot() {
   /* ---------- Envío del puntaje ---------- */
   function enviarPuntaje() {
     const box = $("#fin-envio");
-    box.hidden = !RANKING_ON;
+    box.hidden = !RANKING_ON; box.classList.remove("con-rk");
     if (!RANKING_ON) return;
     if (!S.gameId) { box.innerHTML = `<p class="note">Jugaste sin conexión: esta partida no entra al ranking.</p><button class="btn btn-ghost sm" data-a="ver">Ver ranking</button>`; return; }
     box.innerHTML = `<p class="note">Guardando tu puntaje…</p>`;
@@ -2084,6 +2089,7 @@ function boot() {
     funcion("submit-score", { gameId: S.gameId, deviceId, nombre: S.nombre, rondas }).then(r => {
       if (r.ok) {
         box.innerHTML = `<p class="lugar">Quedaste <b>${ordinal(r.json.posicion)}</b> de ${r.json.de}</p><button class="btn btn-ghost sm" data-a="ver">Ver ranking</button>`;
+        mostrarRankingFinal(r.json);
       } else if (r.json.error === "partida_usada") {
         box.innerHTML = `<p class="note">Esta partida ya está guardada.</p><button class="btn btn-ghost sm" data-a="ver">Ver ranking</button>`;
       } else if (r.json.error === "nombre_invalido") {
@@ -2093,6 +2099,16 @@ function boot() {
         box.innerHTML = `<p class="note err">No pudimos guardar tu puntaje.${detalle}</p><button class="btn btn-ghost sm" data-a="reintentar">Reintentar</button>`;
       }
     });
+  }
+  // Al terminar, el ranking aparece solo: top 10 con tu fila resaltada (y tu puesto si quedaste más abajo).
+  async function mostrarRankingFinal(res) {
+    const k = await rpcRanking({ p_desde: null, p_device: deviceId, p_limite: 10 });
+    if (!k.ok || !k.json.filas) return; // queda el "Quedaste Xª de N"
+    const { filas, yo, total } = k.json, box = $("#fin-envio");
+    box.classList.add("con-rk");
+    box.innerHTML = `<div class="rk-cab"><p class="lugar">Quedaste <b>${ordinal(res.posicion)}</b> de ${total}</p><span class="eyebrow">Ranking</span></div>`
+      + `<ol class="rk-lista mini">${filas.map(filaRanking).join("")}${yo && yo.posicion > filas.length ? `<li class="rk-sep" aria-hidden="true">…</li>${filaRanking(yo)}` : ""}</ol>`
+      + `<button class="btn btn-ghost sm" data-a="ver">Ver ranking completo</button>`;
   }
   $("#fin-envio").addEventListener("click", e => {
     const a = e.target.closest("[data-a]")?.dataset.a;

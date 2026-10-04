@@ -80,6 +80,30 @@ La contraseña **nunca** va en el archivo del juego: se guarda en Supabase, dond
 
 ## Paso D — Publicar las funciones del servidor
 
+### Opción fácil: desde el navegador, sin instalar nada (recomendada)
+Son 4 funciones, y para cada una se repite lo mismo. Los archivos ya vienen listos en la carpeta `supabase/para-pegar/`:
+
+| Nombre de la función (exacto) | Archivo para pegar |
+|---|---|
+| `start-game` | `supabase/para-pegar/start-game.ts` |
+| `submit-score` | `supabase/para-pegar/submit-score.ts` |
+| `admin-login` | `supabase/para-pegar/admin-login.ts` |
+| `admin-action` | `supabase/para-pegar/admin-action.ts` |
+
+1. En el menú de la izquierda, entrá a **Edge Functions** → **Deploy a new function** → **Via Editor**.
+2. Arriba, donde dice el nombre de la función, borrá el que viene y escribí el nombre **exacto** de la tabla (por ejemplo `start-game`).
+3. Borrá todo el código de ejemplo del editor.
+4. Abrí el archivo correspondiente con el Bloc de notas, copiá **todo** (Ctrl + A, Ctrl + C) y pegalo en el editor.
+5. Tocá **Deploy function** y esperá a que diga que se publicó.
+6. **Apagá la verificación de JWT:** en la página de la función, entrá a **Details** (o **Settings**) y desactivá **Enforce JWT verification** (puede llamarse **Verify JWT**). Guardá.
+   - Sin este paso, el juego no puede usar la función.
+   - Está bien apagarla: cada función hace sus propios controles.
+7. Repetí con las otras 3 funciones.
+
+Si en el futuro cambiás prendas, consignas o reglas en el juego, hay que regenerar estos archivos (`node scripts/armar-funciones.mjs`) y volver a pegarlos.
+
+### Opción con terminal (para quien ya usa la línea de comandos)
+
 Son 4: `start-game`, `submit-score`, `admin-login` y `admin-action`. Se publican desde la terminal.
 
 1. En la terminal, entrá a la carpeta del proyecto. La forma fácil es escribir `cd ` (con un espacio al final), arrastrar la carpeta `iconnic-arma-el-look` sobre la ventana y apretar Enter.
