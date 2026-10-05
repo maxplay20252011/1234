@@ -65,9 +65,9 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
 .home-top{gap:12px}
 @media (max-width:400px){.home-der .eyebrow{display:none}}
 .home-top{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--ink);padding-bottom:8px}
-.home{display:grid;grid-template-columns:1fr 42%;gap:8px;align-items:end;flex:1;min-height:0;padding-top:18px}
+.home{display:grid;grid-template-columns:1fr 42%;gap:8px;align-items:end;flex:1 0 auto;padding-top:18px}
 .home-copy{display:flex;flex-direction:column;gap:16px;align-self:center;min-width:0}
-.home-figure{height:100%;min-height:280px;max-height:520px;display:flex;align-items:flex-end;justify-content:center}
+.home-figure{height:100%;min-height:clamp(280px,52vh,520px);max-height:520px;display:flex;align-items:flex-end;justify-content:center}
 .home-figure .espejo{height:100%;width:100%}
 .home-foot{display:flex;flex-direction:column;gap:12px;padding-top:16px}
 .toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);cursor:pointer}
@@ -93,9 +93,10 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
 /* ---------- avatar setup ---------- */
 .setup-head{display:flex;flex-direction:column;gap:6px}
 .setup-head h2{font-size:34px;font-style:italic}
-.setup-body{display:grid;grid-template-columns:40% 1fr;gap:16px;flex:1;min-height:0;padding-top:16px}
-.setup-body .espejo{height:100%;min-height:260px;max-height:460px}
+.setup-body{display:grid;grid-template-columns:40% 1fr;gap:16px;flex:1 0 auto;padding-top:16px;align-items:start}
+.setup-body .espejo{height:clamp(260px,58vh,460px)}
 .setup-opts{display:flex;flex-direction:column;gap:18px;min-width:0}
+#s-avatar .home-foot{position:sticky;bottom:-16px;margin-bottom:-16px;padding-bottom:16px;background:linear-gradient(rgba(244,240,250,0),var(--paper) 28%);z-index:2} /* "Empezar" siempre a mano, sin tapar opciones */
 .swatches{display:grid;grid-template-columns:repeat(3,44px);gap:10px}
 .swatch{width:44px;height:44px;border-radius:50%;border:2px solid transparent;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12);cursor:pointer;padding:0}
 .swatch[aria-checked="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 3px var(--paper)}
@@ -268,6 +269,35 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
 
 @media (max-height:690px){.flavor{display:none}.brief h2{font-size:24px}.rail{padding-block:12px 10px}}
 @media (max-width:370px){.prenda{flex-basis:78px}.prenda svg{width:62px;height:54px}}
+/* ---------- computadora (pantalla ancha y apaisada) ----------
+   Las pantallas de menú siguen siendo una columna centrada; la ronda pasa a dos columnas:
+   espejo grande a la izquierda, consigna + placard a la derecha, con las prendas en grilla. */
+@media (min-width:900px) and (min-aspect-ratio:5/4){
+  #app{max-width:1200px}
+  .screen:not(#s-ronda){max-width:620px;margin-inline:auto;width:100%}
+  #s-ronda{display:grid;grid-template-columns:minmax(300px,.85fr) minmax(0,1.15fr);grid-template-rows:auto auto minmax(0,1fr);
+    grid-template-areas:"stage brief" "stage actions" "stage placard";column-gap:32px;padding:20px 28px 20px}
+  #s-ronda .brief{grid-area:brief}
+  #s-ronda .stage{grid-area:stage;min-height:0;padding-top:0}
+  #s-ronda .actions{grid-area:actions}
+  #s-ronda .placard{grid-area:placard;margin-inline:0;min-height:0;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
+  .brief h2{font-size:clamp(28px,2.6vw,40px)}
+  .brief h2 .ico{font-size:28px}
+  .meta{font-size:13px}
+  .flavor{display:block;font-size:15px}
+  .actions .btn{min-height:48px;font-size:15px}
+  #btn-listo{font-size:15px}
+  .tab{font-size:12.5px;padding:13px 11px 11px}
+  .chip{font-size:13px;padding:5px 12px}
+  .rack{flex:1;min-height:0}
+  .rack::before,.prenda::before,.prenda::after{display:none}
+  .rail,.rack[data-modo="estante"] .rail{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:12px;align-content:start;
+    height:100%;overflow-y:auto;overflow-x:hidden;padding:14px 16px 18px;scroll-snap-type:none;touch-action:auto}
+  .prenda,.rack[data-modo="estante"] .prenda{margin-top:0;padding:10px 6px 8px}
+  .prenda svg,.prenda img{width:96px;height:84px}
+  .prenda .pn{font-size:12.5px}
+  .puestas{font-size:12px}
+}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 </head>
