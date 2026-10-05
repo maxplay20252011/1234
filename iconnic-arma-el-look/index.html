@@ -33,6 +33,14 @@
 html,body{height:100%}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;overflow:hidden;-webkit-tap-highlight-color:transparent}
 button{font:inherit;color:inherit}
+/* toque: sin demora de 300 ms ni zoom por doble toque */
+button,label,a,select,.tab,.chip,.swatch,.sil{touch-action:manipulation}
+/* Sin JavaScript (vista previa de un archivo descargado) el juego no puede correr: se avisa en vez de mostrar botones muertos */
+.nojs-aviso{display:none}
+html:not(.js) .nojs-aviso{display:flex;flex-direction:column;gap:8px;padding:16px;border:1px solid var(--accent);border-radius:12px;background:var(--card)}
+html:not(.js) .nojs-aviso b{font-family:var(--f-display);font-size:20px;font-weight:600;color:var(--accent)}
+html:not(.js) .nojs-aviso p{margin:0;font-size:14px}
+html:not(.js) #s-inicio .toggle,html:not(.js) #btn-jugar,html:not(.js) #btn-ranking-inicio,html:not(.js) #home-admin{display:none}
 :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 h1[tabindex="-1"]:focus,h2[tabindex="-1"]:focus{outline:none}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
@@ -300,6 +308,7 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
+<script id="hay-js">document.documentElement.classList.add("js")</script>
 </head>
 <body>
 <div id="app">
@@ -316,6 +325,7 @@ h1,h2,h3{font-family:var(--f-display);font-weight:500;margin:0;text-wrap:balance
       <div class="home-figure"><div class="espejo" id="hero-avatar" aria-hidden="true"></div></div>
     </div>
     <div class="home-foot">
+      <div class="nojs-aviso" role="alert"><b>Para jugar, abrilo en el navegador</b><p>Esta vista previa (Archivos, WhatsApp, Drive o el mail) no permite juegos.</p><p>Abrí el link del juego en Safari o Chrome (o escaneá su código QR). En Android también podés tocar <i>Abrir con</i> → Chrome.</p></div>
       <label class="toggle" for="chk-reloj">
         <span><b>Modo contrarreloj</b><small>45 segundos por look</small></span>
         <span class="switch"><input type="checkbox" id="chk-reloj" aria-label="Activar modo contrarreloj"><span></span></span>
