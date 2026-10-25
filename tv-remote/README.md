@@ -498,6 +498,41 @@ encima.
 Una ventaja del túnel: como va por HTTPS, **ahí sí se puede instalar como PWA
 completa** en el iPhone, con funcionamiento sin conexión.
 
+### Opción: el control remoto como artefacto de Claude
+
+Hay una página publicada como artefacto que funciona de control remoto y se
+conecta a tu servidor. La abrís desde cualquier lado, ves tus televisores y los
+manejás.
+
+**Importante: el descubrimiento lo sigue haciendo el servidor de tu casa.** Una
+página web no puede buscar televisores por su cuenta: los navegadores no mandan
+los paquetes de red que hacen falta. El artefacto es la cara del control; el
+trabajo lo hace la notebook.
+
+Para que funcione:
+
+1. Poné un PIN en el `.env`:
+   ```
+   AUTH_PIN=482913
+   ```
+2. Autorizá a la página en el mismo archivo:
+   ```
+   REMOTE_ORIGINS=https://claude.ai
+   ```
+3. Levantá un túnel para tener una dirección `https`:
+   ```bash
+   cloudflared tunnel --url http://localhost:8099
+   ```
+4. Abrí el artefacto, pegá la dirección del túnel y tu PIN.
+
+> **Acá hace falta `https` sí o sí.** Una página de claude.ai viaja cifrada, y
+> los navegadores no la dejan llamar a una dirección `http://` común ni a una IP
+> de tu red local. Por eso para el artefacto sirve el túnel y **no** Tailscale.
+> Con Tailscale abrí la aplicación directamente, que es más simple.
+
+Si configurás `REMOTE_ORIGINS` sin PIN, **el servidor se niega a arrancar**. Es a
+propósito: fallar al arrancar es mejor que quedar abierto en silencio.
+
 ### Lo que NO hay que hacer
 
 **No abras el puerto 8099 en el router.** Es el camino más fácil y el peor:

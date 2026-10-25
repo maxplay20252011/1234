@@ -25,6 +25,17 @@ const EnvSchema = z.object({
 
   /** Cuanto vive un enlace de video, en segundos. Por defecto 6 horas. */
   MEDIA_LINK_TTL_SECONDS: z.coerce.number().int().min(60).default(21600),
+
+  /**
+   * Origen al que se le permite llamar a esta API desde otro sitio.
+   *
+   * Sirve para usar el control remoto publicado como artefacto de Claude:
+   * esa pagina vive en https://claude.ai y, sin esto, el navegador bloquea sus
+   * llamadas por politica de mismo origen.
+   *
+   * Vacio = nadie de afuera. Se puede poner mas de uno separados por coma.
+   */
+  REMOTE_ORIGINS: z.string().default(''),
 });
 
 export type Config = z.infer<typeof EnvSchema>;

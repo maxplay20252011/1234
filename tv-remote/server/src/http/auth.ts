@@ -24,6 +24,8 @@ export type AuthConfig = {
   pin: string;
   /** La misma clave con la que se cifran las credenciales. */
   secret: string;
+  /** Origenes externos autorizados. Vacio = solo mismo origen. */
+  remoteOrigins: readonly string[];
 };
 
 export function hashSession(secret: string, id: string, expEpochSec: number): string {
@@ -96,8 +98,71 @@ export function buildSetCookie(token: string, seguro: boolean, ttlDays = SESSION
   return partes.join('; ');
 }
 
+/**
+ * Lee el token de sesion de la cabecera Authorization.
+ *
+ * Hace falta ademas de la cookie porque una pagina de otro origen (el artefacto
+ * de Claude, servido desde claude.ai) no puede mandar cookies a este servidor:
+ * la politica del navegador no se lo permite. El token explicito sí viaja.
+ */
+export function bearerToken(header: string | undefined): string | undefined {
+  if (!header) return undefined;
+  const m = /^Bearer\s+(.+)$/i.exec(header.trim());
+  return m?.[1]?.trim();
+}
+
+/** Devuelve el origen a autorizar, o undefined si no esta en la lista. */
+export function allowedOrigin(
+  origen: string | undefined,
+  permitidos: readonly string[],
+): string | undefined {
+  if (!origen) return undefined;
+  // Comparacion exacta, nunca por prefijo: con prefijo, "https://claude.ai"
+  // autorizaria tambien a "https://claude.ai.sitio-falso.com".
+  return permitidos.includes(origen) ? origen : undefined;
+}
+
 export function registerAuth(app: FastifyInstance, config: AuthConfig): void {
   const activa = config.pin.trim().length > 0;
+  const remoto = config.remoteOrigins.length > 0;
+
+  /**
+   * Fallar al arrancar, no en silencio: habilitar un origen externo sin PIN
+   * dejaria la API abierta a cualquiera que sepa la direccion.
+   */
+  if (remoto && !activa) {
+    throw new Error(
+      'REMOTE_ORIGINS esta configurado pero AUTH_PIN esta vacio.\n' +
+        'Permitir llamadas desde afuera sin PIN dejaria tus televisores y tus\n' +
+        'videos al alcance de cualquiera. Configura AUTH_PIN en el archivo .env.',
+    );
+  }
+
+  if (remoto) {
+    logger.info({ origenes: config.remoteOrigins }, 'Origenes externos autorizados');
+
+    app.addHook('onRequest', async (req, reply) => {
+      const origen = allowedOrigin(req.headers.origin, config.remoteOrigins);
+      if (!origen) return;
+
+      reply.headers({
+        'Access-Control-Allow-Origin': origen,
+        // Varia por origen: sin esto, una cache intermedia podria servirle a un
+        // origen la cabecera calculada para otro.
+        Vary: 'Origin',
+        'Access-Control-Allow-Headers': 'content-type, authorization',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Max-Age': '600',
+      });
+
+      // El navegador manda OPTIONS antes de cada llamada con cabeceras
+      // propias. Hay que contestarlo sin pasar por las rutas.
+      if (req.method === 'OPTIONS') {
+        return reply.code(204).send();
+      }
+      return;
+    });
+  }
 
   // Agresivo a proposito: un PIN de cuatro digitos son 10 000 combinaciones,
   // que sin limite se prueban en segundos.
@@ -134,10 +199,15 @@ export function registerAuth(app: FastifyInstance, config: AuthConfig): void {
     }
 
     limitadorLogin.reset(ip(req));
+    const token = createSessionToken(config.secret);
     const seguro = (req.headers['x-forwarded-proto'] ?? req.protocol) === 'https';
+
+    // El token solo se devuelve en el cuerpo con el modo remoto activo. Para
+    // uso local la cookie HttpOnly es mas segura, porque el JavaScript de la
+    // pagina no puede leerla y un XSS no se la lleva.
     return reply
-      .header('Set-Cookie', buildSetCookie(createSessionToken(config.secret), seguro))
-      .send({ ok: true });
+      .header('Set-Cookie', buildSetCookie(token, seguro))
+      .send(remoto ? { ok: true, token } : { ok: true });
   });
 
   app.post('/api/auth/logout', async (_req, reply) =>
@@ -161,7 +231,9 @@ export function registerAuth(app: FastifyInstance, config: AuthConfig): void {
     if (!ruta.startsWith('/api/')) return;
     if (ruta.startsWith('/api/auth/')) return;
 
-    const token = parseCookies(req.headers.cookie)[COOKIE];
+    // Cookie para el mismo origen, Authorization para el artefacto remoto.
+    const token =
+      parseCookies(req.headers.cookie)[COOKIE] ?? bearerToken(req.headers.authorization);
     if (!verifySessionToken(config.secret, token)) {
       return reply.code(401).send({
         error: 'unauthorized',

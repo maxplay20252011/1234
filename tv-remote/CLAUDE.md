@@ -398,7 +398,25 @@ Otros detalles:
 **Un artefacto no puede reemplazar a este servidor.** Un navegador no manda UDP
 (descubrimiento, Wake-on-LAN) ni abre sockets TLS crudos (castv2, Samsung,
 androidtvremote2), y una página HTTPS no puede llamar a `http://192.168.x.x`.
-El acceso remoto se resuelve con VPN o túnel, no moviendo la interfaz.
+
+**Pero sí puede ser la interfaz.** En `artifact/control-remoto.html` hay un
+control remoto que se publica como artefacto y habla con este servidor por HTTP.
+El descubrimiento y los protocolos siguen acá; el artefacto solo llama a la API.
+Para eso están `REMOTE_ORIGINS` (CORS) y el token Bearer:
+
+- **CORS compara el origen completo, nunca por prefijo.** Con prefijo,
+  `https://claude.ai` autorizaría también a `https://claude.ai.sitio-falso.com`.
+  Hay un test de eso.
+- **El token va en `Authorization`, no en la cookie.** Una página de otro origen
+  no puede mandar cookies a este servidor: el navegador no se lo permite.
+- **El token solo se devuelve en el cuerpo del login con el modo remoto
+  activo.** Para uso local la cookie `HttpOnly` es más segura, porque el
+  JavaScript de la página no puede leerla.
+- **`REMOTE_ORIGINS` sin `AUTH_PIN` hace fallar el arranque.** Fallar ruidoso es
+  mejor que quedar abierto en silencio.
+
+El acceso remoto sin artefacto se resuelve con VPN o túnel; el artefacto
+necesita el túnel, porque `https` es obligatorio para llamar desde claude.ai.
 
 ## Cosas que están fuera de alcance
 

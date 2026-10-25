@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
+  allowedOrigin,
+  bearerToken,
   buildSetCookie,
   createSessionToken,
   parseCookies,
@@ -124,5 +126,46 @@ describe('RateLimiter', () => {
     expect(limitador.check('ip').allowed).toBe(true);
     expect(limitador.check('ip').allowed).toBe(true);
     limitador.stop();
+  });
+});
+
+describe('bearerToken', () => {
+  it('extrae el token de la cabecera Authorization', () => {
+    // Hace falta ademas de la cookie: una pagina de otro origen (el artefacto
+    // en claude.ai) no puede mandar cookies a este servidor.
+    expect(bearerToken('Bearer abc.123.xyz')).toBe('abc.123.xyz');
+    expect(bearerToken('bearer abc.123.xyz')).toBe('abc.123.xyz');
+  });
+
+  it('ignora cabeceras que no sean Bearer', () => {
+    expect(bearerToken(undefined)).toBeUndefined();
+    expect(bearerToken('')).toBeUndefined();
+    expect(bearerToken('Basic dXNlcjpwYXNz')).toBeUndefined();
+    expect(bearerToken('Bearer')).toBeUndefined();
+  });
+});
+
+describe('allowedOrigin', () => {
+  const permitidos = ['https://claude.ai'];
+
+  it('autoriza un origen de la lista', () => {
+    expect(allowedOrigin('https://claude.ai', permitidos)).toBe('https://claude.ai');
+  });
+
+  it('NO autoriza por prefijo: ese es el agujero clasico', () => {
+    // Con comparacion por prefijo, "https://claude.ai" autorizaria tambien a
+    // un dominio que simplemente empiece igual.
+    expect(allowedOrigin('https://claude.ai.sitio-falso.com', permitidos)).toBeUndefined();
+    expect(allowedOrigin('https://claude.ai.evil', permitidos)).toBeUndefined();
+  });
+
+  it('distingue el esquema y el puerto', () => {
+    expect(allowedOrigin('http://claude.ai', permitidos)).toBeUndefined();
+    expect(allowedOrigin('https://claude.ai:8443', permitidos)).toBeUndefined();
+  });
+
+  it('sin origen o sin lista, no autoriza a nadie', () => {
+    expect(allowedOrigin(undefined, permitidos)).toBeUndefined();
+    expect(allowedOrigin('https://claude.ai', [])).toBeUndefined();
   });
 });

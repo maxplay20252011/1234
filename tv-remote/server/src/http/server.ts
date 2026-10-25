@@ -45,7 +45,13 @@ export async function buildServer(
 
   // La autenticacion va ANTES que las rutas: su hook preHandler tiene que
   // poder interceptar todo lo que venga despues.
-  registerAuth(app, { pin: config.AUTH_PIN, secret: mediaSecret });
+  registerAuth(app, {
+    pin: config.AUTH_PIN,
+    secret: mediaSecret,
+    remoteOrigins: config.REMOTE_ORIGINS.split(',')
+      .map((o) => o.trim())
+      .filter((o) => o.length > 0),
+  });
 
   registerDeviceRoutes(app, repo, discovery);
   registerControlRoutes(app, control, history);

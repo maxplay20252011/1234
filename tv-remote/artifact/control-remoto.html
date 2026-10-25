@@ -1,0 +1,688 @@
+<title>Control de TVs</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;600;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+  /* Columna unica de 440px: un control remoto se usa con una mano. */
+  :root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --surface-2: #e9ebf0;
+    --line: #d4d8e0;
+    --fg: #15171c;
+    --fg-dim: #5c6373;
+    --fg-faint: #8d94a3;
+    --accent: #0a6fd8;
+    --accent-fg: #ffffff;
+    --ok: #0a7d4f;
+    --warn: #9a5b00;
+    --bad: #c0273c;
+    --bad-bg: #fdeaec;
+
+    --font-display: 'Chivo', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+    --radius: 14px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0c0e12;
+      --surface: #16191f;
+      --surface-2: #1f232b;
+      --line: #2b313b;
+      --fg: #eef0f4;
+      --fg-dim: #a2aab9;
+      --fg-faint: #6b7384;
+      --accent: #3f9bff;
+      --accent-fg: #06121f;
+      --ok: #3ad18c;
+      --warn: #e5a44a;
+      --bad: #ff6b7f;
+      --bad-bg: #2a1419;
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0c0e12;
+    --surface: #16191f;
+    --surface-2: #1f232b;
+    --line: #2b313b;
+    --fg: #eef0f4;
+    --fg-dim: #a2aab9;
+    --fg-faint: #6b7384;
+    --accent: #3f9bff;
+    --accent-fg: #06121f;
+    --ok: #3ad18c;
+    --warn: #e5a44a;
+    --bad: #ff6b7f;
+    --bad-bg: #2a1419;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-display);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 24px 40px;
+  }
+
+  .wrap { max-width: 440px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+
+  h1 { font-size: 1.45rem; font-weight: 800; margin: 0; letter-spacing: -0.02em; text-wrap: balance; }
+  h2 { font-size: 0.78rem; font-weight: 600; margin: 0; color: var(--fg-dim);
+       text-transform: uppercase; letter-spacing: 0.09em; }
+  p  { margin: 0; color: var(--fg-dim); line-height: 1.55; }
+  .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  .card { background: var(--surface); border: 1px solid var(--line);
+          border-radius: var(--radius); padding: 18px; }
+
+  label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 6px; color: var(--fg-dim); }
+
+  input {
+    width: 100%; padding: 13px 14px; font-size: 1rem; font-family: var(--font-mono);
+    color: var(--fg); background: var(--bg); border: 1px solid var(--line);
+    border-radius: 11px; outline: none;
+  }
+  input:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent); }
+
+  button { font-family: inherit; color: inherit; cursor: pointer; border: 0; }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .btn {
+    width: 100%; padding: 14px; border-radius: 11px; font-size: 0.95rem; font-weight: 600;
+    background: var(--accent); color: var(--accent-fg);
+  }
+  .btn:disabled { opacity: 0.45; cursor: default; }
+
+  .btn-soft {
+    padding: 12px; border-radius: 11px; font-size: 0.85rem; font-weight: 500;
+    background: var(--surface-2); color: var(--fg); border: 1px solid var(--line);
+  }
+  .btn-soft:active:not(:disabled) { background: var(--line); }
+  .btn-soft:disabled { opacity: 0.35; cursor: default; }
+
+  .row { display: flex; align-items: center; gap: 10px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+
+  /* ── Cruceta ──────────────────────────────────────────────────────────── */
+  .dpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px;
+          aspect-ratio: 1; max-width: 270px; margin: 0 auto; width: 100%; }
+  .dpad button { display: grid; place-items: center; background: var(--surface-2);
+                 border: 1px solid var(--line); color: var(--fg); }
+  .dpad button:active:not(:disabled) { background: var(--line); }
+  .dpad button:disabled { opacity: 0.35; cursor: default; }
+  .d-up    { border-radius: 26px 26px 10px 10px; }
+  .d-down  { border-radius: 10px 10px 26px 26px; }
+  .d-left  { border-radius: 26px 10px 10px 26px; }
+  .d-right { border-radius: 10px 26px 26px 10px; }
+  /* Calificado con .dpad a proposito: ".d-ok" solo (0,1,0) perdia contra
+     ".dpad button" (0,1,1) y el boton salia gris en vez de azul. */
+  .dpad .d-ok { border-radius: 14px; background: var(--accent); color: var(--accent-fg);
+                border-color: transparent; font-weight: 700; font-size: 0.9rem; }
+  .dpad .d-ok:active:not(:disabled) { background: color-mix(in srgb, var(--accent) 82%, black); }
+  .dpad svg { width: 26px; height: 26px; fill: currentColor; }
+
+  /* ── Estado ───────────────────────────────────────────────────────────── */
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+          border-radius: 999px; font-size: 0.72rem; font-weight: 600;
+          background: var(--surface-2); color: var(--fg-dim); border: 1px solid var(--line); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--fg-faint); }
+  .pill.on { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
+  .pill.on .dot { background: var(--ok); }
+
+  .device {
+    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 15px;
+  }
+  .device:active { background: var(--surface-2); }
+  .device .name { font-weight: 600; font-size: 0.97rem; }
+  .device .meta { font-size: 0.76rem; color: var(--fg-faint); margin-top: 2px; }
+
+  .alert { background: var(--bad-bg); color: var(--bad); border: 1px solid color-mix(in srgb, var(--bad) 30%, transparent);
+           border-radius: 11px; padding: 12px 14px; font-size: 0.85rem; line-height: 1.5; }
+
+  .note { font-size: 0.78rem; color: var(--fg-faint); line-height: 1.55; }
+  .note strong { color: var(--fg-dim); font-weight: 600; }
+
+  .steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 7px;
+           font-size: 0.82rem; color: var(--fg-dim); line-height: 1.5; }
+  code { font-family: var(--font-mono); font-size: 0.86em; background: var(--surface-2);
+         padding: 2px 5px; border-radius: 5px; color: var(--fg-dim); word-break: break-all; }
+
+  .back { background: none; padding: 6px 10px 6px 0; font-size: 1.3rem;
+          color: var(--fg-dim); line-height: 1; }
+
+  .toast {
+    position: fixed; left: max(16px, env(safe-area-inset-left, 0px));
+    right: max(16px, env(safe-area-inset-right, 0px));
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    margin: 0 auto; max-width: 420px; z-index: 50;
+    background: var(--bad-bg); color: var(--bad);
+    border: 1px solid color-mix(in srgb, var(--bad) 35%, transparent);
+    border-radius: 11px; padding: 13px 15px; font-size: 0.85rem; line-height: 1.45;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .btn-soft, .dpad button, .device { transition: background-color 90ms ease; }
+  }
+</style>
+
+<div class="wrap">
+  <!-- ══ Configuración: primera pantalla hasta que haya servidor ══ -->
+  <section id="setup">
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div>
+        <h1>Control de TVs</h1>
+        <p style="margin-top:6px">
+          Maneja los televisores de tu casa desde cualquier lado. Los detecta y los controla
+          el servidor que tenés corriendo en casa; esta página es el control remoto.
+        </p>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;gap:14px">
+        <div>
+          <label for="url">Dirección del servidor</label>
+          <input id="url" type="url" inputmode="url" autocapitalize="off" autocorrect="off"
+                 spellcheck="false" placeholder="https://algo.trycloudflare.com">
+        </div>
+        <div>
+          <label for="pin">PIN</label>
+          <input id="pin" type="password" inputmode="numeric" autocomplete="current-password"
+                 placeholder="••••••">
+        </div>
+        <div id="setup-error" hidden></div>
+        <button class="btn" id="connect">Conectar</button>
+      </div>
+
+      <div class="card">
+        <h2>Antes de conectar</h2>
+        <ol class="steps" style="margin-top:12px">
+          <li>El servidor tiene que estar corriendo en tu casa, con <code>AUTH_PIN</code> configurado.</li>
+          <li>Y tiene que autorizar a esta página: <code>REMOTE_ORIGINS=https://claude.ai</code> en el <code>.env</code>.</li>
+          <li>Necesitás una dirección <strong>https</strong>. Un túnel la da en un comando:
+            <code>cloudflared tunnel --url http://localhost:8099</code></li>
+        </ol>
+        <p class="note" style="margin-top:14px">
+          <strong>Tiene que ser https.</strong> Esta página viaja cifrada, y los navegadores no
+          la dejan llamar a una dirección <code>http://</code> común, ni a una IP de tu red
+          local. Por eso acá no sirve una dirección de Tailscale: para eso abrí la aplicación
+          directamente, sin pasar por esta página.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ Lista de dispositivos ══ -->
+  <section id="devices" hidden>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="row" style="justify-content:space-between">
+        <h1>Mis televisores</h1>
+        <button class="btn-soft" id="scan" style="width:auto;padding:9px 14px">Buscar</button>
+      </div>
+      <p id="scan-state" class="note"></p>
+      <div id="device-list" style="display:flex;flex-direction:column;gap:9px"></div>
+      <button class="btn-soft" id="forget" style="width:100%">Cambiar de servidor</button>
+    </div>
+  </section>
+
+  <!-- ══ Control de un televisor ══ -->
+  <section id="control" hidden>
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div class="row">
+        <button class="back" id="back" aria-label="Volver">‹</button>
+        <div style="flex:1;min-width:0">
+          <h1 id="c-name" style="font-size:1.15rem"></h1>
+          <p id="c-meta" class="note mono" style="margin-top:2px"></p>
+        </div>
+        <button class="btn-soft" id="c-power" aria-label="Encender o apagar" style="padding:10px 13px">
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M12 3v9"></path><path d="M6.3 6.3a8 8 0 1 0 11.4 0"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div id="c-volume-box" style="display:flex;flex-direction:column;gap:10px">
+        <div class="row" style="justify-content:space-between">
+          <h2>Volumen</h2>
+          <span id="c-vol" class="mono" style="font-size:0.85rem;color:var(--fg-dim)">--</span>
+        </div>
+        <div class="grid-3">
+          <button class="btn-soft" id="vol-down" style="font-size:1.3rem;padding:16px">−</button>
+          <button class="btn-soft" id="vol-mute" style="padding:16px" aria-label="Silenciar">
+            <svg id="mute-icon" viewBox="0 0 24 24" width="21" height="21" fill="currentColor"
+                 style="vertical-align:middle" aria-hidden="true"></svg>
+          </button>
+          <button class="btn-soft" id="vol-up" style="font-size:1.3rem;padding:16px">+</button>
+        </div>
+      </div>
+
+      <div id="c-dpad-box" style="display:flex;flex-direction:column;gap:10px">
+        <div class="dpad" id="dpad"></div>
+        <div class="grid-4">
+          <button class="btn-soft" data-key="back">Atrás</button>
+          <button class="btn-soft" data-key="home">Inicio</button>
+          <button class="btn-soft" data-key="source">Fuente</button>
+          <button class="btn-soft" data-key="exit">Salir</button>
+        </div>
+      </div>
+
+      <div id="c-cast-box" style="display:flex;flex-direction:column;gap:10px">
+        <h2>Enviar un video</h2>
+        <input id="cast-url" type="url" inputmode="url" autocapitalize="off" autocorrect="off"
+               spellcheck="false" placeholder="https://.../video.mp4">
+        <button class="btn" id="cast-go">Reproducir en el televisor</button>
+        <p class="note">
+          Tiene que ser un enlace directo a un archivo de video. Un enlace de YouTube o Netflix
+          no sirve: son páginas, no videos.
+        </p>
+      </div>
+
+      <p class="note" id="c-limits"></p>
+    </div>
+  </section>
+</div>
+
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script>
+(() => {
+  'use strict';
+
+  const ALMACEN = { servidor: 'tvremote.server', token: 'tvremote.token' };
+
+  // El almacenamiento puede fallar (ventana privada, datos bloqueados): nunca
+  // debe impedir que la pagina funcione, solo pierde la comodidad de recordar.
+  const leer = (clave) => { try { return localStorage.getItem(clave); } catch { return null; } };
+  const guardar = (clave, valor) => { try { localStorage.setItem(clave, valor); } catch {} };
+  const borrar = (clave) => { try { localStorage.removeItem(clave); } catch {} };
+
+  const $ = (id) => document.getElementById(id);
+  const vistas = { setup: $('setup'), devices: $('devices'), control: $('control') };
+
+  let servidor = leer(ALMACEN.servidor) || '';
+  let token = leer(ALMACEN.token) || '';
+  let dispositivos = [];
+  let actual = null;
+  let timerEstado = null;
+
+  const mostrar = (nombre) => {
+    for (const [clave, el] of Object.entries(vistas)) el.hidden = clave !== nombre;
+  };
+
+  let timerToast = null;
+  const avisar = (texto) => {
+    const t = $('toast');
+    t.textContent = texto;
+    t.hidden = false;
+    clearTimeout(timerToast);
+    timerToast = setTimeout(() => { t.hidden = true; }, 5200);
+  };
+
+  /**
+   * Direcciones que el navegador va a dejar llamar desde esta pagina.
+   *
+   * https siempre. Y tambien http hacia localhost: los navegadores lo tratan
+   * como origen de confianza, asi que no lo bloquean. Eso sirve para probar
+   * desde la misma computadora que corre el servidor; desde el celular no,
+   * porque ahi localhost es el propio celular.
+   */
+  const direccionPermitida = (url) =>
+    /^https:\/\//i.test(url) || /^http:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(url);
+
+  /** Normaliza lo que escriba el usuario: sobra la barra final, falta el esquema. */
+  const normalizarUrl = (texto) => {
+    let u = texto.trim().replace(/\/+$/, '');
+    if (!u) return '';
+    if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+    return u;
+  };
+
+  /**
+   * Llamada a la API del servidor de casa.
+   *
+   * El token va en la cabecera Authorization y no en una cookie: esta pagina
+   * vive en otro origen que el servidor, y el navegador no manda cookies entre
+   * sitios distintos.
+   */
+  async function api(ruta, opciones = {}) {
+    const cabeceras = { 'Content-Type': 'application/json' };
+    if (token) cabeceras.Authorization = 'Bearer ' + token;
+
+    let res;
+    try {
+      res = await fetch(servidor + ruta, { ...opciones, headers: { ...cabeceras, ...opciones.headers } });
+    } catch {
+      // fetch no distingue "no hay red" de "el otro lado no autoriza": el
+      // navegador oculta el motivo a proposito. Se nombran las causas probables.
+      throw new Error(
+        'No se pudo contactar al servidor. Revisá que esté encendido, que la dirección sea ' +
+        'correcta y que tenga REMOTE_ORIGINS=https://claude.ai en el .env'
+      );
+    }
+
+    // En /api/auth/login un 401 significa "ese PIN no es", no "se te vencio la
+    // sesion": tratarlos igual mostraba el mensaje equivocado al equivocarse
+    // de PIN. Solo en el resto de las rutas un 401 es sesion caida.
+    if (res.status === 401 && !ruta.startsWith('/api/auth/')) {
+      token = '';
+      borrar(ALMACEN.token);
+      mostrar('setup');
+      throw new Error('La sesión venció. Ingresá el PIN de nuevo.');
+    }
+
+    if (!res.ok) {
+      let mensaje = 'El servidor respondió ' + res.status + '.';
+      try {
+        const cuerpo = await res.json();
+        if (cuerpo && cuerpo.message) mensaje = cuerpo.message;
+      } catch {}
+      throw new Error(mensaje);
+    }
+
+    if (res.status === 204) return null;
+    return res.json();
+  }
+
+  // ── Conectar ────────────────────────────────────────────────────────────
+  async function conectar() {
+    const url = normalizarUrl($('url').value);
+    const pin = $('pin').value;
+    const error = $('setup-error');
+    const boton = $('connect');
+
+    error.hidden = true;
+
+    if (!url) { error.className = 'alert'; error.textContent = 'Falta la dirección del servidor.'; error.hidden = false; return; }
+
+    if (!direccionPermitida(url)) {
+      error.className = 'alert';
+      error.innerHTML = 'La dirección tiene que empezar con <strong>https://</strong>. ' +
+        'Los navegadores no dejan que esta página llame a una dirección sin cifrar, ' +
+        'ni a una IP de tu red local.';
+      error.hidden = false;
+      return;
+    }
+
+    boton.disabled = true;
+    boton.textContent = 'Conectando...';
+    servidor = url;
+
+    try {
+      const datos = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ pin }) });
+      if (!datos || !datos.token) {
+        throw new Error('El servidor aceptó el PIN pero no devolvió una sesión. ' +
+          'Fijate que tenga REMOTE_ORIGINS configurado.');
+      }
+      token = datos.token;
+      guardar(ALMACEN.servidor, servidor);
+      guardar(ALMACEN.token, token);
+      $('pin').value = '';
+      await irALista();
+    } catch (err) {
+      error.className = 'alert';
+      error.textContent = err.message;
+      error.hidden = false;
+    } finally {
+      boton.disabled = false;
+      boton.textContent = 'Conectar';
+    }
+  }
+
+  // ── Lista ───────────────────────────────────────────────────────────────
+  const ETIQUETA_MARCA = {
+    samsung: 'Samsung Tizen', lg: 'LG webOS', roku: 'Roku', chromecast: 'Chromecast',
+    androidtv: 'Android TV', dlna: 'DLNA', vizio: 'Vizio', mock: 'Simulado',
+    unknown: 'Sin identificar',
+  };
+
+  async function irALista() {
+    mostrar('devices');
+    await cargarDispositivos();
+  }
+
+  async function cargarDispositivos() {
+    const lista = $('device-list');
+    try {
+      const datos = await api('/api/devices');
+      dispositivos = datos.devices || [];
+      $('scan-state').textContent = datos.scanning
+        ? 'Buscando en la red...'
+        : (datos.lastScanAt
+            ? 'Último escaneo ' + new Date(datos.lastScanAt).toLocaleTimeString('es-AR')
+            : 'Sin escanear todavía');
+    } catch (err) {
+      avisar(err.message);
+      return;
+    }
+
+    lista.textContent = '';
+
+    if (dispositivos.length === 0) {
+      const vacio = document.createElement('div');
+      vacio.className = 'card';
+      vacio.innerHTML = '<p style="font-size:0.88rem">No se encontró ningún televisor. ' +
+        'Tiene que estar encendido y en la misma red que la computadora que corre el servidor.</p>';
+      lista.appendChild(vacio);
+      return;
+    }
+
+    for (const d of dispositivos) {
+      const boton = document.createElement('button');
+      boton.className = 'device';
+      boton.onclick = () => abrirControl(d.id);
+
+      const texto = document.createElement('div');
+      texto.style.cssText = 'flex:1;min-width:0';
+
+      const nombre = document.createElement('div');
+      nombre.className = 'name';
+      nombre.textContent = d.name;
+
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      const marca = ETIQUETA_MARCA[d.brand] || d.brand;
+      meta.textContent = d.capabilities.length === 0
+        ? marca + ' · detectado, sin control'
+        : marca + ' · ' + d.ip;
+
+      texto.append(nombre, meta);
+
+      const pill = document.createElement('span');
+      pill.className = 'pill' + (d.online ? ' on' : '');
+      pill.innerHTML = '<span class="dot"></span>' + (d.online ? 'en línea' : 'sin conexión');
+
+      boton.append(texto, pill);
+      lista.appendChild(boton);
+    }
+  }
+
+  // ── Control ─────────────────────────────────────────────────────────────
+  const FLECHAS = {
+    up:    'M12 7 4 17h16z',
+    down:  'M12 17 4 7h16z',
+    left:  'M7 12 17 4v16z',
+    right: 'M17 12 7 20V4z',
+  };
+
+  const ALTAVOZ = '<path d="M4 9v6h4l5 4V5L8 9H4Z"></path>' +
+    '<path d="M16.5 8.5a5 5 0 0 1 0 7 1 1 0 0 0 1.4 1.4 7 7 0 0 0 0-9.8 1 1 0 1 0-1.4 1.4Z"></path>';
+  const ALTAVOZ_MUDO = '<path d="M4 9v6h4l5 4V5L8 9H4Z"></path>' +
+    '<path d="M16.3 9.3a1 1 0 0 1 1.4 0l1.3 1.3 1.3-1.3a1 1 0 1 1 1.4 1.4L20.4 12l1.3 1.3a1 1 0 0 1-1.4 1.4L19 13.4l-1.3 1.3a1 1 0 0 1-1.4-1.4l1.3-1.3-1.3-1.3a1 1 0 0 1 0-1.4Z"></path>';
+
+  function construirCruceta() {
+    const dpad = $('dpad');
+    dpad.textContent = '';
+    const celdas = [
+      null, ['up', 'Arriba'], null,
+      ['left', 'Izquierda'], ['ok', 'Aceptar'], ['right', 'Derecha'],
+      null, ['down', 'Abajo'], null,
+    ];
+
+    for (const celda of celdas) {
+      if (!celda) { dpad.appendChild(document.createElement('div')); continue; }
+      const [clave, etiqueta] = celda;
+      const b = document.createElement('button');
+      b.className = clave === 'ok' ? 'd-ok' : 'd-' + clave;
+      b.setAttribute('aria-label', etiqueta);
+      b.dataset.key = clave;
+      if (clave === 'ok') {
+        b.textContent = 'OK';
+      } else {
+        b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + FLECHAS[clave] + '"/></svg>';
+      }
+      dpad.appendChild(b);
+    }
+  }
+
+  const puede = (cap) => actual && actual.capabilities.includes(cap);
+
+  function abrirControl(id) {
+    actual = dispositivos.find((d) => d.id === id) || null;
+    if (!actual) return;
+
+    mostrar('control');
+    $('c-name').textContent = actual.name;
+    $('c-meta').textContent = actual.ip;
+
+    // Se muestra solo lo que ESTE aparato declara poder hacer. Un boton que no
+    // hace nada es peor que un boton ausente.
+    $('c-volume-box').hidden = !puede('volume');
+    $('c-dpad-box').hidden = !puede('dpad');
+    $('c-cast-box').hidden = !puede('castUrl');
+    $('c-power').hidden = !puede('power');
+
+    const faltantes = [];
+    if (!puede('dpad')) faltantes.push('no tiene cruceta');
+    if (!puede('power')) faltantes.push('no se puede encender desde acá');
+    $('c-limits').textContent = faltantes.length
+      ? 'Este dispositivo ' + faltantes.join(' y ') + '.'
+      : '';
+
+    if (actual.capabilities.length === 0) {
+      $('c-limits').textContent =
+        'Este dispositivo se detecta pero todavía no se puede controlar: su marca no tiene adapter.';
+    }
+
+    encendido = null;
+    pintarEstado({});
+    refrescarEstado();
+    clearInterval(timerEstado);
+    timerEstado = setInterval(refrescarEstado, 5000);
+  }
+
+  /** Ultimo estado conocido: el boton de encendido necesita saber hacia donde ir. */
+  let encendido = null;
+
+  function pintarEstado(estado) {
+    $('c-vol').textContent = estado.muted ? 'silenciado'
+      : (typeof estado.volume === 'number' ? String(estado.volume) : '--');
+    $('mute-icon').innerHTML = estado.muted ? ALTAVOZ_MUDO : ALTAVOZ;
+    if (typeof estado.powered === 'boolean') {
+      encendido = estado.powered;
+      $('c-meta').textContent = estado.powered ? actual.ip : 'apagado';
+      $('c-power').setAttribute('aria-label', estado.powered ? 'Apagar' : 'Encender');
+    }
+  }
+
+  async function refrescarEstado() {
+    if (!actual || actual.capabilities.length === 0) return;
+    try {
+      pintarEstado(await api('/api/devices/' + encodeURIComponent(actual.id) + '/state'));
+    } catch {
+      // Un fallo al consultar el estado no merece un aviso: el televisor puede
+      // estar apagado, que es normal. Los comandos del usuario si avisan.
+    }
+  }
+
+  /** Ejecuta un comando y avisa con el mensaje que da el servidor si falla. */
+  async function comando(ruta, cuerpo) {
+    if (!actual) return;
+    try {
+      await api('/api/devices/' + encodeURIComponent(actual.id) + ruta, {
+        method: 'POST',
+        body: JSON.stringify(cuerpo || {}),
+      });
+      setTimeout(refrescarEstado, 450);
+    } catch (err) {
+      avisar(err.message);
+    }
+  }
+
+  const tecla = (k) => comando('/key', { key: k });
+
+  // ── Eventos ─────────────────────────────────────────────────────────────
+  $('connect').onclick = conectar;
+  $('url').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('pin').focus(); });
+  $('pin').addEventListener('keydown', (e) => { if (e.key === 'Enter') conectar(); });
+
+  $('scan').onclick = async () => {
+    try { await api('/api/discovery/scan', { method: 'POST' }); } catch (err) { avisar(err.message); }
+    setTimeout(cargarDispositivos, 1200);
+  };
+
+  $('forget').onclick = () => {
+    borrar(ALMACEN.token);
+    token = '';
+    clearInterval(timerEstado);
+    $('url').value = servidor;
+    mostrar('setup');
+  };
+
+  $('back').onclick = () => {
+    clearInterval(timerEstado);
+    actual = null;
+    irALista();
+  };
+
+  // Alterna segun el ultimo estado conocido. Si todavia no se sabe, apagar es
+  // la apuesta segura: un televisor que responde esta encendido.
+  $('c-power').onclick = () => comando(encendido === false ? '/power/on' : '/power/off');
+  $('vol-up').onclick = () => comando('/volume/step', { delta: 1 });
+  $('vol-down').onclick = () => comando('/volume/step', { delta: -1 });
+  $('vol-mute').onclick = () => tecla('mute');
+  $('cast-go').onclick = () => {
+    const url = $('cast-url').value.trim();
+    if (!url) return;
+    comando('/cast', { url });
+  };
+
+  construirCruceta();
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-key]');
+    if (b && !vistas.control.hidden) tecla(b.dataset.key);
+  });
+
+  // Atajos de teclado para usarlo desde la computadora.
+  document.addEventListener('keydown', (e) => {
+    if (vistas.control.hidden) return;
+    if (/input|textarea/i.test(e.target.tagName)) return;
+    const mapa = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+                   Enter: 'ok', Escape: 'back', Backspace: 'back' };
+    if (e.key === '+' || e.key === '=') { e.preventDefault(); comando('/volume/step', { delta: 1 }); return; }
+    if (e.key === '-' || e.key === '_') { e.preventDefault(); comando('/volume/step', { delta: -1 }); return; }
+    if (e.key === 'm' || e.key === 'M') { e.preventDefault(); tecla('mute'); return; }
+    if (mapa[e.key]) { e.preventDefault(); tecla(mapa[e.key]); }
+  });
+
+  // Arranque: con servidor y sesion guardados se entra derecho a la lista.
+  if (servidor && token) {
+    $('url').value = servidor;
+    mostrar('devices');
+    cargarDispositivos();
+  } else {
+    if (servidor) $('url').value = servidor;
+    mostrar('setup');
+  }
+})();
+</script>
