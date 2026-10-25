@@ -17,6 +17,7 @@ import type { MediaLibrary } from '../media/library.js';
 import { registerMediaRoutes } from '../media/server.js';
 import { registerLibraryRoutes } from './routes/media.js';
 import { registerAutomationRoutes } from './routes/automation.js';
+import { registerAuth } from './auth.js';
 import type { GroupsRepo, ScenesRepo } from '../services/automation.repo.js';
 import type { SceneRunner } from '../services/scene-runner.js';
 import { logger } from '../logger.js';
@@ -41,6 +42,11 @@ export async function buildServer(
   });
 
   await app.register(fastifyWebsocket);
+
+  // La autenticacion va ANTES que las rutas: su hook preHandler tiene que
+  // poder interceptar todo lo que venga despues.
+  registerAuth(app, { pin: config.AUTH_PIN, secret: mediaSecret });
+
   registerDeviceRoutes(app, repo, discovery);
   registerControlRoutes(app, control, history);
   registerStateSocket(app, hub);

@@ -29,7 +29,11 @@ export type LiveData = {
  * socket se cae reconecta con esperas crecientes, porque el caso normal es que
  * se haya caido el servidor y no tiene sentido martillarlo.
  */
-export function useLiveState(): LiveData {
+/**
+ * @param habilitado false hasta que haya sesion: conectar antes solo generaria
+ * reintentos fallidos contra un servidor que va a rechazar el upgrade.
+ */
+export function useLiveState(habilitado = true): LiveData {
   const [states, setStates] = useState<Record<string, LiveState>>({});
   const [devices, setDevices] = useState<Device[] | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -40,6 +44,8 @@ export function useLiveState(): LiveData {
     let ws: WebSocket | null = null;
     let timer: number | undefined;
     let cancelado = false;
+
+    if (!habilitado) return;
 
     const conectar = (): void => {
       if (cancelado) return;
@@ -95,7 +101,7 @@ export function useLiveState(): LiveData {
       if (timer) window.clearTimeout(timer);
       ws?.close();
     };
-  }, []);
+  }, [habilitado]);
 
   return { states, devices, scanning, connected };
 }

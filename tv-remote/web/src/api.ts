@@ -64,6 +64,15 @@ export class ApiError extends Error {
  * Nunca un "Error" pelado: si el televisor no contesta hay que decir eso, para
  * que la persona sepa que hacer.
  */
+/**
+ * Se dispara cuando el servidor responde 401. La aplicacion lo usa para
+ * mostrar la pantalla de PIN sin que cada llamada tenga que saber de sesiones.
+ */
+let alPerderSesion: (() => void) | null = null;
+export function onSessionLost(fn: () => void): void {
+  alPerderSesion = fn;
+}
+
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
@@ -76,6 +85,10 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
       'No se pudo hablar con el servidor. Fijate que siga corriendo y que estes en la misma red.',
       0,
     );
+  }
+
+  if (res.status === 401) {
+    alPerderSesion?.();
   }
 
   if (!res.ok) {
@@ -92,6 +105,18 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  // ─── Sesion ───────────────────────────────────────────────────────────────
+
+  authStatus: () => request<{ required: boolean }>('/api/auth/status'),
+
+  login: (pin: string) =>
+    request<{ ok: boolean }>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ pin }),
+    }),
+
+  logout: () => request<{ ok: boolean }>('/api/auth/logout', { method: 'POST' }),
+
   listDevices: () => request<ListDevicesResponse>('/api/devices'),
 
   startScan: () => request<{ started: boolean }>('/api/discovery/scan', { method: 'POST' }),

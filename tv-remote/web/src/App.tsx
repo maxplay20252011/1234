@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Device } from '@tv-remote/shared';
-import { api, ApiError } from './api.js';
+import { api, ApiError, onSessionLost } from './api.js';
 import { useLiveState } from './useLiveState.js';
 import { DeviceCard } from './components/DeviceCard.js';
 import { AddDeviceDialog } from './components/AddDeviceDialog.js';
 import { InstallHint } from './components/InstallHint.js';
 import { ControlScreen } from './components/ControlScreen.js';
 import { AutomationScreen } from './components/AutomationScreen.js';
+import { LoginScreen } from './components/LoginScreen.js';
 
 export function App(): React.JSX.Element {
   const [devices, setDevices] = useState<Device[]>([]);
@@ -16,8 +17,10 @@ export function App(): React.JSX.Element {
   const [mostrarAlta, setMostrarAlta] = useState(false);
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
   const [enAutomatizacion, setEnAutomatizacion] = useState(false);
+  /** null mientras no se sabe si el servidor pide PIN. */
+  const [autenticado, setAutenticado] = useState<boolean | null>(null);
 
-  const live = useLiveState();
+  const live = useLiveState(autenticado === true);
 
   const refrescar = useCallback(async (): Promise<void> => {
     try {
@@ -32,9 +35,33 @@ export function App(): React.JSX.Element {
     }
   }, []);
 
+  // Cualquier 401 devuelve a la pantalla de PIN, sin que cada llamada tenga
+  // que ocuparse de las sesiones.
   useEffect(() => {
-    void refrescar();
-  }, [refrescar]);
+    onSessionLost(() => setAutenticado(false));
+  }, []);
+
+  useEffect(() => {
+    const comprobar = async (): Promise<void> => {
+      try {
+        const estado = await api.authStatus();
+        if (!estado.required) {
+          setAutenticado(true);
+          return;
+        }
+        // Con PIN activo, una llamada normal dice si la sesion sigue viva.
+        await api.listDevices();
+        setAutenticado(true);
+      } catch {
+        setAutenticado(false);
+      }
+    };
+    void comprobar();
+  }, []);
+
+  useEffect(() => {
+    if (autenticado) void refrescar();
+  }, [refrescar, autenticado]);
 
   // El WebSocket avisa cuando termina un escaneo. Ya no hace falta sondear.
   useEffect(() => {
@@ -51,6 +78,21 @@ export function App(): React.JSX.Element {
       setError(err instanceof ApiError ? err.message : 'No se pudo iniciar el escaneo.');
     }
   };
+
+  if (autenticado === null) {
+    return <div className="min-h-dvh" />;
+  }
+
+  if (!autenticado) {
+    return (
+      <LoginScreen
+        onEntrar={() => {
+          setAutenticado(true);
+          setCargando(true);
+        }}
+      />
+    );
+  }
 
   if (enAutomatizacion) {
     return <AutomationScreen devices={devices} onBack={() => setEnAutomatizacion(false)} />;

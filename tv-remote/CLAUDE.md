@@ -370,6 +370,36 @@ incomodidades de uno real: pide emparejamiento, tarda en responder y el mute es
 un interruptor. Es lo que permite ejercitar el `ControlService`, las rutas y el
 estado en vivo de punta a punta, que es imposible con adapters reales en CI.
 
+## Autenticación y acceso remoto
+
+Apagada por defecto (`AUTH_PIN` vacío): dentro de casa no hace falta. Se vuelve
+imprescindible en cuanto el servidor sea alcanzable desde afuera.
+
+**La decisión que no hay que deshacer: la autenticación NO se aplica a
+`/media/*`.** Esas URLs las pide el TELEVISOR, que no tiene cookies ni forma de
+iniciar sesión. Esa ruta ya tiene su propia protección — enlaces firmados que
+caducan. Si se le exigiera sesión, el casteo dejaría de funcionar por completo.
+Hay una prueba de esto en la verificación manual: el televisor baja el video sin
+cookie, pero sin token firmado recibe 403.
+
+Otros detalles:
+
+- El límite de intentos de PIN es agresivo a propósito (5 cada 5 minutos): un
+  PIN de 4 dígitos son 10 000 combinaciones, que sin límite se prueban en
+  segundos.
+- El límite de las acciones de control se aplica **después** de validar la
+  sesión. Al revés, cualquiera sin sesión podría agotarle la cuota al usuario
+  legítimo.
+- `Secure` en la cookie solo con HTTPS: en una dirección de LAN por `http` el
+  navegador la descartaría y no se podría entrar nunca.
+- El limitador es en memoria. Alcanza porque es un proceso en una casa; si
+  alguna vez corriera replicado, cada réplica contaría por su cuenta.
+
+**Un artefacto no puede reemplazar a este servidor.** Un navegador no manda UDP
+(descubrimiento, Wake-on-LAN) ni abre sockets TLS crudos (castv2, Samsung,
+androidtvremote2), y una página HTTPS no puede llamar a `http://192.168.x.x`.
+El acceso remoto se resuelve con VPN o túnel, no moviendo la interfaz.
+
 ## Cosas que están fuera de alcance
 
 - **Duplicación de pantalla** (Miracast, AirPlay Mirroring, "Cast desktop"):

@@ -441,6 +441,77 @@ proyecto viene a resolver. Pero si lo que necesitás es control desde el iPhone
 
 ---
 
+## Usarla desde fuera de casa
+
+Se puede, pero **no publicando la aplicación en internet**. Lo que se hace es
+entrar a tu red desde afuera, como si estuvieras en casa.
+
+### Antes que nada: poné un PIN
+
+```
+AUTH_PIN=482913
+```
+
+En el archivo `.env`, y reiniciá el servidor.
+
+**Esto no es opcional si vas a entrar desde afuera.** Sin PIN, cualquiera que dé
+con la dirección controla tus televisores y puede navegar y descargarse los
+videos de las carpetas que compartiste. Con PIN, la aplicación pide el código
+una vez y se acuerda por 30 días; tras 5 intentos fallidos bloquea por 5
+minutos.
+
+### La forma recomendada: una VPN
+
+**Tailscale** arma una red privada entre tus dispositivos. Tu iPhone pasa a
+estar "dentro" de tu casa desde cualquier lado, sin abrir un solo puerto.
+
+1. Creá una cuenta gratis en [tailscale.com](https://tailscale.com) (el plan
+   gratuito alcanza y sobra).
+2. Instalalo en la **notebook** (la que corre el servidor) e iniciá sesión.
+3. Instalá la app **Tailscale** en el **iPhone** e iniciá sesión con la misma
+   cuenta.
+4. En la notebook, Tailscale te da una dirección nueva, tipo `100.x.y.z`.
+5. Desde el iPhone, estés donde estés, abrí `http://100.x.y.z:8099`.
+
+Listo. Funciona igual que en casa, con la diferencia de que **no expusiste
+nada**: solo tus propios dispositivos ven el servidor.
+
+> Si agregás ese ícono a la pantalla de inicio, usá la dirección de Tailscale.
+> Esa no cambia, así que el ícono sigue andando siempre, dentro y fuera de casa.
+
+### La alternativa: un túnel
+
+**Cloudflare Tunnel** le da a tu servidor una dirección pública con HTTPS, sin
+abrir puertos en el router.
+
+```bash
+cloudflared tunnel --url http://localhost:8099
+```
+
+Te devuelve una dirección `https://algo.trycloudflare.com`.
+
+**Es más cómodo pero más riesgoso:** esa dirección es pública y lo único que la
+protege es tu PIN. Con Tailscale no hay nada público que atacar. Si igual lo
+usás, poné un PIN largo y agregale la autenticación de Cloudflare Access
+encima.
+
+Una ventaja del túnel: como va por HTTPS, **ahí sí se puede instalar como PWA
+completa** en el iPhone, con funcionamiento sin conexión.
+
+### Lo que NO hay que hacer
+
+**No abras el puerto 8099 en el router.** Es el camino más fácil y el peor:
+deja el servidor expuesto a todo internet, sin HTTPS, y los robots que escanean
+puertos lo encuentran en horas.
+
+### Un detalle: los videos de tu disco siguen saliendo por la red local
+
+Cuando le mandás un video al televisor, el televisor va a buscarlo a la IP local
+del servidor. Eso está bien y no hay que cambiarlo: el televisor está en tu
+casa, así que la encuentra. Vos podés estar en cualquier lado.
+
+---
+
 ## Configuración
 
 Todo se ajusta en el archivo `.env`. Los valores por defecto sirven para la
@@ -452,15 +523,18 @@ Los más útiles:
 |---|---|
 | `PORT` | Puerto de la aplicación. Por defecto `8099`. |
 | `PROBE_TIMEOUT_MS` | Subilo si tu red es lenta y algún televisor no llega a contestar. |
-| `AUTH_PIN` | Si lo completás, pide un PIN para entrar. Vacío = sin contraseña. |
+| `AUTH_PIN` | PIN para entrar. Vacío = sin contraseña. **Obligatorio si entrás desde fuera de casa.** |
 | `MEDIA_DIRS` | Carpetas con tus videos, separadas por coma. Sin esto no podés enviar archivos de tu computadora. |
 | `MEDIA_LINK_TTL_SECONDS` | Cuánto vive un enlace a un video. Por defecto 6 horas. |
 | `LOG_LEVEL` | `debug` para ver el tráfico de protocolo. |
 
 ## Seguridad
 
-- El servidor **no se expone a internet**. Escucha en tu red local y nada más.
-  Lo único que lo expondría sería abrir el puerto en el router: **no lo hagas.**
+- El servidor **no se expone a internet** por su cuenta. Escucha en tu red
+  local y nada más. Lo único que lo expondría sería abrir el puerto en el
+  router: **no lo hagas** (ver la sección sobre usarla desde fuera de casa).
+- **Con `AUTH_PIN` configurado**, la sesión va en una cookie `HttpOnly` y
+  `SameSite`, y los intentos de PIN están limitados a 5 cada 5 minutos.
 - Los tokens de emparejamiento de los televisores se guardan **cifrados**.
 - El archivo `.env` y la carpeta `data/` están fuera del control de versiones.
 - **Solo se comparten las carpetas que pongas en `MEDIA_DIRS`.** No se puede
