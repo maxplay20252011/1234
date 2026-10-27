@@ -1,0 +1,333 @@
+<title>ICON Outfit Challenge</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Juego del stand ICON: tres tarjetas (estilo, clima y evento) arman un outfit ilustrado.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..800;1,6..96,400..700&family=Jost:wght@400;500;600&display=swap">
+<style>
+/* Layout: editorial de una columna con cartas físicas; la selección es una grilla de cartas
+   y el resultado es un flat-lay ilustrado con su ficha al lado. Paleta única, clara, de marca. */
+:root {
+  --paper: #F6F2FB;      /* papel lila muy suave */
+  --cream: #FCFAF6;      /* crema de las cartas y del flat-lay */
+  --ink: #221A30;        /* texto */
+  --muted: #5E5478;      /* texto secundario (AA sobre papel) */
+  --line: #DFD6EC;       /* filetes */
+  --lilac: #E7DDF6;      /* superficies lila */
+  --violet: #6B2FB3;     /* CTA y selección */
+  --violet-deep: #4E1F87;
+  --silver: #A9ADB8;     /* detalles plateados */
+  --silver-soft: #E4E5EB;
+  --on-violet: #FFFFFF;
+  --danger: #9A2E3A;
+  --f-display: "Bodoni Moda", "Bodoni 72", Didot, Georgia, serif;
+  --f-body: "Jost", "Futura", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --r: 14px;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--paper); color: var(--ink); font: 400 16px/1.55 var(--f-body); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--violet); outline-offset: 3px; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+p { margin: 0; }
+.wrap { width: 100%; max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* ---------- encabezado ---------- */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: color-mix(in srgb, var(--paper) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 21; background: var(--paper); }
+.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 12px; }
+.marca { display: flex; align-items: baseline; gap: 14px; min-width: 0; background: none; border: 0; padding: 0; cursor: pointer; }
+.marca b { font: 600 26px/1 var(--f-display); letter-spacing: .14em; }
+.marca span { font-size: 13px; color: var(--muted); letter-spacing: .06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.btn-ghost { border: 1px solid var(--silver); background: var(--cream); border-radius: 999px; padding: 8px 16px; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: border-color .2s, background .2s; }
+.btn-ghost:hover { border-color: var(--violet); background: var(--lilac); }
+
+.pantalla { padding-block: 28px 140px; }
+main { overflow-x: clip; }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+
+/* ---------- botones principales ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; border: 0; border-radius: 999px; cursor: pointer; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; transition: transform .2s, background .2s, box-shadow .2s; }
+.btn-main { background: var(--violet); color: var(--on-violet); padding: 20px 40px; font-size: 17px; box-shadow: 0 10px 30px -12px rgba(78, 31, 135, .55); }
+.btn-main:hover { background: var(--violet-deep); transform: translateY(-1px); }
+.btn-line { background: var(--cream); color: var(--ink); border: 1.5px solid var(--ink); padding: 14px 24px; font-size: 14px; }
+.btn-line:hover { background: var(--lilac); }
+.btn-soft { background: transparent; color: var(--violet); padding: 10px 6px; font-size: 13px; letter-spacing: .08em; }
+.btn-soft:hover { color: var(--violet-deep); text-decoration: underline; }
+
+/* ---------- inicio ---------- */
+.hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: 48px; align-items: center; padding-top: 24px; }
+.hero h1 { font: 500 clamp(44px, 7.4vw, 96px)/.92 var(--f-display); letter-spacing: -.01em; margin-top: 18px; }
+.hero h1 em { font-style: italic; font-weight: 400; color: var(--violet); }
+.hero .sub { font: italic 400 clamp(20px, 2.2vw, 26px)/1.35 var(--f-display); margin-top: 22px; max-width: 30ch; }
+.hero .expl { color: var(--muted); margin-top: 14px; max-width: 46ch; font-size: 17px; }
+.hero .btn-main { margin-top: 32px; }
+.pasos { display: flex; flex-wrap: wrap; gap: 10px 24px; margin-top: 30px; padding: 0; list-style: none; counter-reset: p; font-size: 14px; color: var(--muted); }
+.pasos li { counter-increment: p; display: flex; align-items: center; gap: 8px; }
+.pasos li::before { content: counter(p); width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--silver); display: grid; place-items: center; font-size: 12px; color: var(--ink); }
+.abanico { position: relative; height: 470px; }
+.carta { position: absolute; left: 50%; top: 40px; width: 200px; height: 296px; margin-left: -100px; background: var(--cream); border: 1px solid var(--silver); border-radius: 16px; box-shadow: 0 24px 50px -28px rgba(34, 26, 48, .45), inset 0 0 0 6px var(--cream), inset 0 0 0 7px var(--silver-soft); padding: 22px 20px; display: flex; flex-direction: column; justify-content: space-between; transform-origin: 50% 120%; transition: transform .5s cubic-bezier(.2, .8, .2, 1); }
+.carta .n { font: 600 12px/1 var(--f-body); letter-spacing: .2em; color: var(--muted); }
+.carta .ilu { height: 150px; display: grid; place-items: center; }
+.carta .ilu svg { max-height: 150px; width: 100%; }
+.carta h3 { font: 500 26px/1.1 var(--f-display); }
+.carta small { display: block; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
+.carta:nth-child(1) { transform: rotate(-11deg) translateX(-148px); }
+.carta:nth-child(2) { transform: rotate(0deg) translateY(-16px); z-index: 2; }
+.carta:nth-child(3) { transform: rotate(11deg) translateX(148px); text-align: right; }
+.carta:nth-child(3) .n { align-self: flex-end; }
+.abanico:hover .carta:nth-child(1) { transform: rotate(-14deg) translateX(-162px); }
+.abanico:hover .carta:nth-child(3) { transform: rotate(14deg) translateX(162px); }
+@keyframes flotar { 50% { translate: 0 -8px; } }
+.carta:nth-child(2) { animation: flotar 5s ease-in-out infinite; }
+
+/* ---------- selección ---------- */
+.cab-sel { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+.cab-sel h2 { font: 500 clamp(32px, 4.4vw, 52px)/1 var(--f-display); margin-top: 8px; }
+.cab-sel p { color: var(--muted); max-width: 52ch; }
+.grupo { margin-top: 36px; scroll-margin-top: 90px; }
+.grupo-cab { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+.grupo-cab h3 { font: 500 24px/1.2 var(--f-display); }
+.grupo-cab h3 span { font: 600 12px/1 var(--f-body); letter-spacing: .18em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 6px; }
+.grupo-cab .estado { font-size: 14px; color: var(--muted); white-space: nowrap; }
+.grupo-cab .estado b { color: var(--violet); font-weight: 600; }
+.grupo.falta .grupo-cab { border-bottom-color: var(--danger); }
+.grupo.falta .estado { color: var(--danger); }
+.opciones { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+.opcion { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 10px; min-height: 172px; padding: 16px 12px 14px; background: var(--cream); border: 1.5px solid var(--silver-soft); border-radius: var(--r); cursor: pointer; text-align: center; transition: border-color .2s, transform .2s, box-shadow .2s, background .2s; }
+.opcion:hover { border-color: var(--silver); transform: translateY(-2px); box-shadow: 0 14px 30px -22px rgba(34, 26, 48, .5); }
+.opcion .ilu { flex: 1; width: 100%; display: grid; place-items: center; min-height: 96px; }
+.opcion .ilu svg { width: 100%; max-height: 104px; }
+.opcion .ico { width: 56px; height: 56px; color: var(--violet); }
+.opcion .nom { font-weight: 500; font-size: 16px; line-height: 1.2; }
+.opcion[aria-pressed="true"] { border-color: var(--violet); background: var(--lilac); box-shadow: 0 0 0 3px rgba(107, 47, 179, .15); }
+.opcion .check { position: absolute; top: 10px; right: 10px; width: 24px; height: 24px; border-radius: 50%; background: var(--violet); color: #fff; display: grid; place-items: center; transform: scale(0); transition: transform .25s cubic-bezier(.3, 1.6, .5, 1); }
+.opcion[aria-pressed="true"] .check { transform: scale(1); }
+.op-clima .opciones { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+/* barra resumen fija */
+.resumen { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; background: var(--cream); border-top: 1px solid var(--line); box-shadow: 0 -18px 40px -30px rgba(34, 26, 48, .5); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.resumen .wrap { display: flex; align-items: center; gap: 20px; padding-block: 14px; }
+.slots { display: flex; gap: 10px; flex: 1; min-width: 0; }
+.slot { flex: 1; min-width: 0; border: 1px dashed var(--silver); border-radius: 10px; padding: 7px 12px; background: var(--paper); cursor: pointer; text-align: left; }
+.slot small { display: block; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.slot b { display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slot.ok { border-style: solid; border-color: var(--violet); background: var(--lilac); }
+.resumen .btn-main { padding: 16px 28px; font-size: 15px; white-space: nowrap; }
+.resumen .btn-main[aria-disabled="true"] { background: var(--silver); box-shadow: none; }
+.aviso { font-size: 14px; color: var(--danger); min-height: 0; }
+.aviso:empty { display: none; }
+.resumen .listo { display: none; font: italic 400 15px/1.2 var(--f-display); color: var(--violet); }
+.resumen.completo .listo { display: block; }
+
+/* ---------- generando ---------- */
+.generando { position: fixed; inset: 0; z-index: 40; background: color-mix(in srgb, var(--paper) 94%, transparent); display: grid; place-items: center; text-align: center; }
+.generando .mini { display: flex; gap: 14px; justify-content: center; }
+.generando .mini i { width: 64px; height: 92px; border-radius: 10px; border: 1px solid var(--silver); background: var(--cream); animation: girar 1s ease-in-out infinite; }
+.generando .mini i:nth-child(2) { animation-delay: .15s; } .generando .mini i:nth-child(3) { animation-delay: .3s; }
+@keyframes girar { 50% { transform: rotateY(180deg); background: var(--lilac); } }
+.generando p { margin-top: 22px; font: italic 400 22px/1.3 var(--f-display); }
+
+/* ---------- resultado ---------- */
+.banda { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; border: 1px solid var(--line); background: var(--cream); border-radius: var(--r); padding: 16px 22px; }
+.banda p { font: italic 400 clamp(19px, 2.2vw, 24px)/1.3 var(--f-display); }
+.banda p b { font-style: normal; font-weight: 600; color: var(--violet); }
+.res { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr); grid-template-areas: "img cab" "img ficha" "img ."; grid-template-rows: auto auto 1fr; column-gap: 40px; margin-top: 28px; align-items: start; }
+.res-img { grid-area: img; min-width: 0; } .res-cab { grid-area: cab; } .ficha { grid-area: ficha; }
+.lienzo { position: relative; background: var(--cream); border: 1px solid var(--silver-soft); border-radius: 18px; overflow: hidden; }
+.lienzo svg.comp { display: block; width: 100%; height: auto; aspect-ratio: 4 / 5; max-width: 100%; }
+.lienzo .full { position: absolute; top: 14px; right: 14px; }
+.nota-img { font-size: 13px; color: var(--muted); margin-top: 10px; }
+.lista { list-style: none; margin: 24px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 28px; }
+.lista li { display: grid; grid-template-columns: 30px 1fr; gap: 12px; padding: 14px 0; border-top: 1px solid var(--line); min-width: 0; }
+.lista .num { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--silver); display: grid; place-items: center; font: 600 13px/1 var(--f-body); font-variant-numeric: tabular-nums; background: var(--cream); }
+.lista .cat { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.lista b { display: block; font-weight: 500; }
+.lista .sw { display: inline-block; width: 11px; height: 11px; border-radius: 50%; border: 1px solid rgba(34, 26, 48, .25); vertical-align: -1px; margin-right: 6px; }
+.lista p { font-size: 14px; color: var(--muted); }
+.lista li.nota { grid-column: 1 / -1; }
+.res-cab .tag { font: italic 500 18px/1 var(--f-display); color: var(--violet); }
+.res-cab h2 { font: 500 clamp(40px, 5vw, 68px)/.95 var(--f-display); margin-top: 10px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.chip { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px 7px 8px; border: 1px solid var(--silver); border-radius: 999px; background: var(--cream); font-size: 14px; }
+.chip i { font-style: normal; font-size: 10px; font-weight: 600; letter-spacing: .1em; color: var(--on-violet); background: var(--violet); border-radius: 999px; padding: 3px 7px; }
+.bloque { margin-top: 26px; }
+.bloque h3 { font-size: 12px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+.bloque p { margin-top: 6px; max-width: 60ch; }
+.porque { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.porque li { padding-left: 18px; position: relative; max-width: 62ch; }
+.porque li::before { content: ""; position: absolute; left: 0; top: .62em; width: 8px; height: 1px; background: var(--violet); }
+.porque li b { font-weight: 600; }
+.alt { margin-top: 26px; padding: 14px 16px; border-radius: 12px; background: var(--lilac); }
+.alt b { font-weight: 600; }
+.acciones { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+.acciones .btn-main { padding: 16px 26px; font-size: 14px; }
+.sec { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 8px; }
+
+/* entrada de prendas en el flat-lay */
+@keyframes caer { from { opacity: 0; transform: translateY(-18px); } }
+.comp .pz { animation: caer .55s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i) * 70ms); }
+@keyframes aparecer { from { opacity: 0; transform: translateY(10px); } }
+.entra { animation: aparecer .5s ease both; }
+
+/* ---------- pantalla completa (modo stand) ---------- */
+.stand { position: fixed; inset: 0; z-index: 50; background: var(--paper); display: grid; grid-template-columns: minmax(0, auto) minmax(260px, 420px); gap: 36px; align-items: center; justify-content: center; padding: max(20px, env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-right, 0px)) max(20px, env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px)); }
+.stand .lz { height: calc(100vh - 40px); height: calc(100dvh - 40px); aspect-ratio: 4 / 5; max-width: 100%; background: var(--cream); border-radius: 18px; border: 1px solid var(--silver-soft); overflow: hidden; }
+.stand .lz svg { width: 100%; height: 100%; display: block; }
+.stand .txt h2 { font: 500 clamp(40px, 5vw, 76px)/.95 var(--f-display); margin-top: 10px; }
+.stand .txt .msg { font: italic 400 22px/1.3 var(--f-display); margin-top: 18px; }
+.stand ol { margin: 22px 0 0; padding-left: 22px; display: grid; gap: 4px; font-size: 17px; }
+.stand ol li::marker { font-weight: 600; color: var(--violet); }
+.stand .cerrar { position: absolute; top: max(16px, env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); }
+
+.oculto-medida { position: absolute; width: 0; height: 0; overflow: hidden; visibility: hidden; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 960px) {
+  .hero { grid-template-columns: 1fr; gap: 8px; }
+  .abanico { height: 380px; order: -1; }
+  .carta { width: 148px; height: 222px; margin-left: -74px; padding: 13px; top: 30px; }
+  .carta .ilu { height: 96px; } .carta .ilu svg { max-height: 96px; } .carta h3 { font-size: 19px; }
+  .abanico:hover .carta:nth-child(1) { transform: rotate(-9deg) translateX(-92px); } .abanico:hover .carta:nth-child(3) { transform: rotate(9deg) translateX(92px); }
+  .res { grid-template-columns: 1fr; grid-template-areas: "cab" "img" "ficha"; grid-template-rows: auto; row-gap: 24px; }
+  .stand { grid-template-columns: 1fr; align-content: start; overflow-y: auto; }
+  .stand .lz { height: auto; width: 100%; max-height: 72vh; }
+}
+@media (max-width: 640px) {
+  .opciones, .op-clima .opciones { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .opcion { min-height: 150px; }
+  .lista { grid-template-columns: 1fr; }
+  .marca span { display: none; }
+  .resumen .wrap { flex-wrap: wrap; gap: 10px; }
+  .slots { flex-basis: 100%; }
+  .slot { padding: 6px 8px; } .slot b { font-size: 14px; }
+  .resumen .btn-main { flex: 1; }
+  .resumen.completo .listo { display: none; }
+  .carta { width: 106px; height: 160px; margin-left: -53px; padding: 10px; border-radius: 12px; top: 26px; }
+  .carta .n { font-size: 9px; letter-spacing: .12em; } .carta .ilu { height: 58px; } .carta .ilu svg { max-height: 58px; }
+  .carta h3 { font-size: 14px; } .carta small { display: none; }
+  .carta:nth-child(1) { transform: rotate(-6deg) translateX(-114px); }
+  .carta:nth-child(3) { transform: rotate(6deg) translateX(114px); }
+  .abanico:hover .carta:nth-child(1) { transform: rotate(-6deg) translateX(-114px); } .abanico:hover .carta:nth-child(3) { transform: rotate(6deg) translateX(114px); }
+  .abanico { height: 220px; }
+  .btn-main { padding: 18px 28px; font-size: 15px; }
+  .pantalla { padding-bottom: 170px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+
+<svg class="oculto-medida" aria-hidden="true"><g id="medida"></g></svg>
+
+<header class="top">
+  <div class="wrap">
+    <button class="marca" id="ir-inicio" type="button" aria-label="ICON, ir al inicio"><b>ICON</b><span>Tu imagen, tus reglas</span></button>
+    <button class="btn-ghost" id="nuevo" type="button">Nuevo visitante</button>
+  </div>
+</header>
+
+<main>
+  <!-- INICIO -->
+  <section class="pantalla wrap" id="p-inicio" aria-labelledby="t-inicio">
+    <div class="hero">
+      <div>
+        <p class="eyebrow">ICON · Tu imagen, tus reglas</p>
+        <h1 id="t-inicio">ICON <em>Outfit</em> Challenge</h1>
+        <p class="sub">Tres tarjetas. Infinitas posibilidades. Descubrí tu próximo look.</p>
+        <p class="expl">Elegí tus tarjetas, combiná tus preferencias y descubrí el outfit que ICON creó para vos.</p>
+        <button class="btn btn-main" id="crear" type="button">Crear mi outfit</button>
+        <ol class="pasos" aria-label="Cómo se juega">
+          <li>Elegís tres tarjetas</li>
+          <li>Cargamos tus elecciones</li>
+          <li>Descubrís tu look</li>
+        </ol>
+      </div>
+      <div class="abanico" aria-hidden="true">
+        <div class="carta"><span class="n">TARJETA 1</span><div class="ilu" id="carta-1"></div><div><h3>Estilo personal</h3><small>8 opciones</small></div></div>
+        <div class="carta"><span class="n">TARJETA 2</span><div class="ilu" id="carta-2"></div><div><h3>Clima</h3><small>4 opciones</small></div></div>
+        <div class="carta"><span class="n">TARJETA 3</span><div class="ilu" id="carta-3"></div><div><h3>Tipo de evento</h3><small>8 opciones</small></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SELECCIÓN -->
+  <section class="pantalla wrap" id="p-sel" aria-labelledby="t-sel" hidden>
+    <div class="cab-sel">
+      <div><p class="eyebrow">Paso 2 de 3</p><h2 id="t-sel">Cargá las tres tarjetas</h2></div>
+      <p>Marcá la opción de cada tarjeta que eligió el visitante. Solo se puede elegir una por categoría.</p>
+    </div>
+    <div class="grupo" id="g-estilo"><div class="grupo-cab"><h3><span>Tarjeta 1</span>Estilo personal</h3><p class="estado" aria-live="polite"></p></div><div class="opciones" role="group" aria-label="Estilo personal"></div></div>
+    <div class="grupo op-clima" id="g-clima"><div class="grupo-cab"><h3><span>Tarjeta 2</span>Clima</h3><p class="estado" aria-live="polite"></p></div><div class="opciones" role="group" aria-label="Clima"></div></div>
+    <div class="grupo" id="g-evento"><div class="grupo-cab"><h3><span>Tarjeta 3</span>Tipo de evento</h3><p class="estado" aria-live="polite"></p></div><div class="opciones" role="group" aria-label="Tipo de evento"></div></div>
+  </section>
+
+  <!-- RESULTADO -->
+  <section class="pantalla wrap" id="p-res" aria-labelledby="t-res" hidden>
+    <div class="banda entra">
+      <p><b>¡Tu estilo, tus reglas!</b> Este es tu look creado a partir de tus elecciones.</p>
+      <button class="btn-ghost" id="btn-full" type="button">Ver en pantalla completa</button>
+    </div>
+    <div class="res">
+      <div class="res-cab entra">
+        <p class="tag" id="r-tag"></p>
+        <h2 id="t-res" tabindex="-1"></h2>
+        <div class="chips" id="r-chips"></div>
+      </div>
+      <div class="res-img">
+        <figure class="lienzo" id="lienzo" style="margin:0"></figure>
+        <p class="nota-img">Ilustración armada con prendas dibujadas del catálogo ICON y coloreadas con la paleta del estilo elegido. No es una imagen generada con inteligencia artificial.</p>
+        <ol class="lista" id="lista"></ol>
+      </div>
+      <div class="ficha entra">
+        <div class="bloque"><h3>Por qué funciona</h3><ul class="porque" id="r-porque"></ul></div>
+        <div class="bloque"><h3>Peinado sugerido</h3><p id="r-peinado"></p></div>
+        <div class="bloque"><h3>Maquillaje sugerido (opcional)</h3><p id="r-maq"></p></div>
+        <div class="alt" id="r-alt"></div>
+        <div class="acciones">
+          <button class="btn btn-main" id="otra" type="button">Probar otra combinación</button>
+          <button class="btn btn-line" id="volver" type="button">Volver al inicio</button>
+        </div>
+        <div class="sec"><button class="btn btn-soft" id="version" type="button">Ver otra versión con las mismas tarjetas</button></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="resumen" id="resumen" hidden>
+  <div class="wrap">
+    <div class="slots">
+      <button class="slot" type="button" data-ir="estilo"><small>Estilo</small><b>—</b></button>
+      <button class="slot" type="button" data-ir="clima"><small>Clima</small><b>—</b></button>
+      <button class="slot" type="button" data-ir="evento"><small>Evento</small><b>—</b></button>
+    </div>
+    <p class="listo">Resumen completo</p>
+    <button class="btn btn-main" id="generar" type="button" aria-disabled="true">Generar mi outfit</button>
+    <p class="aviso" id="aviso" role="alert"></p>
+  </div>
+</div>
+
+<div class="generando" id="generando" hidden><div><div class="mini" aria-hidden="true"><i></i><i></i><i></i></div><p>Combinando estilo, clima y evento…</p></div></div>
+
+<div class="stand" id="stand" hidden role="dialog" aria-modal="true" aria-labelledby="st-nombre">
+  <div class="lz" id="st-lienzo"></div>
+  <div class="txt">
+    <p class="tag eyebrow" id="st-tag"></p>
+    <h2 id="st-nombre"></h2>
+    <div class="chips" id="st-chips"></div>
+    <p class="msg">¡Tu estilo, tus reglas!</p>
+    <ol id="st-lista"></ol>
+  </div>
+  <button class="btn-ghost cerrar" id="st-cerrar" type="button">Salir de pantalla completa</button>
+</div>
+
+<script id="motor">
+/*LIB*/
+/*MOTOR*/
+</script>
+<script>
+/*UI*/
+</script>
