@@ -219,7 +219,7 @@ if (typeof document !== "undefined") (function () {
     // Pasos: foto entera, zoom ×2 (2×2 zonas), zoom ×3 (3×3 zonas) y, si no apareció nada, alta resolución.
     const pasos = [{ r: [0, 0, 1, 1], jq: 1400, zx: 900 }];
     for (const y of [0, 0.4]) for (const x of [0, 0.4]) pasos.push({ r: [x, y, 0.6, 0.6], jq: 1400, zx: 900 });
-    for (const y of [0, 0.29, 0.58]) for (const x of [0, 0.29, 0.58]) pasos.push({ r: [x, y, 0.42, 0.42], jq: 1100, fina: true });
+    for (const y of [0, 0.29, 0.58]) for (const x of [0, 0.29, 0.58]) pasos.push({ r: [x, y, 0.42, 0.42], jq: 1100, zx: 900, fina: true });
     pasos.push({ r: [0, 0, 1, 1], zx: 2000, fina: true, ultimo: true });
     let i = 0;
     for (const p of pasos) {
@@ -235,6 +235,7 @@ if (typeof document !== "undefined") (function () {
       i++;
     }
     Object.assign(ultima, { pasos: i, ms: Math.round(performance.now() - t0), motor: [...motores].join(" + ") || "—", textos: [...set] });
+    analizarFoto.variasTarjetas = set.size > 0 && !qrGrande();
     return [...set];
   }
 
@@ -335,6 +336,14 @@ if (typeof document !== "undefined") (function () {
       const textos = await analizarFoto(bmp, p => estado(`Buscando el QR… ${Math.round(p * 100)} %`));
       let leidos = textos.flatMap(interpretar), via = "qr";
       if (!leidos.length && textos.length) { estado("Leí un QR, pero no es de una tarjeta ICON."); return; }
+      // Foto con varias tarjetas y alguna sin leer por QR: se completa con el texto impreso.
+      const cats = new Set(leidos.map(x => x.g));
+      if (leidos.length && cats.size < 3 && analizarFoto.variasTarjetas && ocr.estado !== "no disponible") {
+        estado(`Leí ${cats.size} por QR. Buscando el resto en el texto de las tarjetas…`);
+        const l = await leerTextoLocal(bmp);
+        const extra = (l || []).filter(x => !cats.has(x.g));
+        if (extra.length) { despues([...aplicar(leidos, "qr"), ...aplicar(extra, "texto")], ""); return; }
+      }
       if (!leidos.length) {
         if (ocr.estado !== "no disponible") {
           estado(ocr.estado === "listo" ? "No encontré un QR. Leyendo el texto de la tarjeta…" : "No encontré un QR. Preparando el lector de texto…");
