@@ -157,12 +157,15 @@ if (typeof document !== "undefined") (function () {
 
   /** Recorta (sx, sy, sw, sh) de la fuente y la escala a "lado". Medido con 60 fotos difíciles:
       retocar contraste o nitidez empeora la lectura, así que la imagen va tal cual. */
-  function zona(src, sx, sy, sw, sh, lado) {
+  function zona(src, sx, sy, sw, sh, lado, tapados) {
     const k = Math.min(1, lado / Math.max(sw, sh)), w = Math.max(1, Math.round(sw * k)), h = Math.max(1, Math.round(sh * k));
     const c = document.createElement("canvas"); c.width = w; c.height = h;
     const ctx = c.getContext("2d", { willReadFrequently: true });
     ctx.imageSmoothingQuality = "high"; ctx.drawImage(src, sx, sy, sw, sh, 0, 0, w, h);
-    return { img: ctx.getImageData(0, 0, w, h), w, h, lum: null };
+    // los QR ya leídos en otras zonas se tapan acá también, así no confunden la búsqueda de los demás
+    ctx.fillStyle = "#fff";
+    (tapados || []).forEach(b => ctx.fillRect((b.x0 - sx) * k, (b.y0 - sy) * k, (b.x1 - b.x0) * k, (b.y1 - b.y0) * k));
+    return { img: ctx.getImageData(0, 0, w, h), w, h, lum: null, sx, sy, k };
   }
   function lumDe(Z) {
     if (!Z.lum) { const d = Z.img.data, n = Z.w * Z.h, l = new Uint8ClampedArray(n); for (let i = 0, j = 0; i < n; i++, j += 4) l[i] = (d[j] * 77 + d[j + 1] * 150 + d[j + 2] * 29) >> 8; Z.lum = l; }
@@ -184,26 +187,34 @@ if (typeof document !== "undefined") (function () {
     const c = r.location;
     return { texto: r.data, pts: [c.topLeftCorner, c.topRightCorner, c.bottomRightCorner, c.bottomLeftCorner], margen: 0.08, motor: "jsQR" };
   }
-  function tapar(Z, hit) { // pinta de blanco el QR leído para que no confunda la búsqueda de los demás
+  /** Pinta de blanco el QR leído en la zona y devuelve su caja en coordenadas de la foto original. */
+  function tapar(Z, hit) {
     const xs = hit.pts.map(p => p.x), ys = hit.pts.map(p => p.y);
     let x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
     const m = Math.max(x1 - x0, y1 - y0) * hit.margen;
     x0 = Math.max(0, Math.floor(x0 - m)); y0 = Math.max(0, Math.floor(y0 - m)); x1 = Math.min(Z.w - 1, Math.ceil(x1 + m)); y1 = Math.min(Z.h - 1, Math.ceil(y1 + m));
     const d = Z.img.data;
     for (let y = y0; y <= y1; y++) { d.fill(255, (y * Z.w + x0) * 4, (y * Z.w + x1 + 1) * 4); if (Z.lum) Z.lum.fill(255, y * Z.w + x0, y * Z.w + x1 + 1); }
+    const k = Z.k || 1, sx = Z.sx || 0, sy = Z.sy || 0;
+    return { x0: sx + x0 / k, y0: sy + y0 / k, x1: sx + x1 / k, y1: sy + y1 / k };
   }
   /** Lee todos los QR de una zona con un motor (tapa cada uno leído y vuelve a buscar). */
-  function decodificarZona(Z, motor, set, motores, max = 3) {
+  function decodificarZona(Z, motor, set, motores, max = 3, tapados) {
     for (let i = 0; i < max; i++) {
       const hit = motor(Z);
       if (!hit) break;
-      set.add(hit.texto); motores.add(hit.motor); tapar(Z, hit);
+      set.add(hit.texto); motores.add(hit.motor);
+      const caja = tapar(Z, hit);
+      if (tapados) tapados.push(caja);
     }
   }
   /** Busca todos los QR de una foto. Corta apenas tiene una tarjeta de cada categoría. */
   async function analizarFoto(bmp, progreso) {
-    const t0 = performance.now(), W = bmp.width, H = bmp.height, set = new Set(), motores = new Set();
+    const t0 = performance.now(), W = bmp.width, H = bmp.height, set = new Set(), motores = new Set(), tapados = [];
     const cats = () => new Set([...set].flatMap(interpretar).map(x => x.g)).size;
+    // Un QR grande es señal de una sola tarjeta de cerca: no hace falta buscar más.
+    // QR chicos suelen ser varias tarjetas en la foto: se sigue buscando por zonas.
+    const qrGrande = () => tapados.some(b => (b.x1 - b.x0) > Math.min(W, H) * 0.16);
     if (nativo) { try { (await nativo.detect(bmp)).forEach(r => set.add(r.rawValue)); if (set.size) motores.add("lector del navegador"); } catch (e) { /* sigue */ } }
     // Pasos: foto entera, zoom ×2 (2×2 zonas), zoom ×3 (3×3 zonas) y, si no apareció nada, alta resolución.
     const pasos = [{ r: [0, 0, 1, 1], jq: 1400, zx: 900 }];
@@ -214,13 +225,13 @@ if (typeof document !== "undefined") (function () {
     for (const p of pasos) {
       if (cats() >= 3) break;
       const ms = performance.now() - t0;
-      if (set.size && p.fina && ms > 700) break; // ya hay lectura: no se insiste con zonas finas
+      if (set.size && p.fina && (qrGrande() || ms > 4000)) break;
       if (p.ultimo && set.size) break;
       if (ms > 8000) break;
       if (progreso) { progreso(i / pasos.length); await pausa(); }
       const [fx, fy, fw, fh] = p.r;
-      if (p.jq) decodificarZona(zona(bmp, fx * W, fy * H, fw * W, fh * H, p.jq), conJsQR, set, motores);
-      if (p.zx && cats() < 3) decodificarZona(zona(bmp, fx * W, fy * H, fw * W, fh * H, p.zx), conZXing, set, motores);
+      if (p.jq) decodificarZona(zona(bmp, fx * W, fy * H, fw * W, fh * H, p.jq, tapados), conJsQR, set, motores, 3, tapados);
+      if (p.zx && cats() < 3) decodificarZona(zona(bmp, fx * W, fy * H, fw * W, fh * H, p.zx, tapados), conZXing, set, motores, 3, tapados);
       i++;
     }
     Object.assign(ultima, { pasos: i, ms: Math.round(performance.now() - t0), motor: [...motores].join(" + ") || "—", textos: [...set] });
