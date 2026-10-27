@@ -154,6 +154,19 @@ details.manual summary::-webkit-details-marker { display: none; }
 details.manual summary::before { content: "+"; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--violet); font-size: 15px; line-height: 1; }
 details.manual[open] summary::before { content: "−"; }
 
+.visor.arrastre { outline: 3px dashed #CBB8EA; outline-offset: -10px; }
+.zoom { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+.zoom input { width: 120px; accent-color: var(--violet); }
+#scan-luz[aria-pressed="true"] { background: var(--lilac); border-color: var(--violet); }
+details.diag { margin-top: 14px; font-size: 14px; }
+details.diag summary { cursor: pointer; color: var(--muted); }
+details.diag ul { list-style: none; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 16px; }
+details.diag li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 10px; border-radius: 8px; background: var(--cream); border: 1px solid var(--line); min-width: 0; }
+details.diag li b { font-weight: 500; text-align: right; overflow-wrap: anywhere; }
+details.diag li.ok b { color: #2F6B4F; } details.diag li.mal b { color: var(--danger); } details.diag li.espera b { color: var(--muted); }
+details.diag p { margin-top: 8px; color: var(--muted); overflow-wrap: anywhere; }
+@media (max-width: 640px) { details.diag ul { grid-template-columns: 1fr; } }
+
 /* barra resumen fija */
 .resumen { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; background: var(--cream); border-top: 1px solid var(--line); box-shadow: 0 -18px 40px -30px rgba(34, 26, 48, .5); padding-bottom: env(safe-area-inset-bottom, 0px); }
 .resumen .wrap { display: flex; align-items: center; gap: 20px; padding-block: 14px; }
@@ -320,9 +333,16 @@ details.manual[open] summary::before { content: "−"; }
         <div class="scan-botones">
           <button class="btn btn-main" id="scan-camara" type="button">Activar cámara</button>
           <label class="btn btn-line" id="scan-alt" for="scan-foto">Sacar o subir foto<input id="scan-foto" type="file" accept="image/*" capture="environment"></label>
-          <button class="btn btn-soft" id="scan-texto" type="button" hidden>Leer el texto con Claude</button>
+          <button class="btn btn-soft" id="scan-texto" type="button" hidden>Leer el texto de la tarjeta</button>
+          <button class="btn-ghost" id="scan-luz" type="button" aria-pressed="false" hidden>Linterna</button>
+          <label class="zoom" id="scan-zoom-caja" hidden>Zoom <input id="scan-zoom" type="range" min="1" max="3" step="0.1" value="1"></label>
         </div>
-        <p class="scan-nota" id="scan-claude-nota" hidden>Si una tarjeta no tiene QR, Claude lee el texto impreso en la foto. La primera vez te pide permiso.</p>
+        <p class="scan-nota">Lee el QR de la tarjeta; si la tarjeta no tiene QR, lee el texto impreso. Una foto puede tener las tres tarjetas juntas. En una computadora también podés arrastrar una foto al recuadro.</p>
+        <details class="diag">
+          <summary>Estado del lector</summary>
+          <ul id="diag-lista"></ul>
+          <p id="diag-ultima"></p>
+        </details>
       </div>
       <div class="leidas" aria-label="Tarjetas leídas">
         <h3>Tarjetas leídas</h3>
@@ -398,7 +418,17 @@ details.manual[open] summary::before { content: "−"; }
   <button class="btn-ghost cerrar" id="st-cerrar" type="button">Salir de pantalla completa</button>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script>
+/* Lectores de QR y de texto: se sirven junto a la app (carpeta vendor/). Si faltan, se cargan del CDN. */
+function cargarLib(local, cdn) {
+  const s = document.createElement("script"); s.src = local; s.async = false;
+  s.onerror = () => { const c = document.createElement("script"); c.src = cdn; c.async = false; document.head.appendChild(c); };
+  document.head.appendChild(s);
+}
+cargarLib("vendor/jsQR.js", "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js");
+cargarLib("vendor/zxing.min.js", "https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js");
+cargarLib("vendor/tesseract.min.js", "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js");
+</script>
 <script id="motor">
 /*LIB*/
 /*MOTOR*/

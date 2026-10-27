@@ -1,21 +1,19 @@
 // Prueba de punta a punta del escáner en Chromium:
-//   JSQR=ruta/a/jsQR.js FOTOS=carpeta node pruebas/e2e.cjs [carpeta-capturas]
+//   URL=http://localhost:8811/index.html FOTOS=carpeta node pruebas/e2e.cjs [carpeta-capturas]
+// URL: la app servida con su carpeta vendor/ (ver pruebas/servidor.cjs).
 // FOTOS debe tener foto-tres-tarjetas.jpg, sin-qr.png y camara.y4m (video falso de cámara).
 const { chromium } = require("playwright"), fs = require("fs"), path = require("path");
 const out = process.argv[2] || path.join(__dirname, "capturas"); fs.mkdirSync(out, { recursive: true });
 const F = process.env.FOTOS, T = path.join(__dirname, "..", "tarjetas", "png");
-const pagina = path.join(out, "_pagina.html");
-fs.writeFileSync(pagina, '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>[hidden]{display:none!important}</style></head><body>' + fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8") + "</body></html>");
 const ok = (c, m) => { if (!c) { console.log("FALLA:", m); process.exitCode = 1; } else console.log("ok  ", m); };
 async function abrir(b, w, h) {
   const p = await b.newPage({ viewport: { width: w, height: h } }), errs = [];
-  await p.route(/jsQR\.js$/, r => r.fulfill({ path: process.env.JSQR, contentType: "text/javascript" }));
   p.on("pageerror", e => errs.push(e.message)); p.on("console", m => m.type() === "error" && !/fonts\.|Permission|NotAllowed|getUserMedia/.test(m.text()) && errs.push(m.text()));
-  await p.goto("file://" + pagina); await p.waitForTimeout(400); await p.click("#crear");
+  await p.goto(process.env.URL); await p.waitForTimeout(400); await p.click("#crear");
   return { p, errs };
 }
 const leida = (p, g) => p.$eval(`.leida[data-g="${g}"] .valor`, e => e.textContent);
-const subir = async (p, f) => { await p.setInputFiles("#scan-foto", f); await p.waitForTimeout(150); await p.waitForFunction(() => !/^(Buscando|No encontré un QR. Claude)/.test(document.querySelector("#scan-estado").textContent), null, { timeout: 15000 }); };
+const subir = async (p, f) => { await p.setInputFiles("#scan-foto", f); await p.waitForFunction(() => window.ICON_LECTOR.ocupado(), null, { timeout: 3000 }).catch(() => {}); await p.waitForFunction(() => !window.ICON_LECTOR.ocupado(), null, { timeout: 60000 }); };
 (async () => {
   // 1) Fotos sueltas + generar (escritorio y celular)
   let b = await chromium.launch();
@@ -67,8 +65,8 @@ const subir = async (p, f) => { await p.setInputFiles("#scan-foto", f); await p.
   b = await chromium.launch({ args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", `--use-file-for-fake-video-capture=${F}/camara.y4m`] });
   {
     const ctx = await b.newContext({ viewport: { width: 1366, height: 900 }, permissions: ["camera"] });
-    const p = await ctx.newPage(); await p.route(/jsQR\.js$/, r => r.fulfill({ path: process.env.JSQR, contentType: "text/javascript" }));
-    await p.goto("file://" + pagina); await p.waitForTimeout(400); await p.click("#crear");
+    const p = await ctx.newPage();
+    await p.goto(process.env.URL); await p.waitForTimeout(400); await p.click("#crear");
     await p.click("#scan-camara"); await p.waitForTimeout(2500);
     ok(await leida(p, "evento") === "Cita o salida especial", "cámara en vivo lee el QR de la tarjeta");
     await p.screenshot({ path: `${out}/6-camara-en-vivo.png` });
