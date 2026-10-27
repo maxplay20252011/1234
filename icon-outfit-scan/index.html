@@ -319,7 +319,7 @@ details.diag p { margin-top: 8px; color: var(--muted); overflow-wrap: anywhere; 
   <section class="pantalla wrap" id="p-sel" aria-labelledby="t-sel" hidden>
     <div class="cab-sel">
       <div><p class="eyebrow">Paso 2 de 3</p><h2 id="t-sel">Escaneá las tres tarjetas</h2></div>
-      <p>Mostrá cada tarjeta a la cámara. La app lee el QR impreso en la tarjeta y la carga sola.</p>
+      <p>Sacale una foto a cada tarjeta, o a las tres juntas. La app lee el QR o el texto impreso y las carga sola.</p>
     </div>
     <div class="scan">
       <div>
@@ -1959,7 +1959,7 @@ if (typeof document !== "undefined") (function () {
     });
   }
   new MutationObserver(pintarLeidas).observe($("#p-sel"), { subtree: true, attributes: true, attributeFilter: ["aria-pressed"] });
-  $("#p-sel").addEventListener("click", e => { const b = e.target.closest(".opcion"); if (b && e.isTrusted) origen[b.dataset.g] = "mano"; });
+  $("#p-sel").addEventListener("click", e => { const b = e.target.closest(".opcion"); if (b && e.isTrusted) { origen[b.dataset.g] = "mano"; pintarLeidas(); } });
 
   /** Aplica lo leído tocando el botón del formulario. Devuelve los cambios. */
   function aplicar(lista, via) {
@@ -2059,7 +2059,7 @@ if (typeof document !== "undefined") (function () {
     const cats = () => new Set([...set].flatMap(interpretar).map(x => x.g)).size;
     // Un QR grande es señal de una sola tarjeta de cerca: no hace falta buscar más.
     // QR chicos suelen ser varias tarjetas en la foto: se sigue buscando por zonas.
-    const qrGrande = () => tapados.some(b => (b.x1 - b.x0) > Math.min(W, H) * 0.16);
+    const qrGrande = () => tapados.some(b => (b.x1 - b.x0) > Math.max(W, H) * 0.12);
     if (nativo) { try { (await nativo.detect(bmp)).forEach(r => set.add(r.rawValue)); if (set.size) motores.add("lector del navegador"); } catch (e) { /* sigue */ } }
     // Pasos: foto entera, zoom ×2 (2×2 zonas), zoom ×3 (3×3 zonas) y, si no apareció nada, alta resolución.
     const pasos = [{ r: [0, 0, 1, 1], jq: 1400, zx: 900 }];
@@ -2091,12 +2091,22 @@ if (typeof document !== "undefined") (function () {
   function prepararOCR() {
     if (ocr.promesa) return ocr.promesa;
     if (typeof Tesseract === "undefined" || !window.Worker || typeof WebAssembly === "undefined") { ocr.estado = "no disponible"; ocr.error = "falta el motor"; pintarDiag(); return (ocr.promesa = Promise.resolve(null)); }
+    // Si el visor no permite WebAssembly, se sabe al instante compilando un módulo vacío.
+    try { new WebAssembly.Module(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0])); }
+    catch (e) { ocr.estado = "no disponible"; ocr.error = "esta pantalla no permite WebAssembly"; pintarDiag(); return (ocr.promesa = Promise.resolve(null)); }
     const base = new URL("vendor/", document.baseURI).href;
     ocr.estado = "cargando"; pintarDiag();
-    const crear = Tesseract.createWorker("spa", 1, {
-      workerPath: base + "worker.min.js", corePath: base, langPath: base.replace(/\/$/, ""), cacheMethod: "none",
-      logger: m => { if (m && typeof m.progress === "number" && /load|init/i.test(m.status || "")) { ocr.avance = m.progress; pintarDiag(); } },
-      errorHandler: e => { ocr.error = String((e && e.message) || e); },
+    // El idioma (español) viaja como texto base64 porque el visor no sirve archivos .gz. Se guarda en la
+    // caché de Tesseract (IndexedDB "keyval-store", clave "./spa.traineddata") y Tesseract lo lee de ahí.
+    const crear = fetch(base + "spa-traineddata-gz.b64.txt").then(r => { if (!r.ok) throw new Error("no se pudo bajar el idioma (" + r.status + ")"); return r.text(); }).then(async b64 => {
+      const bin = atob(b64.trim()), datos = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) datos[i] = bin.charCodeAt(i);
+      await guardarEnCache("./spa.traineddata", datos);
+      return Tesseract.createWorker("spa", 1, {
+        workerPath: base + "worker.min.js", corePath: base, langPath: base.replace(/\/$/, ""), cacheMethod: "readOnly",
+        logger: m => { if (m && typeof m.progress === "number" && /load|init/i.test(m.status || "")) { ocr.avance = m.progress; pintarDiag(); } },
+        errorHandler: e => { ocr.error = String((e && e.message) || e); },
+      });
     });
     const limite = new Promise((_, rej) => setTimeout(() => rej(new Error("tardó demasiado")), 60000));
     ocr.promesa = Promise.race([crear, limite]).then(async w => {
@@ -2104,6 +2114,19 @@ if (typeof document !== "undefined") (function () {
       ocr.worker = w; ocr.estado = "listo"; pintarDiag(); return w;
     }).catch(e => { ocr.estado = "no disponible"; ocr.error = ocr.error || String((e && e.message) || e); pintarDiag(); return null; });
     return ocr.promesa;
+  }
+  /** Escribe en la misma base que usa Tesseract (idb-keyval: base "keyval-store", almacén "keyval"). */
+  function guardarEnCache(clave, valor) {
+    return new Promise((ok, mal) => {
+      const req = indexedDB.open("keyval-store");
+      req.onupgradeneeded = () => req.result.createObjectStore("keyval");
+      req.onerror = () => mal(req.error);
+      req.onsuccess = () => {
+        const db = req.result, tx = db.transaction("keyval", "readwrite");
+        tx.objectStore("keyval").put(valor, clave);
+        tx.oncomplete = () => { db.close(); ok(); }; tx.onerror = () => mal(tx.error);
+      };
+    });
   }
   function lienzoGirado(bmp, giro, lado) {
     const k = Math.min(1, lado / Math.max(bmp.width, bmp.height)), w = Math.round(bmp.width * k), h = Math.round(bmp.height * k);

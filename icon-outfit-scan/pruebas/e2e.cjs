@@ -51,9 +51,9 @@ const subir = async (p, f) => { await p.setInputFiles("#scan-foto", f); await p.
     await p.screenshot({ path: `${out}/4-foto-tres-tarjetas.png` });
     await p.click("#volver").catch(() => {}); await p.click("#nuevo"); await p.click("#crear");
     await subir(p, `${F}/sin-qr.png`);
-    ok((await p.textContent("#scan-estado")).includes("No encontré un QR"), "tarjeta sin QR (sin Claude disponible) → mensaje claro");
-    await p.click("#manual summary"); await p.click("#op-clima-lluvia");
-    ok(await leida(p, "clima") === "Lluvioso" && (await p.textContent(".leida[data-g=clima] .via")) === "Elegida a mano", "elegir a mano también carga la tarjeta");
+    ok(await leida(p, "clima") === "Lluvioso" && (await p.textContent(".leida[data-g=clima] .via")) === "Leída por el texto", "tarjeta sin QR → se lee el texto impreso, sin internet");
+    await p.click("#manual summary"); await p.click("#op-clima-frio");
+    ok(await leida(p, "clima") === "Frío" && (await p.textContent(".leida[data-g=clima] .via")) === "Elegida a mano", "elegir a mano también carga (y corrige) la tarjeta");
     await p.click("#scan-camara"); await p.waitForTimeout(800);
     ok((await p.textContent("#scan-estado")).includes("Sacar o subir foto") && await p.$eval("#scan-alt", e => e.classList.contains("resalta")), "sin permiso de cámara → ofrece la foto");
     await p.screenshot({ path: `${out}/5-sin-camara.png` });
