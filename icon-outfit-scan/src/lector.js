@@ -110,7 +110,9 @@ if (typeof document !== "undefined") (function () {
   const NOMBRES = { estilo: ESTILOS, clima: CLIMAS, evento: EVENTOS };
   const ETIQ = { estilo: "Estilo", clima: "Clima", evento: "Evento" };
   const origen = { estilo: null, clima: null, evento: null }; // cómo se leyó cada tarjeta
-  const estado = msg => { $("#scan-estado").textContent = msg; };
+  const estado = (msg, tipo = "info") => { const e = $("#scan-estado"); e.textContent = msg; e.dataset.tipo = tipo; };
+  const progreso = (txt, frac) => { $("#scan-progreso").hidden = false; $("#scan-progreso-txt").textContent = txt; $("#scan-progreso-barra").style.width = Math.round(Math.max(0.04, Math.min(1, frac)) * 100) + "%"; };
+  const finProgreso = () => { $("#scan-progreso").hidden = true; };
   const pausa = (ms = 0) => new Promise(r => setTimeout(r, ms));
   const ultima = { pasos: 0, ms: 0, motor: "", textos: [], ocr: "" };
   let stream = null, timer = null, ultimo = { t: "", at: 0 }, camEstado = "sin probar", cuadro = 0, pista = null; // cámara en vivo
@@ -127,7 +129,11 @@ if (typeof document !== "undefined") (function () {
       const ilu = el.querySelector(".mini");
       const src = k ? document.querySelector(`#op-${g}-${k} .ilu`) : null;
       ilu.innerHTML = src ? src.innerHTML.replace(/id="u/g, 'id="l' + g).replace(/url\(#u/g, "url(#l" + g) : "";
+      el.querySelector(".cambiar").textContent = k ? "Cambiar" : "Elegir";
     });
+    const n = ["estilo", "clima", "evento"].filter(actual).length;
+    $("#scan-cuenta").textContent = `${n} de 3`;
+    $("#scan-generar").hidden = n < 3;
   }
   new MutationObserver(pintarLeidas).observe($("#p-sel"), { subtree: true, attributes: true, attributeFilter: ["aria-pressed"] });
   $("#p-sel").addEventListener("click", e => { const b = e.target.closest(".opcion"); if (b && e.isTrusted) { origen[b.dataset.g] = "mano"; pintarLeidas(); } });
@@ -146,12 +152,15 @@ if (typeof document !== "undefined") (function () {
     if (cambios.length && navigator.vibrate) try { navigator.vibrate(60); } catch (e) { /* sin vibración */ }
     return cambios;
   }
+  // "Elegir" / "Cambiar": abre el formulario a mano en esa tarjeta
+  document.querySelectorAll("[data-cambiar]").forEach(b => { b.onclick = () => { const d = $("#manual"); d.open = true; const gEl = $("#g-" + b.dataset.cambiar); gEl.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" }); const o = gEl.querySelector(".opcion"); if (o) o.focus({ preventScroll: true }); }; });
+  $("#scan-generar").onclick = () => $("#generar").click();
   const describir = l => l.map(({ g, k }) => `${ETIQ[g]}: ${NOMBRES[g][k].nombre}`).join(" · ");
   const faltan = () => ["estilo", "clima", "evento"].filter(g => !actual(g));
   function despues(cambios, sinNovedad) {
-    if (!cambios.length) { estado(sinNovedad); return; }
+    if (!cambios.length) { estado(sinNovedad, faltan().length ? "falta" : "ok"); return; }
     const f = faltan();
-    estado(`Leí ${describir(cambios)}. ${f.length ? "Falta: " + f.map(g => ETIQ[g].toLowerCase()).join(", ") + "." : "¡Listo! Ya podés generar el outfit."}`);
+    estado(`Leí ${describir(cambios)}. ${f.length ? "Falta: " + f.map(g => ETIQ[g].toLowerCase()).join(", ") + ". Sacá otra foto de esa tarjeta o elegila a mano." : "¡Listo! Ya podés generar el outfit."}`, f.length ? "falta" : "ok");
     if (!f.length) { pararCamara(); $("#generar").scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "nearest" }); }
   }
 
@@ -221,7 +230,7 @@ if (typeof document !== "undefined") (function () {
       if (!hit) break;
       set.add(hit.texto); motores.add(hit.motor);
       const caja = tapar(Z, hit);
-      if (tapados) tapados.push(caja);
+      if (tapados) tapados.push({ ...caja, texto: hit.texto });
     }
   }
   /** Busca todos los QR de una foto. Corta apenas tiene una tarjeta de cada categoría. */
@@ -252,6 +261,7 @@ if (typeof document !== "undefined") (function () {
     }
     Object.assign(ultima, { pasos: i, ms: Math.round(performance.now() - t0), motor: [...motores].join(" + ") || "—", textos: [...set] });
     analizarFoto.variasTarjetas = set.size > 0 && !qrGrande();
+    ultima.marcas = tapados.flatMap(b => interpretar(b.texto).map(x => ({ x0: b.x0, y0: b.y0, x1: b.x1, y1: b.y1, g: x.g, k: x.k, via: "qr" })));
     return [...set];
   }
 
@@ -359,31 +369,109 @@ if (typeof document !== "undefined") (function () {
     for (let i = 0, j = 0; i < g.length; i++, j += 4) { img.data[j] = img.data[j + 1] = img.data[j + 2] = g[i]; img.data[j + 3] = 255; }
     ctx.putImageData(img, 0, 0); return c;
   }
-  /** Lee el texto de la foto con varias pasadas; corta apenas encuentra una coincidencia segura. */
+  /** Zonas con texto: agrupa la tinta en bloques (cada tarjeta, papelito o renglón) para leerlos por separado. */
+  function bloquesDeTexto({ g, w, h }) {
+    const c = 8, gw = Math.ceil(w / c), gh = Math.ceil(h / c), cnt = new Uint16Array(gw * gh);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (!g[y * w + x]) cnt[((y / c) | 0) * gw + ((x / c) | 0)]++;
+    const d = new Uint8Array(gw * gh);
+    for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) if (cnt[y * gw + x] >= 3)
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -3; dx <= 3; dx++) { const yy = y + dy, xx = x + dx; if (yy >= 0 && yy < gh && xx >= 0 && xx < gw) d[yy * gw + xx] = 1; }
+    const visto = new Uint8Array(gw * gh), out = [];
+    for (let i = 0; i < d.length; i++) {
+      if (!d[i] || visto[i]) continue;
+      let x0 = gw, y0 = gh, x1 = 0, y1 = 0; const pila = [i]; visto[i] = 1;
+      while (pila.length) {
+        const j = pila.pop(), y = (j / gw) | 0, x = j % gw;
+        x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+        for (const k of [j - 1, j + 1, j - gw, j + gw]) if (k >= 0 && k < d.length && d[k] && !visto[k] && Math.abs((k % gw) - x) <= 1) { visto[k] = 1; pila.push(k); }
+      }
+      const bw = (x1 - x0 + 1) * c, bh = (y1 - y0 + 1) * c;
+      if (bh < 16 || bw < 32 || bh > h * 0.6 || bw > w * 0.97 || bh > bw * 2.5) continue;
+      out.push({ x0: x0 * c, y0: y0 * c, x1: Math.min(w, (x1 + 1) * c), y1: Math.min(h, (y1 + 1) * c), area: bw * bh });
+    }
+    return out.sort((a, b) => b.area - a.area).slice(0, 12);
+  }
+  /** Recorta un bloque de la foto original, lo agranda si es chico y lo binariza. */
+  function recorteBloque(bmp, b, invertir) {
+    const m = Math.max(b.x1 - b.x0, b.y1 - b.y0) * 0.08;
+    const sx = Math.max(0, b.x0 - m), sy = Math.max(0, b.y0 - m), sw = Math.min(bmp.width, b.x1 + m) - sx, sh = Math.min(bmp.height, b.y1 + m) - sy;
+    const k = Math.min(3, Math.max(0.25, Math.min(1400 / sw, 700 / sh, Math.max(1, 160 / sh))));
+    const c = document.createElement("canvas"); c.width = Math.max(1, Math.round(sw * k)); c.height = Math.max(1, Math.round(sh * k));
+    const ctx = c.getContext("2d", { willReadFrequently: true }); ctx.imageSmoothingQuality = "high"; ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, c.width, c.height);
+    const dd = ctx.getImageData(0, 0, c.width, c.height).data, gg = new Uint8ClampedArray(c.width * c.height);
+    for (let i = 0, j = 0; i < gg.length; i++, j += 4) gg[i] = (dd[j] * 77 + dd[j + 1] * 150 + dd[j + 2] * 29) >> 8;
+    const lz = aLienzo(binarizar({ g: gg, w: c.width, h: c.height }, invertir));
+    lz._map = { sx, sy, k }; return lz;
+  }
+  /** Lee el texto de la foto. 1) foto entera en tres versiones, 2) cada bloque de texto por separado
+      (así se leen las tres tarjetas o papelitos juntos), 3) la foto girada si no apareció nada.
+      Junta lo que encuentra en todas las pasadas y corta apenas tiene las tres categorías. */
   async function leerTextoLocal(bmp, progreso) {
     const w = await prepararOCR(); if (!w) return null;
-    const t0 = performance.now(), textos = [];
-    const pasadas = [
-      { giro: 0, prep: "tinta" }, { giro: 0, prep: "tinta-invertida" }, { giro: 0, prep: "gris" },
-      { giro: 180, prep: "tinta" }, { giro: 90, prep: "tinta" }, { giro: 270, prep: "tinta" },
-      { giro: 180, prep: "tinta-invertida" }, { giro: 90, prep: "tinta-invertida" }, { giro: 270, prep: "tinta-invertida" },
-    ];
-    const hallado = {};
-    for (const [i, p] of pasadas.entries()) {
-      if (performance.now() - t0 > 20000) break;
-      if (progreso) progreso(i, pasadas.length);
-      const G = gris(bmp, p.giro, 1600);
-      const lienzo = p.prep === "gris" ? aLienzo({ ...G, g: G.g.map(v => Math.min(255, Math.max(0, (v - 128) * 1.35 + 128))) }) : aLienzo(binarizar(G, p.prep === "tinta-invertida"));
+    const t0 = performance.now(), textos = [], hallado = {}, marcas = [];
+    const n = () => Object.keys(hallado).length;
+    let palabras = []; // palabras de la última lectura, con su caja en la foto original
+    const ubicar = (x, caja) => { // busca en qué palabra está la opción leída, para marcarla en la foto
+      const claves = SINONIMOS[x.g][x.k].map(p => p.split(" ")[0]);
+      const p = palabras.find(w => { const t = normalizar(w.t).trim(); return t.length > 2 && claves.some(c => t === c || (c.length > 4 && distancia(t, c) <= 2)); });
+      return p ? p.caja : caja;
+    };
+    const sumar = (texto, caja) => { const l = interpretarDifuso(texto); l.forEach(x => { if (!hallado[x.g]) { hallado[x.g] = x.k; const c = ubicar(x, caja); if (c) marcas.push({ ...c, g: x.g, k: x.k, via: "texto" }); } }); return l.length; };
+    const leer = async (lienzo, psm, map) => {
+      await w.setParameters({ tessedit_pageseg_mode: psm });
       const { data } = await w.recognize(lienzo);
-      const texto = (data.text || "").replace(/\s+/g, " ").trim();
-      textos.push(texto);
-      const l = interpretarDifuso(texto);
-      l.forEach(x => { if (!hallado[x.g]) hallado[x.g] = x.k; });
-      const n = Object.keys(hallado).length;
-      // con una coincidencia alcanza para una tarjeta; si el texto tiene varias líneas puede haber más: se prueba una pasada más
-      if (n >= 3 || (n && (!/\S+\s+\S+\s+\S+/.test(texto) || i % 3 === 1 || i >= 3))) break;
+      const t = (data.text || "").replace(/\s+/g, " ").trim(); textos.push(t);
+      const m = map || lienzo._map;
+      palabras = m ? (data.words || []).map(wd => ({ t: wd.text, caja: { x0: m.sx + wd.bbox.x0 / m.k, y0: m.sy + wd.bbox.y0 / m.k, x1: m.sx + wd.bbox.x1 / m.k, y1: m.sy + wd.bbox.y1 / m.k } })) : [];
+      return t;
+    };
+    const G = gris(bmp, 0, 1600), k0 = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+    const B = { tinta: binarizar(G, false), invertida: binarizar(G, true) };
+    let paso = 0; const total = 3 + 6 + 6 + 3;
+    // 1) foto entera
+    for (const prep of ["tinta", "invertida", "gris"]) {
+      if (progreso) progreso(paso++, total);
+      const lienzo = prep === "gris" ? aLienzo({ ...G, g: G.g.map(v => Math.min(255, Math.max(0, (v - 128) * 1.35 + 128))) }) : aLienzo(B[prep]);
+      sumar(await leer(lienzo, "11", { sx: 0, sy: 0, k: k0 }));
+      if (n() >= 3) break;
+      if (n() === 1 && prep === "tinta" && !/\S+\s+\S+\s+\S+/.test(textos[textos.length - 1])) break; // una sola palabra: una tarjeta
     }
-    ultima.ocr = textos.filter(Boolean).join(" ‖ ").slice(0, 200) || "(sin texto)";
+    // 2) columnas y filas superpuestas: tarjetas una al lado de la otra o una lista de renglones
+    if (n() < 3) {
+      const W = bmp.width, H = bmp.height, franjas = [];
+      for (const x of [0, 0.3, 0.6]) franjas.push({ x0: x * W, y0: 0, x1: (x + 0.4) * W, y1: H });
+      for (const y of [0, 0.3, 0.6]) franjas.push({ x0: 0, y0: y * H, x1: W, y1: (y + 0.4) * H });
+      if (W < H) franjas.push(...franjas.splice(0, 3)); // foto vertical: primero las filas
+      const oscura = G.g.reduce((a, v) => a + v, 0) / G.g.length < 95;
+      for (const f of franjas) {
+        if (n() >= 3 || performance.now() - t0 > 18000) break;
+        if (progreso) progreso(Math.min(paso++, total - 4), total);
+        const t = await leer(recorteBloque(bmp, f, false), "11");
+        if (!sumar(t, f) && oscura) sumar(await leer(recorteBloque(bmp, f, true), "11"), f);
+      }
+    }
+    // 3) cada bloque de texto por separado
+    if (n() < 3) {
+      const bloques = [...bloquesDeTexto(B.tinta).map(b => ({ ...b, inv: false })), ...bloquesDeTexto(B.invertida).map(b => ({ ...b, inv: true }))]
+        .sort((a, b) => b.area - a.area).slice(0, 12);
+      for (const b of bloques) {
+        if (n() >= 3 || performance.now() - t0 > 22000) break;
+        if (progreso) progreso(Math.min(paso++, total - 4), total);
+        const caja = { x0: b.x0 / k0, y0: b.y0 / k0, x1: b.x1 / k0, y1: b.y1 / k0 };
+        sumar(await leer(recorteBloque(bmp, caja, b.inv), "6"), caja);
+      }
+    }
+    // 4) foto girada, solo si no apareció nada
+    if (!n()) for (const giro of [180, 90, 270]) {
+      if (performance.now() - t0 > 25000) break;
+      if (progreso) progreso(Math.max(paso++, total - 3), total);
+      const Gr = gris(bmp, giro, 1600);
+      sumar(await leer(aLienzo(binarizar(Gr, false)), "11"));
+      if (!n()) sumar(await leer(aLienzo(binarizar(Gr, true)), "11"));
+      if (n()) break;
+    }
+    ultima.ocr = textos.filter(t => t && t.length > 2).join(" ‖ ").slice(0, 220) || "(sin texto)";
+    ultima.marcas = (ultima.marcas || []).concat(marcas);
     return Object.entries(hallado).map(([g, k]) => ({ g, k }));
   }
 
@@ -441,41 +529,42 @@ if (typeof document !== "undefined") (function () {
   async function procesarFoto(f) {
     if (ocupado) return; ocupado = true;
     ultimaFoto = f; $("#scan-claude").hidden = true;
-    estado("Analizando la foto…");
+    estado("Analizando la foto…"); progreso("Abriendo la foto…", 0.03);
     $("#visor").classList.add("leyendo");
     try {
       let bmp;
-      try { bmp = await abrirImagen(f); } catch (err) { estado("No pude abrir esa imagen. Probá con otra foto."); return; }
+      try { bmp = await abrirImagen(f); } catch (err) { estado("No pude abrir esa imagen. Probá con otra foto.", "error"); return; }
       pararCamara();
       mostrarEnVisor(bmp);
       await pausa(30);
-      Object.assign(ultima, { ocr: "", textos: [], motor: "", pasos: 0, ms: 0 });
-      if (!hayZX() && !hayJQ() && !nativo) { estado("El lector de QR no cargó. Recargá la página; si sigue igual, elegí a mano."); return; }
-      const textos = await analizarFoto(bmp, p => estado(`Buscando el QR… ${Math.round(p * 100)} %`));
-      let leidos = textos.flatMap(interpretar), via = "qr";
-      if (!leidos.length && textos.length) { estado("Leí un QR, pero no es de una tarjeta ICON."); return; }
-      // Foto con varias tarjetas y alguna sin leer por QR: se completa con el texto impreso.
-      const cats = new Set(leidos.map(x => x.g));
-      if (leidos.length && cats.size < 3 && analizarFoto.variasTarjetas && ocr.estado !== "no disponible") {
-        estado(`Leí ${cats.size} por QR. Buscando el resto en el texto de las tarjetas…`);
-        const l = await leerTextoLocal(bmp);
-        const extra = (l || []).filter(x => !cats.has(x.g));
-        if (extra.length) { despues([...aplicar(leidos, "qr"), ...aplicar(extra, "texto")], ""); return; }
+      Object.assign(ultima, { ocr: "", textos: [], motor: "", pasos: 0, ms: 0, marcas: [] });
+      if (!hayZX() && !hayJQ() && !nativo) { estado("El lector de QR no cargó. Recargá la página; si sigue igual, elegí a mano.", "error"); return; }
+      // Lo que se va leyendo, por categoría y por vía. Cada vía solo completa lo que falta.
+      const res = {}, poner = (l, via) => (l || []).forEach(x => { if (!res[x.g]) res[x.g] = { k: x.k, via }; });
+      const cuantos = () => Object.keys(res).length;
+      // 1) QR
+      const textos = await analizarFoto(bmp, p => progreso("Buscando códigos QR…", 0.05 + p * 0.3));
+      poner(textos.flatMap(interpretar), "qr");
+      if (!cuantos() && textos.length) { estado("Leí un QR, pero no es de una tarjeta ICON.", "error"); return; }
+      // 2) Texto sin internet: si no hubo QR, o si hay varias tarjetas y falta alguna
+      if (cuantos() < 3 && ocr.estado !== "no disponible" && (!cuantos() || analizarFoto.variasTarjetas)) {
+        if (ocr.estado !== "listo") progreso("Preparando el lector de texto…", 0.38);
+        poner(await leerTextoLocal(bmp, (i, n) => progreso(`Leyendo lo que dice… (${i + 1} de ${n})`, 0.4 + 0.45 * (i / n))), "texto");
       }
-      if (!leidos.length) {
-        if (ocr.estado !== "no disponible") {
-          estado(ocr.estado === "listo" ? "No encontré un QR. Leyendo el texto de la tarjeta…" : "No encontré un QR. Preparando el lector de texto…");
-          const l = await leerTextoLocal(bmp, (i, n) => estado(`No encontré un QR. Leyendo el texto… (pasada ${i + 1} de ${n})`));
-          if (l && l.length) { leidos = l; via = "texto"; }
-        }
-        if (!leidos.length && puedeImagen) {
-          estado("No encontré un QR. Claude está leyendo el texto (puede tardar unos segundos)…");
-          try { leidos = (await leerConClaude(f)) || []; via = "claude"; }
-          catch (err) { estado(ERR_CLAUDE[err && err.code] || "No se pudo leer el texto ahora. Probá de nuevo o elegí a mano."); return; }
-        }
+      // 3) Claude: si no se leyó nada, o si se leyeron dos de tres (claramente es un grupo)
+      let errorClaude = null;
+      if (cuantos() < 3 && puedeImagen && (!cuantos() || cuantos() === 2 || analizarFoto.variasTarjetas)) {
+        progreso(cuantos() ? `Leí ${cuantos()} de 3. Claude busca la que falta…` : "Claude está leyendo la foto…", 0.9);
+        try { poner(await leerConClaude(f), "claude"); } catch (err) { errorClaude = err; }
       }
-      despues(aplicar(leidos, via), leidos.length ? "Esa tarjeta ya estaba cargada. Escaneá la siguiente." : consejo());
-    } finally { $("#visor").classList.remove("leyendo"); ocupado = false; $("#scan-claude").hidden = !(puedeImagen && ultimaFoto && faltan().length); pintarDiag(); }
+      dibujarMarcas();
+      const cambios = [];
+      for (const via of ["qr", "texto", "claude"]) cambios.push(...aplicar(Object.entries(res).filter(([, v]) => v.via === via).map(([g, v]) => ({ g, k: v.k })), via));
+      if (!cuantos() && errorClaude) { estado(ERR_CLAUDE[errorClaude.code] || "No se pudo leer el texto ahora. Probá de nuevo o elegí a mano.", "error"); return; }
+      if (!cuantos()) { estado(consejo(), "error"); return; }
+      despues(cambios, "Esas tarjetas ya estaban cargadas. Escaneá las que faltan.");
+      if (cuantos() === 1 && faltan().length && puedeImagen) estado($("#scan-estado").textContent + " Si en la foto hay más tarjetas, tocá «Leer esta foto con Claude».", "falta");
+    } finally { $("#visor").classList.remove("leyendo"); finProgreso(); ocupado = false; $("#scan-claude").hidden = !(puedeImagen && ultimaFoto && faltan().length); pintarDiag(); }
   }
   function consejo() {
     const texto = ocr.estado === "listo" || puedeImagen;
@@ -489,14 +578,31 @@ if (typeof document !== "undefined") (function () {
     catch (err) { estado(ERR_CLAUDE[err && err.code] || "No se pudo leer con Claude ahora. Probá de nuevo o elegí a mano."); }
     finally { $("#visor").classList.remove("leyendo"); ocupado = false; $("#scan-claude").hidden = !faltan().length; pintarDiag(); }
   };
+  $("#scan-galeria").onchange = e => { const f = e.target.files && e.target.files[0]; e.target.value = ""; if (f) procesarFoto(f); };
   $("#scan-foto").onchange = e => { const f = e.target.files && e.target.files[0]; e.target.value = ""; if (f) procesarFoto(f); };
   // Arrastrar una foto al visor (computadora)
   const visor = $("#visor");
   visor.addEventListener("dragover", e => { e.preventDefault(); visor.classList.add("arrastre"); });
   visor.addEventListener("dragleave", () => visor.classList.remove("arrastre"));
   visor.addEventListener("drop", e => { e.preventDefault(); visor.classList.remove("arrastre"); const f = e.dataTransfer.files && e.dataTransfer.files[0]; if (f && /^image\//.test(f.type)) procesarFoto(f); });
+  /** Marca en la foto dónde se leyó cada tarjeta. */
+  function dibujarMarcas() {
+    const c = $("#visor canvas.foto"); if (!c || !c._k) return;
+    const ctx = c.getContext("2d"), k = c._k, vistos = new Set();
+    ctx.font = `600 ${Math.round(c.width / 38)}px Jost, sans-serif`; ctx.textBaseline = "middle";
+    for (const m of ultima.marcas || []) {
+      if (vistos.has(m.g)) continue; vistos.add(m.g);
+      const x0 = m.x0 * k, y0 = m.y0 * k, x1 = m.x1 * k, y1 = m.y1 * k, col = m.via === "qr" ? "#6B2FB3" : "#2F6B4F";
+      if (m.via === "qr") { ctx.lineWidth = Math.max(3, c.width / 260); ctx.strokeStyle = col; ctx.strokeRect(x0, y0, x1 - x0, y1 - y0); }
+      const txt = `${ETIQ[m.g]}: ${NOMBRES[m.g][m.k].nombre}`, tw = ctx.measureText(txt).width, ph = c.width / 26;
+      const cx = Math.max(4, Math.min(c.width - tw - 24, (x0 + x1) / 2 - tw / 2 - 10)), cy = Math.max(4, Math.min(c.height - ph - 4, m.via === "qr" ? y0 - ph - 6 : (y0 + y1) / 2 - ph / 2));
+      ctx.fillStyle = col; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(cx, cy, tw + 20, ph, ph / 2) : ctx.rect(cx, cy, tw + 20, ph); ctx.fill();
+      ctx.fillStyle = "#fff"; ctx.fillText(txt, cx + 10, cy + ph / 2);
+    }
+  }
   function mostrarEnVisor(src) {
     const k = Math.min(1, 1200 / Math.max(src.width, src.height)), c = document.createElement("canvas");
+    c._k = k;
     c.width = Math.round(src.width * k); c.height = Math.round(src.height * k); c.getContext("2d").drawImage(src, 0, 0, c.width, c.height);
     const v = $("#visor .pantalla-visor"); v.innerHTML = ""; c.className = "foto"; v.appendChild(c);
     $("#visor").classList.add("con-imagen");
@@ -552,7 +658,7 @@ if (typeof document !== "undefined") (function () {
     if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; if (camEstado === "activa") camEstado = "funciona"; }
     pista = null;
     $("#visor").classList.remove("vivo");
-    $("#scan-camara").textContent = "Activar cámara";
+    $("#scan-camara").textContent = "Usar la cámara en vivo";
     $("#scan-texto").hidden = true; $("#scan-luz").hidden = true; $("#scan-zoom-caja").hidden = true;
     pintarDiag();
   }
@@ -560,8 +666,8 @@ if (typeof document !== "undefined") (function () {
     camEstado = "bloqueada en esta pantalla"; pintarDiag();
     $("#scan-alt").classList.add("resalta");
     estado(nombre === "NotFoundError" || nombre === "OverconstrainedError"
-      ? "No encontré una cámara disponible. Tocá «Sacar o subir foto» para usar una foto."
-      : "Esta pantalla no deja usar la cámara en vivo. Tocá «Sacar o subir foto»: abre la cámara del celular y lee la tarjeta igual.");
+      ? "No encontré una cámara disponible. Tocá «Sacar foto»."
+      : "Esta pantalla no deja usar la cámara en vivo. Tocá «Sacar foto»: abre la cámara del celular y lee las tarjetas igual.");
   }
   $("#scan-camara").onclick = activarCamara;
   $("#scan-luz").onclick = async () => { if (!pista) return; const on = $("#scan-luz").getAttribute("aria-pressed") !== "true"; try { await pista.applyConstraints({ advanced: [{ torch: on }] }); $("#scan-luz").setAttribute("aria-pressed", String(on)); } catch (e) { $("#scan-luz").hidden = true; } };
@@ -592,7 +698,7 @@ if (typeof document !== "undefined") (function () {
   // Al salir de la pantalla de escaneo (generar, reiniciar) se apaga la cámara y se limpia el visor.
   // Al entrar por primera vez se empieza a cargar el lector de texto, para que esté listo si hace falta.
   new MutationObserver(() => {
-    if ($("#p-sel").hidden) { pararCamara(); $("#visor .pantalla-visor").innerHTML = ""; $("#visor").classList.remove("con-imagen"); $("#scan-alt").classList.remove("resalta"); estado("Escaneá la primera tarjeta."); }
+    if ($("#p-sel").hidden) { pararCamara(); $("#visor .pantalla-visor").innerHTML = ""; $("#visor").classList.remove("con-imagen"); $("#scan-alt").classList.remove("resalta"); $("#scan-claude").hidden = true; ultimaFoto = null; finProgreso(); estado("Sacá una foto de las tarjetas."); }
     else prepararOCR();
     pintarLeidas();
   }).observe($("#p-sel"), { attributes: true, attributeFilter: ["hidden"] });

@@ -11,7 +11,7 @@ if (fs.existsSync(vend)) { fs.mkdirSync(path.join(dir, "vendor"), { recursive: t
   const b = await chromium.launch(), p = await b.newPage({ viewport: { width: 1280, height: 900 } });
   if (process.env.JSQR) await p.route(/jsQR\.js$/, r => r.fulfill({ path: process.env.JSQR, contentType: "text/javascript" }));
   await p.goto(process.env.URL || "file://" + pagina); await p.waitForTimeout(600);
-  let bien = 0, tiempo = 0; const fallas = [], vias = {};
+  let bien = 0, tiempo = 0, tarjetas = 0, totalT = 0, malas = 0; const fallas = [], vias = {};
   for (const c of casos) {
     await p.click("#nuevo"); await p.click("#crear");
     const t0 = Date.now();
@@ -23,11 +23,13 @@ if (fs.existsSync(vend)) { fs.mkdirSync(path.join(dir, "vendor"), { recursive: t
     const leido = await p.$$eval(".opcion[aria-pressed=true]", x => x.map(e => e.dataset.g + ":" + e.dataset.k).sort());
     const via = await p.$$eval(".leida .via", x => x.map(e => e.textContent).filter(Boolean));
     via.forEach(v => { vias[v] = (vias[v] || 0) + 1; });
+    tarjetas += leido.filter(x => c.esperado.includes(x)).length; totalT += c.esperado.length; malas += leido.filter(x => !c.esperado.includes(x)).length;
     if (JSON.stringify(leido) === JSON.stringify(c.esperado)) bien++;
     else fallas.push(`${c.archivo} tam=${c.tam} giro=${c.giro} persp=${c.persp} blur=${c.blur} luz=${c.luz} reflejo=${c.reflejo} ruido=${c.ruido} → ${leido.join(",") || "nada"} (esperado ${c.esperado.join(",")}) ${det}`);
   }
   console.log("Tarjetas cargadas por vía:", JSON.stringify(vias));
   console.log(`Bien leídas: ${bien}/${casos.length} (${Math.round(bien / casos.length * 100)} %) · tiempo medio ${Math.round(tiempo / casos.length)} ms`);
+  console.log(`Tarjetas correctas: ${tarjetas}/${totalT} · equivocadas: ${malas}`);
   if (process.argv.includes("--fallas")) console.log(fallas.join("\n"));
   await b.close();
 })();

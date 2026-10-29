@@ -29,7 +29,7 @@ const subir = async (p, f) => { await p.setInputFiles("#scan-foto", f); await p.
     ok((await p.textContent("#scan-estado")).includes("Listo"), `${tag}: avisa que están las tres`);
     await p.screenshot({ path: `${out}/2-escaneo-completo-${tag}.png` });
     await subir(p, `${T}/evento-fiesta.png`);
-    ok((await p.textContent("#scan-estado")).includes("ya estaba cargada"), `${tag}: repetir tarjeta no cambia nada`);
+    ok((await p.textContent("#scan-estado")).includes("ya estaba"), `${tag}: repetir tarjeta no cambia nada`);
     await p.click("#generar", { force: true }); await p.waitForSelector("#p-res:not([hidden])", { timeout: 5000 }); await p.waitForTimeout(900);
     ok(await p.textContent("#t-res") === "Pista de Invierno", `${tag}: genera el mismo look que la versión manual (A)`);
     await p.screenshot({ path: `${out}/3-resultado-${tag}.png` });
@@ -55,7 +55,7 @@ const subir = async (p, f) => { await p.setInputFiles("#scan-foto", f); await p.
     await p.click("#manual summary"); await p.click("#op-clima-frio");
     ok(await leida(p, "clima") === "Frío" && (await p.textContent(".leida[data-g=clima] .via")) === "Elegida a mano", "elegir a mano también carga (y corrige) la tarjeta");
     await p.click("#scan-camara"); await p.waitForTimeout(800);
-    ok((await p.textContent("#scan-estado")).includes("Sacar o subir foto") && await p.$eval("#scan-alt", e => e.classList.contains("resalta")), "sin permiso de cámara → ofrece la foto");
+    ok((await p.textContent("#scan-estado")).includes("Sacar foto") && await p.$eval("#scan-alt", e => e.classList.contains("resalta")), "sin permiso de cámara → ofrece la foto");
     await p.screenshot({ path: `${out}/5-sin-camara.png` });
     ok(errs.length === 0, `sin errores de consola ${errs.join(" / ")}`);
     await p.close();

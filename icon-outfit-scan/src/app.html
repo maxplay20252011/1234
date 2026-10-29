@@ -109,7 +109,7 @@ main { overflow-x: clip; }
 
 /* escáner */
 .scan { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 28px; margin-top: 26px; align-items: start; }
-.visor { position: relative; aspect-ratio: 4 / 3; max-width: 100%; max-height: min(52vh, 480px); width: 100%; background: #1E1828; border-radius: 18px; overflow: hidden; color: #E7DDF6; }
+.visor { position: relative; aspect-ratio: 4 / 3; max-width: 100%; max-height: min(56vh, 520px); width: 100%; background: #1E1828; border-radius: 18px; overflow: hidden; color: #E7DDF6; }
 .pantalla-visor { position: absolute; inset: 0; display: grid; place-items: center; }
 .pantalla-visor .foto { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
 .visor.con-imagen:not(.vivo) .pantalla-visor .foto { object-fit: contain; }
@@ -128,6 +128,37 @@ main { overflow-x: clip; }
 .visor.vivo .linea, .visor.leyendo .linea { display: block; animation: barrer 1.8s ease-in-out infinite alternate; }
 @keyframes barrer { to { top: 86%; } }
 .scan-botones { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+.guia { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; counter-reset: g; flex: 1 1 520px; max-width: 720px; }
+.guia li { counter-increment: g; position: relative; padding: 12px 14px 12px 50px; background: var(--cream); border: 1px solid var(--line); border-radius: 12px; font-size: 14px; color: var(--muted); line-height: 1.35; }
+.guia li::before { content: counter(g); position: absolute; left: 14px; top: 12px; width: 26px; height: 26px; border-radius: 50%; background: var(--violet); color: #fff; display: grid; place-items: center; font-weight: 600; font-size: 13px; }
+.guia b { display: block; color: var(--ink); font-weight: 600; font-size: 15px; }
+.scan-col { min-width: 0; }
+.vacio .huecos { display: flex; gap: 14px; justify-content: center; margin-bottom: 16px; }
+.vacio .huecos i { width: 74px; height: 104px; border: 2px dashed #8C7AB8; border-radius: 10px; display: grid; place-items: end center; padding-bottom: 8px; font-style: normal; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: #CBB8EA; }
+.vacio .huecos i:nth-child(1) { transform: rotate(-5deg); } .vacio .huecos i:nth-child(3) { transform: rotate(5deg); }
+.progreso { position: absolute; left: 16px; right: 16px; bottom: 16px; background: rgba(28, 22, 38, .82); color: #fff; border-radius: 12px; padding: 10px 14px; font-size: 14px; backdrop-filter: blur(4px); }
+.progreso .barra { height: 5px; background: rgba(255, 255, 255, .2); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+.progreso .barra i { display: block; height: 100%; width: 0; background: #B99BF0; border-radius: 3px; transition: width .3s; }
+.scan-estado { padding: 10px 14px; border-radius: 10px; background: var(--cream); border: 1px solid var(--line); border-left-width: 4px; }
+.scan-estado[data-tipo="ok"] { border-left-color: #2F6B4F; background: #EEF6F1; }
+.scan-estado[data-tipo="falta"] { border-left-color: #B07A1E; background: #FBF4E6; }
+.scan-estado[data-tipo="error"] { border-left-color: var(--danger); background: #FBEFF0; }
+.scan-estado[data-tipo="info"] { border-left-color: var(--violet); }
+.scan-botones .btn svg { width: 20px; height: 20px; flex: none; }
+.btn-claude { background: #4E1F87; }
+.scan-sec { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 10px; }
+.btn-link { background: none; border: 0; padding: 4px 0; color: var(--violet); font: inherit; font-size: 14px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.btn-link:hover { color: var(--violet-deep); }
+.leidas-cab { display: flex; justify-content: space-between; align-items: baseline; }
+.cuenta { font-size: 13px; font-weight: 600; color: var(--violet); background: var(--lilac); border-radius: 999px; padding: 3px 10px; font-variant-numeric: tabular-nums; }
+.leida .cambiar { font-size: 13px; }
+.listo-generar { width: 100%; margin-top: 4px; animation: aparecer .4s ease both; }
+@media (max-width: 760px) {
+  .guia { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; flex-basis: 100%; }
+  .guia li { padding: 8px 6px 8px 34px; } .guia li::before { left: 7px; top: 8px; width: 22px; height: 22px; font-size: 12px; }
+  .guia b { font-size: 13px; line-height: 1.2; } .guia span { display: none; }
+}
+
 .scan-botones .btn-main { padding: 16px 26px; font-size: 14px; }
 .scan-botones label.btn { cursor: pointer; }
 .scan-botones label.btn:focus-within { outline: 3px solid var(--violet); outline-offset: 3px; }
@@ -138,7 +169,7 @@ main { overflow-x: clip; }
 .scan-nota { margin-top: 6px; font-size: 14px; color: var(--muted); max-width: 60ch; }
 .leidas { display: grid; gap: 12px; }
 .leidas h3 { font-size: 12px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
-.leida { display: grid; grid-template-columns: 64px 1fr; gap: 14px; align-items: center; padding: 14px 16px; border: 1.5px dashed var(--silver); border-radius: var(--r); background: var(--cream); min-height: 92px; }
+.leida { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 14px 16px; border: 1.5px dashed var(--silver); border-radius: var(--r); background: var(--cream); min-height: 92px; }
 .leida .mini { width: 64px; height: 64px; display: grid; place-items: center; border-radius: 10px; background: var(--paper); color: var(--violet); }
 .leida .mini svg { width: 56px; height: 56px; max-height: 56px; }
 .leida small { display: block; font-size: 11px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
@@ -319,41 +350,53 @@ details.diag p { margin-top: 8px; color: var(--muted); overflow-wrap: anywhere; 
   <section class="pantalla wrap" id="p-sel" aria-labelledby="t-sel" hidden>
     <div class="cab-sel">
       <div><p class="eyebrow">Paso 2 de 3</p><h2 id="t-sel">Escaneá las tres tarjetas</h2></div>
-      <p>Sacale una foto a cada tarjeta, o a las tres juntas. La app lee el QR o el texto impreso y las carga sola.</p>
+      <ol class="guia" aria-label="Cómo escanear">
+        <li><b>Juntalas</b><span>Las tres tarjetas una al lado de la otra, de frente.</span></li>
+        <li><b>Sacá una foto</b><span>Que ocupen casi toda la foto, con buena luz.</span></li>
+        <li><b>Revisá</b><span>Si falta alguna, sacá otra foto o elegila a mano.</span></li>
+      </ol>
     </div>
     <div class="scan">
-      <div>
+      <div class="scan-col">
         <div class="visor" id="visor">
           <div class="pantalla-visor"></div>
-          <div class="vacio"><div><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16a4 4 0 0 1 4-4h5l3-4h12l3 4h5a4 4 0 0 1 4 4v20a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4z"/><circle cx="24" cy="25" r="8"/></svg><p>Activá la cámara o sacá una foto de la tarjeta.</p></div></div>
+          <div class="vacio" aria-hidden="true">
+            <div class="huecos"><i>Estilo</i><i>Clima</i><i>Evento</i></div>
+            <p>Las tres juntas en una foto, o de a una</p>
+          </div>
           <div class="marco" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
           <div class="linea" aria-hidden="true"></div>
+          <div class="progreso" id="scan-progreso" hidden><span id="scan-progreso-txt">Analizando…</span><div class="barra"><i id="scan-progreso-barra"></i></div></div>
         </div>
-        <p class="scan-estado" id="scan-estado" role="status" aria-live="polite">Escaneá la primera tarjeta.</p>
+        <p class="scan-estado" id="scan-estado" role="status" aria-live="polite" data-tipo="info">Sacá una foto de las tarjetas.</p>
         <div class="scan-botones">
-          <button class="btn btn-main" id="scan-camara" type="button">Activar cámara</button>
-          <label class="btn btn-line" id="scan-alt" for="scan-foto">Sacar o subir foto<input id="scan-foto" type="file" accept="image/*" capture="environment"></label>
-          <button class="btn btn-soft" id="scan-texto" type="button" hidden>Leer el texto de la tarjeta</button>
-          <button class="btn btn-soft" id="scan-claude" type="button" hidden>Leer esta foto con Claude</button>
+          <label class="btn btn-main" id="scan-alt" for="scan-foto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h2.5l1.5-2h6l1.5 2H19a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="4"/></svg>Sacar foto<input id="scan-foto" type="file" accept="image/*" capture="environment"></label>
+          <label class="btn btn-line" for="scan-galeria"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></svg>Subir de la galería<input id="scan-galeria" type="file" accept="image/*"></label>
+          <button class="btn btn-main btn-claude" id="scan-claude" type="button" hidden>Leer esta foto con Claude</button>
+        </div>
+        <div class="scan-sec">
+          <button class="btn-link" id="scan-camara" type="button">Usar la cámara en vivo</button>
+          <button class="btn-link" id="scan-texto" type="button" hidden>Leer el texto de lo que muestra la cámara</button>
           <button class="btn-ghost" id="scan-luz" type="button" aria-pressed="false" hidden>Linterna</button>
           <label class="zoom" id="scan-zoom-caja" hidden>Zoom <input id="scan-zoom" type="range" min="1" max="3" step="0.1" value="1"></label>
         </div>
-        <p class="scan-nota">Lee el QR de la tarjeta; si no tiene QR, lee lo que dice, impreso, escrito a mano o en una pantalla. Con letra a mano difícil, «Leer esta foto con Claude» es lo más preciso. Una foto puede tener las tres tarjetas juntas. En una computadora también podés arrastrar una foto al recuadro.</p>
+        <p class="scan-nota">Lee el QR de la tarjeta o lo que dice: impreso, escrito a mano o en una pantalla. Con letra a mano difícil, «Leer esta foto con Claude» es lo más preciso. En una computadora también podés arrastrar una foto al recuadro.</p>
         <details class="diag">
-          <summary>Estado del lector</summary>
+          <summary>Detalles técnicos del lector</summary>
           <ul id="diag-lista"></ul>
           <p id="diag-ultima"></p>
         </details>
       </div>
       <div class="leidas" aria-label="Tarjetas leídas">
-        <h3>Tarjetas leídas</h3>
-        <div class="leida" data-g="estilo"><span class="mini"></span><div><small>Tarjeta 1 · Estilo personal</small><b class="valor">Falta escanear</b><span class="via"></span></div></div>
-        <div class="leida" data-g="clima"><span class="mini"></span><div><small>Tarjeta 2 · Clima</small><b class="valor">Falta escanear</b><span class="via"></span></div></div>
-        <div class="leida" data-g="evento"><span class="mini"></span><div><small>Tarjeta 3 · Tipo de evento</small><b class="valor">Falta escanear</b><span class="via"></span></div></div>
+        <div class="leidas-cab"><h3>Tus tarjetas</h3><span class="cuenta" id="scan-cuenta">0 de 3</span></div>
+        <div class="leida" data-g="estilo"><span class="mini"></span><div><small>Tarjeta 1 · Estilo personal</small><b class="valor">Falta escanear</b><span class="via"></span></div><button class="btn-link cambiar" type="button" data-cambiar="estilo">Elegir</button></div>
+        <div class="leida" data-g="clima"><span class="mini"></span><div><small>Tarjeta 2 · Clima</small><b class="valor">Falta escanear</b><span class="via"></span></div><button class="btn-link cambiar" type="button" data-cambiar="clima">Elegir</button></div>
+        <div class="leida" data-g="evento"><span class="mini"></span><div><small>Tarjeta 3 · Tipo de evento</small><b class="valor">Falta escanear</b><span class="via"></span></div><button class="btn-link cambiar" type="button" data-cambiar="evento">Elegir</button></div>
+        <button class="btn btn-main listo-generar" id="scan-generar" type="button" hidden>Generar mi outfit</button>
       </div>
     </div>
     <details class="manual" id="manual">
-      <summary>¿No se puede escanear? Elegir a mano</summary>
+      <summary>Elegir a mano</summary>
     <div class="grupo" id="g-estilo"><div class="grupo-cab"><h3><span>Tarjeta 1</span>Estilo personal</h3><p class="estado" aria-live="polite"></p></div><div class="opciones" role="group" aria-label="Estilo personal"></div></div>
     <div class="grupo op-clima" id="g-clima"><div class="grupo-cab"><h3><span>Tarjeta 2</span>Clima</h3><p class="estado" aria-live="polite"></p></div><div class="opciones" role="group" aria-label="Clima"></div></div>
     <div class="grupo" id="g-evento"><div class="grupo-cab"><h3><span>Tarjeta 3</span>Tipo de evento</h3><p class="estado" aria-live="polite"></p></div><div class="opciones" role="group" aria-label="Tipo de evento"></div></div>
