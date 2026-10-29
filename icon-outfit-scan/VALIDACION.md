@@ -111,3 +111,25 @@ ok   el botón informa el resultado
 ```
 
 ## Prueba de punta a punta tras los cambios: 31/31.
+
+## Versión 4 (todo junto + interfaz nueva)
+```
+E2E
+31
+CLAUDE
+7
+== texto
+Tarjetas cargadas por vía: {"Leída por el texto":75}
+Bien leídas: 58/70 (83 %) · tiempo medio 6160 ms
+Tarjetas correctas: 75/90 · equivocadas: 0
+== junto
+Tarjetas cargadas por vía: {"Leída por el texto":75}
+Bien leídas: 22/28 (79 %) · tiempo medio 4636 ms
+Tarjetas correctas: 75/84 · equivocadas: 0
+== qr
+Tarjetas cargadas por vía: {"Leída por QR":60,"Leída por el texto":15}
+Bien leídas: 51/60 (85 %) · tiempo medio 5545 ms
+Tarjetas correctas: 75/84 · equivocadas: 0
+
+[exited with code 0]
+```

@@ -1,5 +1,7 @@
 # ICON Outfit Scan
 
+**Artefacto (todo junto):** https://claude.ai/artifact/5sMT2qEUbXRvnTNuZS6zKx · juego, escáner y «Material para el stand» (PDF de las tarjetas, QR y vista previa).
+
 Versión del ICON Outfit Challenge en la que las tarjetas **se escanean** en lugar de elegirse en pantalla. El resto (motor de outfits, imagen, resultado, pantalla completa, reinicio) es el mismo código que `../icon-outfit-challenge`.
 
 ## Antes del stand
@@ -83,3 +85,13 @@ node pruebas/servidor.cjs CARPETA 8811              # CARPETA con index.html (co
 URL=http://localhost:8811/index.html FOTOS=carpeta node pruebas/e2e.cjs
 python3 pruebas/banco.py BANCO && URL=http://localhost:8811/index.html node pruebas/banco.cjs BANCO index.html --fallas
 ```
+
+## Resultados de la última versión (sin Claude, 0 tarjetas equivocadas en todos los bancos)
+
+| Banco | Fotos completas |
+|---|---|
+| 60 fotos difíciles con QR | 51 / 60 (85 %) |
+| 70 fotos de texto (42 a mano, 28 digitales) | 58 / 70 (83 %) |
+| 28 fotos con las tres juntas sin QR | 22 / 28 (79 %) |
+
+Si se leen dos de tres, Claude completa la que falta automáticamente (cuando el visor lo permite).
