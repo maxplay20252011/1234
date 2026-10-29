@@ -85,6 +85,9 @@ function interpretarDifuso(texto) {
         if (n === 1 && NO_CORREGIR.has(c) && c !== k.c) continue;
         const d = c === k.c ? 0 : distancia(c, k.c);
         if (d > tol(k.c.length)) continue;
+        // una coincidencia aproximada no se arma con letras sueltas de ruido ("e ju e l a" ≠ "escuela")
+        const palabras = k.p.split(" ");
+        if (d > 0 && (n > palabras.length + 1 || ventana.some(t => t.length === 1 && !palabras.includes(t)))) continue;
         // puntaje: cuanto más larga la frase, mejor; cada error resta mucho. Así "casual" exacto
         // le gana a "casual tf" leído como "día casual", y "cita o salida e special" entra entero.
         const puntaje = k.c.length - 3 * d;

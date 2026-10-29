@@ -37,6 +37,7 @@ casoD("Dia de clase", "evento:clases");
 casoD("salida", "");
 casoD("E e T a u Ss N u E", "");
 casoD("Clima: frio", "clima:frio");
+casoD("m ne us dede a E ue a a N ue Ro o a a A ES ha xa a a e E y E S S a E ju e L a ue Te Na", "");
 casoD("e e a o ia a e Er e L Estilo casual TF TT NENE NOE", "estilo:casual");
 console.log(`${n - mal}/${n} casos bien`);
 process.exitCode = mal ? 1 : 0;
