@@ -56,7 +56,7 @@ function interpretar(texto) {
 
 /* Distancia de edición (para tolerar errores del lector de texto: "Elegarte" → "elegante"). */
 function distancia(a, b) {
-  if (Math.abs(a.length - b.length) > 2) return 9;
+  if (Math.abs(a.length - b.length) > 3) return 9;
   let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
   for (let i = 1; i <= a.length; i++) {
     const cur = [i];
@@ -65,18 +65,31 @@ function distancia(a, b) {
   }
   return prev[b.length];
 }
-const PALABRAS_CLAVE = [...new Set(Object.values(SINONIMOS).flatMap(o => Object.values(o).flat()).concat(["estilo", "evento", "clima"]))];
-/** Como interpretar(), pero corrige primero palabras casi iguales (texto leído de una foto). */
+const PALABRAS_CLAVE = [...new Set(Object.values(SINONIMOS).flatMap(o => Object.values(o).flat()).concat(["estilo", "evento", "clima"]))]
+  .map(p => ({ p, c: p.replace(/ /g, "") }));
+// Palabras comunes que se parecen a una opción pero no lo son ("salida" ≠ "cálida"): nunca se corrigen solas.
+const NO_CORREGIR = new Set(["salida", "con", "de", "dia", "al", "o", "y", "especial", "tarjeta", "personal", "tipo", "aire", "libre", "icon"]);
+/** Como interpretar(), pero corrige antes lo que el lector de texto leyó casi bien.
+    Compara frases completas sin espacios ("cita o salida e special" = "cita o salida especial")
+    y tolera más errores cuanto más larga es la palabra ("veyoriivo" → "deportivo"). */
 function interpretarDifuso(texto) {
   const tokens = normalizar(texto).trim().split(" ").filter(Boolean);
-  const tol = n => (n >= 8 ? 2 : n >= 5 ? 1 : 0);
+  const tol = n => (n >= 12 ? 3 : n >= 9 ? 3 : n >= 7 ? 2 : n >= 5 ? 1 : 0);
   const out = [];
   for (let i = 0; i < tokens.length; i++) {
     let mejor = null;
-    for (const p of PALABRAS_CLAVE) {
-      const n = p.split(" ").length; if (i + n > tokens.length) continue;
-      const s = tokens.slice(i, i + n).join(" "), d = s === p ? 0 : distancia(s, p);
-      if (d <= tol(p.length) && (!mejor || n > mejor.n || (n === mejor.n && d < mejor.d))) mejor = { p, n, d };
+    for (let n = 1; n <= 6 && i + n <= tokens.length; n++) {
+      const ventana = tokens.slice(i, i + n), c = ventana.join("");
+      for (const k of PALABRAS_CLAVE) {
+        if (Math.abs(c.length - k.c.length) > 3) continue;
+        if (n === 1 && NO_CORREGIR.has(c) && c !== k.c) continue;
+        const d = c === k.c ? 0 : distancia(c, k.c);
+        if (d > tol(k.c.length)) continue;
+        // puntaje: cuanto más larga la frase, mejor; cada error resta mucho. Así "casual" exacto
+        // le gana a "casual tf" leído como "día casual", y "cita o salida e special" entra entero.
+        const puntaje = k.c.length - 3 * d;
+        if (!mejor || puntaje > mejor.puntaje) mejor = { p: k.p, n, d, puntaje };
+      }
     }
     if (mejor) { out.push(mejor.p); i += mejor.n - 1; } else out.push(tokens[i]);
   }
@@ -283,26 +296,92 @@ if (typeof document !== "undefined") (function () {
       };
     });
   }
-  function lienzoGirado(bmp, giro, lado) {
+  /* Imagen para el lector de texto. Medido con 70 fotos de texto manuscrito y digital:
+     el lector falla mucho con sombras, renglones y pantallas oscuras, así que se prepara:
+     - gris(): escala y gira la foto en escala de grises.
+     - binarizar(): umbral adaptativo (Sauvola): separa tinta y papel aunque haya sombra o poca luz;
+       con "invertir" sirve para letra clara sobre pantalla oscura.
+     - sin renglones: borra trazos horizontales o verticales muy largos (renglones, bordes de la hoja). */
+  function gris(bmp, giro, lado) {
     const k = Math.min(1, lado / Math.max(bmp.width, bmp.height)), w = Math.round(bmp.width * k), h = Math.round(bmp.height * k);
     const c = document.createElement("canvas"), rot = giro % 180 !== 0;
     c.width = rot ? h : w; c.height = rot ? w : h;
-    const ctx = c.getContext("2d"); ctx.filter = "grayscale(1) contrast(1.35)";
+    const ctx = c.getContext("2d", { willReadFrequently: true });
     ctx.translate(c.width / 2, c.height / 2); ctx.rotate(giro * Math.PI / 180); ctx.drawImage(bmp, -w / 2, -h / 2, w, h);
-    return c;
+    const d = ctx.getImageData(0, 0, c.width, c.height).data, n = c.width * c.height, g = new Uint8ClampedArray(n);
+    for (let i = 0, j = 0; i < n; i++, j += 4) g[i] = (d[j] * 77 + d[j + 1] * 150 + d[j + 2] * 29) >> 8;
+    return { g, w: c.width, h: c.height };
   }
+  function binarizar({ g, w, h }, invertir) {
+    const W1 = w + 1, S = new Float64Array(W1 * (h + 1)), Q = new Float64Array(W1 * (h + 1));
+    for (let y = 1; y <= h; y++) {
+      let fila = 0, fila2 = 0;
+      for (let x = 1; x <= w; x++) {
+        let v = g[(y - 1) * w + x - 1]; if (invertir) v = 255 - v;
+        fila += v; fila2 += v * v;
+        S[y * W1 + x] = S[(y - 1) * W1 + x] + fila; Q[y * W1 + x] = Q[(y - 1) * W1 + x] + fila2;
+      }
+    }
+    const r = Math.max(8, Math.round(Math.max(w, h) / 40)), out = new Uint8ClampedArray(w * h);
+    for (let y = 0; y < h; y++) {
+      const y0 = Math.max(0, y - r), y1 = Math.min(h, y + r + 1);
+      for (let x = 0; x < w; x++) {
+        const x0 = Math.max(0, x - r), x1 = Math.min(w, x + r + 1), area = (x1 - x0) * (y1 - y0);
+        const sum = S[y1 * W1 + x1] - S[y0 * W1 + x1] - S[y1 * W1 + x0] + S[y0 * W1 + x0];
+        const sq = Q[y1 * W1 + x1] - Q[y0 * W1 + x1] - Q[y1 * W1 + x0] + Q[y0 * W1 + x0];
+        const m = sum / area, sd = Math.sqrt(Math.max(0, sq / area - m * m));
+        let v = g[y * w + x]; if (invertir) v = 255 - v;
+        out[y * w + x] = v < m * (1 + 0.3 * (sd / 128 - 1)) && sd > 6 ? 0 : 255;
+      }
+    }
+    // borra trazos muy largos: renglones de la hoja y bordes (no son letras)
+    const largoH = w * 0.18, largoV = h * 0.18;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w;) {
+      if (out[y * w + x]) { x++; continue; }
+      let e = x; while (e < w && !out[y * w + e]) e++;
+      if (e - x > largoH) out.fill(255, y * w + x, y * w + e);
+      x = e;
+    }
+    for (let x = 0; x < w; x++) for (let y = 0; y < h;) {
+      if (out[y * w + x]) { y++; continue; }
+      let e = y; while (e < h && !out[e * w + x]) e++;
+      if (e - y > largoV) for (let k = y; k < e; k++) out[k * w + x] = 255;
+      y = e;
+    }
+    return { g: out, w, h };
+  }
+  function aLienzo({ g, w, h }) {
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    const ctx = c.getContext("2d"), img = ctx.createImageData(w, h);
+    for (let i = 0, j = 0; i < g.length; i++, j += 4) { img.data[j] = img.data[j + 1] = img.data[j + 2] = g[i]; img.data[j + 3] = 255; }
+    ctx.putImageData(img, 0, 0); return c;
+  }
+  /** Lee el texto de la foto con varias pasadas; corta apenas encuentra una coincidencia segura. */
   async function leerTextoLocal(bmp, progreso) {
     const w = await prepararOCR(); if (!w) return null;
-    let texto = "";
-    for (const [i, giro] of [0, 90, 270, 180].entries()) {
-      if (progreso) progreso(i);
-      const { data } = await w.recognize(lienzoGirado(bmp, giro, 1800));
-      texto = data.text || "";
+    const t0 = performance.now(), textos = [];
+    const pasadas = [
+      { giro: 0, prep: "tinta" }, { giro: 0, prep: "tinta-invertida" }, { giro: 0, prep: "gris" },
+      { giro: 180, prep: "tinta" }, { giro: 90, prep: "tinta" }, { giro: 270, prep: "tinta" },
+      { giro: 180, prep: "tinta-invertida" }, { giro: 90, prep: "tinta-invertida" }, { giro: 270, prep: "tinta-invertida" },
+    ];
+    const hallado = {};
+    for (const [i, p] of pasadas.entries()) {
+      if (performance.now() - t0 > 20000) break;
+      if (progreso) progreso(i, pasadas.length);
+      const G = gris(bmp, p.giro, 1600);
+      const lienzo = p.prep === "gris" ? aLienzo({ ...G, g: G.g.map(v => Math.min(255, Math.max(0, (v - 128) * 1.35 + 128))) }) : aLienzo(binarizar(G, p.prep === "tinta-invertida"));
+      const { data } = await w.recognize(lienzo);
+      const texto = (data.text || "").replace(/\s+/g, " ").trim();
+      textos.push(texto);
       const l = interpretarDifuso(texto);
-      if (l.length) { ultima.ocr = texto.replace(/\s+/g, " ").trim().slice(0, 160); return l; }
+      l.forEach(x => { if (!hallado[x.g]) hallado[x.g] = x.k; });
+      const n = Object.keys(hallado).length;
+      // con una coincidencia alcanza para una tarjeta; si el texto tiene varias líneas puede haber más: se prueba una pasada más
+      if (n >= 3 || (n && (!/\S+\s+\S+\s+\S+/.test(texto) || i % 3 === 1 || i >= 3))) break;
     }
-    ultima.ocr = texto.replace(/\s+/g, " ").trim().slice(0, 160) || "(sin texto)";
-    return [];
+    ultima.ocr = textos.filter(Boolean).join(" ‖ ").slice(0, 200) || "(sin texto)";
+    return Object.entries(hallado).map(([g, k]) => ({ g, k }));
   }
 
   /* =====================================================================
@@ -321,15 +400,26 @@ if (typeof document !== "undefined") (function () {
     finally { pintarDiag(); }
   })();
   const lista = g => Object.entries(NOMBRES[g]).map(([k, d]) => `${k} (${d.nombre})`).join(", ");
-  async function leerConClaude(blob) {
+  /** Claude lee la foto: tarjetas impresas, papeles escritos a mano o texto en una pantalla.
+      Primero el modelo rápido; si no encuentra nada, el más preciso (letra difícil). */
+  async function leerConClaude(blob, soloPreciso) {
     if (!sample || !puedeImagen) return null;
-    const prompt = "La imagen es una foto de una o más tarjetas físicas de un juego de moda. Cada tarjeta dice un estilo personal, un clima o un tipo de evento. "
-      + "Leé solo el texto impreso en las tarjetas y respondé únicamente con un objeto JSON {\"estilo\": id o null, \"clima\": id o null, \"evento\": id o null}. "
+    const prompt = "La foto muestra una o más tarjetas, papeles o una pantalla de un juego de moda. Cada una dice un estilo personal, un clima o un tipo de evento. "
+      + "El texto puede estar impreso, escrito a mano (con letra cursiva o desprolija) o en la pantalla de un celular o computadora; puede estar en mayúsculas, sin tildes, con errores de ortografía, abreviado, girado o con poca luz. "
+      + "Leé lo que dice e identificá, para cada categoría, la opción de la lista que corresponde (también vale un sinónimo claro: 'calor' es cálido, 'invierno' es frío, 'boliche' es fiesta nocturna). "
+      + "Respondé únicamente con un objeto JSON {\"estilo\": id o null, \"clima\": id o null, \"evento\": id o null, \"leido\": \"el texto tal como lo leíste\"}. "
       + `Ids válidos. estilo: ${lista("estilo")}. clima: ${lista("clima")}. evento: ${lista("evento")}. `
-      + "Usá null para una categoría que no aparece o que no se lee con claridad. No adivines. Ejemplo: {\"estilo\":\"glam\",\"clima\":null,\"evento\":\"fiesta\"}";
-    const r = await sample.json(prompt, { images: blob, modelTier: "quick" });
-    const out = [];
-    for (const g of ["estilo", "clima", "evento"]) { const v = r && typeof r[g] === "string" ? r[g].toLowerCase().trim() : null; if (v && NOMBRES[g][v]) out.push({ g, k: v }); else if (v) out.push(...interpretar(v).filter(x => x.g === g)); }
+      + "Ojo: 'Elegante' solo es estilo; 'Evento elegante' es el evento. 'Casual' solo es estilo; 'Día casual' es el evento. "
+      + "Usá null para una categoría que no aparece. Si una palabra es ilegible, no la inventes. Ejemplo: {\"estilo\":\"glam\",\"clima\":null,\"evento\":\"fiesta\",\"leido\":\"Glam / Fiesta nocturna\"}";
+    const pedir = async tier => {
+      const r = await sample.json(prompt, { images: blob, modelTier: tier });
+      const out = [];
+      for (const g of ["estilo", "clima", "evento"]) { const v = r && typeof r[g] === "string" ? r[g].toLowerCase().trim() : null; if (v && NOMBRES[g][v]) out.push({ g, k: v }); else if (v) out.push(...interpretarDifuso(v).filter(x => x.g === g)); }
+      if (r && typeof r.leido === "string") ultima.ocr = "Claude: " + r.leido.slice(0, 160);
+      return out;
+    };
+    let out = soloPreciso ? [] : await pedir("quick");
+    if (!out.length) out = await pedir("default");
     return out;
   }
   const ERR_CLAUDE = { not_granted: "No se dio permiso para que Claude lea la foto.", rate_limited: "Claude está ocupado: probá de nuevo en un rato.", image_rejected: "La foto no se pudo usar: probá con otra.", session_expired: "Hay que volver a iniciar sesión en Claude." };
@@ -344,8 +434,10 @@ if (typeof document !== "undefined") (function () {
     try { const img = new Image(); img.src = url; await img.decode(); return img; } finally { setTimeout(() => URL.revokeObjectURL(url), 1000); }
   }
   let ocupado = false;
+  let ultimaFoto = null;
   async function procesarFoto(f) {
     if (ocupado) return; ocupado = true;
+    ultimaFoto = f; $("#scan-claude").hidden = true;
     estado("Analizando la foto…");
     $("#visor").classList.add("leyendo");
     try {
@@ -370,22 +462,30 @@ if (typeof document !== "undefined") (function () {
       if (!leidos.length) {
         if (ocr.estado !== "no disponible") {
           estado(ocr.estado === "listo" ? "No encontré un QR. Leyendo el texto de la tarjeta…" : "No encontré un QR. Preparando el lector de texto…");
-          const l = await leerTextoLocal(bmp, i => estado(`No encontré un QR. Leyendo el texto de la tarjeta${i ? " (girando la foto)" : ""}…`));
+          const l = await leerTextoLocal(bmp, (i, n) => estado(`No encontré un QR. Leyendo el texto… (pasada ${i + 1} de ${n})`));
           if (l && l.length) { leidos = l; via = "texto"; }
         }
         if (!leidos.length && puedeImagen) {
-          estado("No encontré un QR. Claude está leyendo el texto de la tarjeta…");
+          estado("No encontré un QR. Claude está leyendo el texto (puede tardar unos segundos)…");
           try { leidos = (await leerConClaude(f)) || []; via = "claude"; }
           catch (err) { estado(ERR_CLAUDE[err && err.code] || "No se pudo leer el texto ahora. Probá de nuevo o elegí a mano."); return; }
         }
       }
       despues(aplicar(leidos, via), leidos.length ? "Esa tarjeta ya estaba cargada. Escaneá la siguiente." : consejo());
-    } finally { $("#visor").classList.remove("leyendo"); ocupado = false; pintarDiag(); }
+    } finally { $("#visor").classList.remove("leyendo"); ocupado = false; $("#scan-claude").hidden = !(puedeImagen && ultimaFoto && faltan().length); pintarDiag(); }
   }
   function consejo() {
     const texto = ocr.estado === "listo" || puedeImagen;
     return `No pude leer ninguna tarjeta. Probá así: tarjeta sobre una mesa, foto de frente, que ocupe buena parte de la foto, sin reflejos y enfocada.${texto ? "" : " Si tu tarjeta no tiene QR, en esta pantalla no se puede leer el texto: elegí a mano."}`;
   }
+  // Volver a leer la última foto con Claude (letra a mano difícil, o lectura local incompleta)
+  $("#scan-claude").onclick = async () => {
+    if (!ultimaFoto || ocupado) return; ocupado = true;
+    $("#visor").classList.add("leyendo"); estado("Claude está leyendo la foto…");
+    try { const l = (await leerConClaude(ultimaFoto, true)) || []; despues(aplicar(l, "claude"), l.length ? "Claude leyó lo mismo que ya estaba cargado." : "Claude tampoco encontró estilo, clima ni evento en la foto."); }
+    catch (err) { estado(ERR_CLAUDE[err && err.code] || "No se pudo leer con Claude ahora. Probá de nuevo o elegí a mano."); }
+    finally { $("#visor").classList.remove("leyendo"); ocupado = false; $("#scan-claude").hidden = !faltan().length; pintarDiag(); }
+  };
   $("#scan-foto").onchange = e => { const f = e.target.files && e.target.files[0]; e.target.value = ""; if (f) procesarFoto(f); };
   // Arrastrar una foto al visor (computadora)
   const visor = $("#visor");

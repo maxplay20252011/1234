@@ -334,10 +334,11 @@ details.diag p { margin-top: 8px; color: var(--muted); overflow-wrap: anywhere; 
           <button class="btn btn-main" id="scan-camara" type="button">Activar cámara</button>
           <label class="btn btn-line" id="scan-alt" for="scan-foto">Sacar o subir foto<input id="scan-foto" type="file" accept="image/*" capture="environment"></label>
           <button class="btn btn-soft" id="scan-texto" type="button" hidden>Leer el texto de la tarjeta</button>
+          <button class="btn btn-soft" id="scan-claude" type="button" hidden>Leer esta foto con Claude</button>
           <button class="btn-ghost" id="scan-luz" type="button" aria-pressed="false" hidden>Linterna</button>
           <label class="zoom" id="scan-zoom-caja" hidden>Zoom <input id="scan-zoom" type="range" min="1" max="3" step="0.1" value="1"></label>
         </div>
-        <p class="scan-nota">Lee el QR de la tarjeta; si la tarjeta no tiene QR, lee el texto impreso. Una foto puede tener las tres tarjetas juntas. En una computadora también podés arrastrar una foto al recuadro.</p>
+        <p class="scan-nota">Lee el QR de la tarjeta; si no tiene QR, lee lo que dice, impreso, escrito a mano o en una pantalla. Con letra a mano difícil, «Leer esta foto con Claude» es lo más preciso. Una foto puede tener las tres tarjetas juntas. En una computadora también podés arrastrar una foto al recuadro.</p>
         <details class="diag">
           <summary>Estado del lector</summary>
           <ul id="diag-lista"></ul>
