@@ -18,8 +18,8 @@ Versión del ICON Outfit Challenge en la que las tarjetas **se escanean** en lug
 Orden de lectura de cada foto:
 
 1. **QR** con tres motores: el lector del navegador (si existe, por ejemplo Chrome en Android), **ZXing** y **jsQR**. Revisa la foto entera y después zonas con zoom ×2 y ×3; cada QR leído se tapa para encontrar los demás.
-2. **Texto impreso, sin internet** (Tesseract, en español), si no hubo QR o si en una foto con varias tarjetas faltó alguna. Tolera errores de lectura ("Pasco al aire libre" → paseo al aire libre).
-3. **Texto con Claude**, si lo anterior no alcanzó y el visor lo permite (pide permiso la primera vez).
+2. **Texto sin internet** (Tesseract, en español): impreso, escrito a mano o en una pantalla. Hasta 9 pasadas: binarizado adaptativo (sombras, poca luz, tinta de color) sin renglones, versión invertida (letra clara sobre pantalla oscura), escala de grises y la foto girada. La comparación con las 20 opciones tolera errores y frases partidas ("Cita o Salida e Special", "Veyoriivo" → deportivo) y descarta coincidencias armadas con ruido.
+3. **Texto con Claude**, si lo anterior no encontró nada: primero el modelo rápido y, si no alcanza, el preciso, con una instrucción pensada para letra a mano. El botón **Leer esta foto con Claude** aparece si falta alguna tarjeta y va directo al modelo preciso: es lo más fiable con letra manuscrita difícil.
 
 Debajo de los botones, **Estado del lector** muestra qué motores cargaron, si la lectura de texto está disponible y qué leyó la última foto. Sirve para saber qué pasó si una tarjeta no se lee.
 
@@ -37,6 +37,18 @@ Cada QR guarda el texto `ICON|categoría|opción` (por ejemplo `ICON|estilo|glam
 \* El promedio incluye las fotos que no tienen QR legible y pasan por la lectura de texto (hasta ~9 s). Una foto con QR legible tarda entre 0,3 y 2 s. En un celular, contá entre 2 y 4 veces más.
 
 Las 11 que fallan combinan desenfoque fuerte con ruido, o son tarjetas muy chicas, oscuras y con reflejo.
+
+### Medición de texto (70 fotos sin QR: 42 manuscritas con 8 caligrafías, 28 digitales en pantalla o impresas)
+
+`pruebas/banco-texto.cjs` + `pruebas/banco-texto.py`. Solo lectura local, sin Claude:
+
+| | Antes | Ahora |
+|---|---|---|
+| Manuscrito | 17 / 42 (40 %) | **31 / 42 (74 %)** |
+| Digital | 20 / 28 (71 %) | **23 / 28 (82 %)** |
+| Lecturas equivocadas | 2 | **0** (2 parciales correctas) |
+
+Las caligrafías son tipografías manuscritas: la letra real de una persona puede ser más difícil. Para esos casos está Claude, que no se puede medir acá (necesita el visor de claude.ai); `pruebas/claude-simulado.cjs` verifica que el circuito funcione.
 
 ### Sobre la cámara en vivo y el visor de Claude
 
@@ -57,6 +69,8 @@ Las 11 que fallan combinan desenfoque fuerte con ruido, o son tarjetas muy chica
 | `pruebas/lector.test.cjs` | 52 casos del intérprete (QR, texto, sinónimos, ambigüedades). |
 | `pruebas/e2e.cjs` | Flujo completo en Chromium: fotos, foto con tres tarjetas, sin QR, cámara en vivo simulada, sin cámara y a mano. |
 | `pruebas/banco.py` / `pruebas/banco.cjs` | Genera las 60 fotos difíciles y mide cuántas se leen bien. |
+| `pruebas/banco-texto.cjs` / `pruebas/banco-texto.py` | Genera las 70 fotos de texto manuscrito y digital. |
+| `pruebas/claude-simulado.cjs` | Simula el visor para verificar la lectura con Claude y su botón. |
 | `pruebas/servidor.cjs` | Servidor local con una política de seguridad parecida a la del visor (con o sin WebAssembly). |
 | `qr-outfit-scan.png` / `qr-simple.png` | QR que abre este artefacto. |
 
