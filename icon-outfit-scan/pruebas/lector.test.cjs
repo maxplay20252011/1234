@@ -37,6 +37,9 @@ casoD("Dia de clase", "evento:clases");
 casoD("salida", "");
 casoD("E e T a u Ss N u E", "");
 casoD("Clima: frio", "clima:frio");
+casoD("ELEGANTE", "estilo:elegante");
+{ n++; const r = fmt(m.exports.interpretarDifuso("Cta o cafida", true)); if (r !== "") { mal++; console.log("FALLA estricto cafida →", r); } }
+{ n++; const r = fmt(m.exports.interpretarDifuso("Templada Lluvioso", true)); if (r !== "clima:templado") { mal++; console.log("FALLA estricto templada →", r); } }
 casoD("m ne us dede a E ue a a N ue Ro o a a A ES ha xa a a e E y E S S a E ju e L a ue Te Na", "");
 casoD("e e a o ia a e Er e L Estilo casual TF TT NENE NOE", "estilo:casual");
 console.log(`${n - mal}/${n} casos bien`);

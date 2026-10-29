@@ -72,9 +72,9 @@ const NO_CORREGIR = new Set(["salida", "con", "de", "dia", "al", "o", "y", "espe
 /** Como interpretar(), pero corrige antes lo que el lector de texto leyó casi bien.
     Compara frases completas sin espacios ("cita o salida e special" = "cita o salida especial")
     y tolera más errores cuanto más larga es la palabra ("veyoriivo" → "deportivo"). */
-function interpretarDifuso(texto) {
+function interpretarDifuso(texto, estricto) {
   const tokens = normalizar(texto).trim().split(" ").filter(Boolean);
-  const tol = n => (n >= 12 ? 3 : n >= 9 ? 3 : n >= 7 ? 2 : n >= 5 ? 1 : 0);
+  const tol = estricto ? (n => (n >= 9 ? 2 : n >= 7 ? 1 : 0)) : (n => (n >= 9 ? 3 : n >= 7 ? 2 : n >= 5 ? 1 : 0));
   const out = [];
   for (let i = 0; i < tokens.length; i++) {
     let mejor = null;
@@ -87,7 +87,9 @@ function interpretarDifuso(texto) {
         if (d > tol(k.c.length)) continue;
         // una coincidencia aproximada no se arma con letras sueltas de ruido ("e ju e l a" ≠ "escuela")
         const palabras = k.p.split(" ");
-        if (d > 0 && (n > palabras.length + 1 || ventana.some(t => t.length === 1 && !palabras.includes(t)))) continue;
+        if (d > 0 && (n > palabras.length + (estricto ? 0 : 1) || ventana.some(t => t.length === 1 && !palabras.includes(t)))) continue;
+        // si se parece más (o igual) a una palabra común que a la opción, no se corrige ("cafida" → salida, no cálida)
+        if (d > 0 && n === 1 && [...NO_CORREGIR].some(w => w.length >= 5 && distancia(c, w) <= d)) continue;
         // puntaje: cuanto más larga la frase, mejor; cada error resta mucho. Así "casual" exacto
         // le gana a "casual tf" leído como "día casual", y "cita o salida e special" entra entero.
         const puntaje = k.c.length - 3 * d;
@@ -416,7 +418,7 @@ if (typeof document !== "undefined") (function () {
       const p = palabras.find(w => { const t = normalizar(w.t).trim(); return t.length > 2 && claves.some(c => t === c || (c.length > 4 && distancia(t, c) <= 2)); });
       return p ? p.caja : caja;
     };
-    const sumar = (texto, caja) => { const l = interpretarDifuso(texto); l.forEach(x => { if (!hallado[x.g]) { hallado[x.g] = x.k; const c = ubicar(x, caja); if (c) marcas.push({ ...c, g: x.g, k: x.k, via: "texto" }); } }); return l.length; };
+    const sumar = (texto, caja) => { const l = interpretarDifuso(texto, !!caja); l.forEach(x => { if (!hallado[x.g]) { hallado[x.g] = x.k; const c = ubicar(x, caja); if (c) marcas.push({ ...c, g: x.g, k: x.k, via: "texto" }); } }); return l.length; };
     const leer = async (lienzo, psm, map) => {
       await w.setParameters({ tessedit_pageseg_mode: psm });
       const { data } = await w.recognize(lienzo);
@@ -470,7 +472,12 @@ if (typeof document !== "undefined") (function () {
       if (!n()) sumar(await leer(aLienzo(binarizar(Gr, true)), "11"));
       if (n()) break;
     }
-    ultima.ocr = textos.filter(t => t && t.length > 2).join(" ‖ ").slice(0, 220) || "(sin texto)";
+    // "Elegante" o "Casual" sueltos que en realidad eran parte de "Evento elegante" / "Día casual" leído en otra zona:
+    // solo cuentan como estilo si alguna lectura los tiene dos veces.
+    for (const k of ["elegante", "casual"]) if (hallado.estilo === k && hallado.evento === k && !textos.some(t => (normalizar(t).match(new RegExp(" " + k + " ", "g")) || []).length >= 2)) {
+      delete hallado.estilo; for (let i = marcas.length - 1; i >= 0; i--) if (marcas[i].g === "estilo") marcas.splice(i, 1);
+    }
+    ultima.ocr = textos.filter(t => t && t.length > 2).join(" ‖ ").slice(0, 400) || "(sin texto)";
     ultima.marcas = (ultima.marcas || []).concat(marcas);
     return Object.entries(hallado).map(([g, k]) => ({ g, k }));
   }

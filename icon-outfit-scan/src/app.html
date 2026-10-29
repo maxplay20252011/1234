@@ -198,6 +198,22 @@ details.diag li.ok b { color: #2F6B4F; } details.diag li.mal b { color: var(--da
 details.diag p { margin-top: 8px; color: var(--muted); overflow-wrap: anywhere; }
 @media (max-width: 640px) { details.diag ul { grid-template-columns: 1fr; } }
 
+.inicio-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 24px; margin-top: 32px; }
+.hero .inicio-acciones .btn-main { margin-top: 0; }
+.material { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); gap: 20px; margin-top: 24px; }
+.mat-bloque { background: var(--cream); border: 1px solid var(--line); border-radius: var(--r); padding: 22px; min-width: 0; }
+.mat-bloque h3 { font: 500 24px/1.2 var(--f-display); }
+.mat-bloque p { color: var(--muted); margin-top: 8px; max-width: 60ch; }
+.mat-pasos { margin: 12px 0 0; padding-left: 20px; display: grid; gap: 4px; }
+.mat-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 16px; }
+.mat-aviso { font-size: 14px; }
+.mat-qr img { display: block; width: 100%; max-width: 260px; height: auto; margin-top: 14px; border-radius: 12px; border: 1px solid var(--line); }
+.mat-todas { grid-column: 1 / -1; }
+.mat-todas h4 { margin: 18px 0 10px; font-size: 12px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.mat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 12px; }
+.mat-grid figure { margin: 0; } .mat-grid img { width: 100%; height: auto; display: block; border-radius: 8px; box-shadow: 0 8px 20px -14px rgba(34, 26, 48, .5); }
+@media (max-width: 760px) { .material { grid-template-columns: 1fr; } .mat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; } }
+
 /* barra resumen fija */
 .resumen { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; background: var(--cream); border-top: 1px solid var(--line); box-shadow: 0 -18px 40px -30px rgba(34, 26, 48, .5); padding-bottom: env(safe-area-inset-bottom, 0px); }
 .resumen .wrap { display: flex; align-items: center; gap: 20px; padding-block: 14px; }
@@ -331,7 +347,7 @@ details.diag p { margin-top: 8px; color: var(--muted); overflow-wrap: anywhere; 
         <h1 id="t-inicio">ICON <em>Outfit</em> Challenge</h1>
         <p class="sub">Tres tarjetas. Infinitas posibilidades. Descubrí tu próximo look.</p>
         <p class="expl">Elegí tus tarjetas, combiná tus preferencias y descubrí el outfit que ICON creó para vos.</p>
-        <button class="btn btn-main" id="crear" type="button">Crear mi outfit</button>
+        <div class="inicio-acciones"><button class="btn btn-main" id="crear" type="button">Crear mi outfit</button><button class="btn-link" id="ver-material" type="button">Material para el stand: tarjetas y QR</button></div>
         <ol class="pasos" aria-label="Cómo se juega">
           <li>Elegís tres tarjetas</li>
           <li>Las escaneamos</li>
@@ -401,6 +417,33 @@ details.diag p { margin-top: 8px; color: var(--muted); overflow-wrap: anywhere; 
     <div class="grupo op-clima" id="g-clima"><div class="grupo-cab"><h3><span>Tarjeta 2</span>Clima</h3><p class="estado" aria-live="polite"></p></div><div class="opciones" role="group" aria-label="Clima"></div></div>
     <div class="grupo" id="g-evento"><div class="grupo-cab"><h3><span>Tarjeta 3</span>Tipo de evento</h3><p class="estado" aria-live="polite"></p></div><div class="opciones" role="group" aria-label="Tipo de evento"></div></div>
     </details>
+  </section>
+
+  <!-- MATERIAL PARA EL STAND -->
+  <section class="pantalla wrap" id="p-material" aria-labelledby="t-material" hidden>
+    <div class="cab-sel">
+      <div><p class="eyebrow">Para el equipo</p><h2 id="t-material">Material para el stand</h2></div>
+      <button class="btn btn-line" id="material-volver" type="button">Volver al juego</button>
+    </div>
+    <div class="material">
+      <article class="mat-bloque">
+        <h3>1. Imprimí las tarjetas</h3>
+        <p>20 tarjetas de 63 × 88 mm (tamaño naipe) en 3 hojas A4. Cada una tiene su QR y el nombre bien grande, así la app las lee por el QR o por el texto.</p>
+        <ul class="mat-pasos"><li>Imprimí a <b>tamaño real</b> (100 %, sin «ajustar a la página»).</li><li>Mejor en papel grueso o cartulina, en mate (el brillo refleja).</li><li>Cortá por la línea punteada.</li></ul>
+        <div class="mat-acciones"><button class="btn btn-main" id="bajar-pdf" type="button">Descargar el PDF para imprimir</button><a class="btn-link" id="abrir-pdf" href="material/tarjetas-icon-outfit.pdf" target="_blank" rel="noopener">Abrir el PDF</a></div>
+        <p class="mat-aviso" id="pdf-aviso" role="status"></p>
+      </article>
+      <article class="mat-bloque mat-qr">
+        <h3>2. Poné el QR en el stand</h3>
+        <p>Abre este mismo juego en el celular o la tablet del stand. Para que lo abra cualquiera, el artefacto tiene que estar compartido con «cualquiera con el link».</p>
+        <img src="material/qr-icon-outfit.png" alt="QR que abre ICON Outfit Scan" width="300" height="400">
+        <div class="mat-acciones"><button class="btn btn-line" id="bajar-qr" type="button">Descargar el QR</button></div>
+      </article>
+      <article class="mat-bloque mat-todas">
+        <h3>3. Las 20 tarjetas</h3>
+        <h4>Tarjeta 1 · Estilo personal (8)</h4><div class="mat-grid"><figure><img src="material/tarjetas/estilo-elegante.jpg" alt="Tarjeta Elegante" loading="lazy" width="300" height="419"></figure><figure><img src="material/tarjetas/estilo-casual.jpg" alt="Tarjeta Casual" loading="lazy" width="300" height="419"></figure><figure><img src="material/tarjetas/estilo-urbano.jpg" alt="Tarjeta Urbano" loading="lazy" width="300" height="419"></figure><figure><img src="material/tarjetas/estilo-minimal.jpg" alt="Tarjeta Minimalista" loading="lazy" width="300" height="419"></figure><figure><img src="material/tarjetas/estilo-romantico.jpg" alt="Tarjeta Romántico" loading="lazy" width="300" height="419"></figure><figure><img src="material/tarjetas/estilo-glam.jpg" alt="Tarjeta Glam" loading="lazy" width="300" height="419"></figure><figure><img src="material/tarjetas/estilo-deportivo.jpg" alt="Tarjeta Deportivo" loading="lazy" width="300" height="419"></figure><figure><img src="material/tarjetas/estilo-boho.jpg" alt="Tarjeta Boho" loading="lazy" width="300" height="419"></figure></div><h4>Tarjeta 2 · Clima (4)</h4><div class="mat-grid"><figure><img src="material/tarjetas/clima-calido.jpg" alt="Tarjeta Cálido" loading="lazy" width="300" height="419"></figure><figure><img src="material/tarjetas/clima-templado.jpg" alt="Tarjeta Templado" loading="lazy" width="300" height="419"></figure><figure><img src="material/tarjetas/clima-frio.jpg" alt="Tarjeta Frío" loading="lazy" width="300" height="419"></figure><figure><img src="material/tarjetas/clima-lluvia.jpg" alt="Tarjeta Lluvioso" loading="lazy" width="300" height="419"></figure></div><h4>Tarjeta 3 · Tipo de evento (8)</h4><div class="mat-grid"><figure><img src="material/tarjetas/evento-amigos.jpg" alt="Tarjeta Salida con amigos" loading="lazy" width="300" height="419"></figure><figure><img src="material/tarjetas/evento-fiesta.jpg" alt="Tarjeta Fiesta nocturna" loading="lazy" width="300" height="419"></figure><figure><img src="material/tarjetas/evento-elegante.jpg" alt="Tarjeta Evento elegante" loading="lazy" width="300" height="419"></figure><figure><img src="material/tarjetas/evento-clases.jpg" alt="Tarjeta Día de clases" loading="lazy" width="300" height="419"></figure><figure><img src="material/tarjetas/evento-cita.jpg" alt="Tarjeta Cita o salida especial" loading="lazy" width="300" height="419"></figure><figure><img src="material/tarjetas/evento-airelibre.jpg" alt="Tarjeta Paseo al aire libre" loading="lazy" width="300" height="419"></figure><figure><img src="material/tarjetas/evento-formal.jpg" alt="Tarjeta Evento formal" loading="lazy" width="300" height="419"></figure><figure><img src="material/tarjetas/evento-casual.jpg" alt="Tarjeta Día casual" loading="lazy" width="300" height="419"></figure></div>
+      </article>
+    </div>
   </section>
 
   <!-- RESULTADO -->
@@ -479,6 +522,29 @@ cargarLib("vendor/tesseract.min.js", "https://cdn.jsdelivr.net/npm/tesseract.js@
 </script>
 <script>
 /*UI*/
+</script>
+<script id="material">
+/* Material para el stand: abrir la pantalla y descargar el PDF y el QR. */
+(function () {
+  const $ = s => document.querySelector(s);
+  const mostrar = () => { document.querySelectorAll(".pantalla").forEach(p => { p.hidden = p.id !== "p-material"; }); $("#resumen").hidden = true; window.scrollTo(0, 0); $("#t-material").setAttribute("tabindex", "-1"); $("#t-material").focus({ preventScroll: true }); };
+  $("#ver-material").onclick = mostrar;
+  $("#material-volver").onclick = () => $("#ir-inicio").click();
+  let descargas;
+  const pedir = () => (descargas !== undefined ? Promise.resolve(descargas) : (window.claude && window.claude.use ? window.claude.use("downloads").then(d => (descargas = d)).catch(() => (descargas = null)) : Promise.resolve((descargas = null))));
+  async function bajar(ruta, nombre, aviso) {
+    const msg = t => { if (aviso) aviso.textContent = t; };
+    const d = await pedir();
+    if (!d) { msg("Esta vista no permite descargar archivos: usá «Abrir el PDF» y guardalo desde ahí."); return; }
+    try {
+      const r = await fetch(ruta); if (!r.ok) throw new Error(r.status);
+      await d.save({ filename: nombre, data: await r.blob() });
+      msg("Listo, el archivo se guardó.");
+    } catch (e) { msg(e && e.code === "declined" ? "Descarga cancelada." : "No se pudo descargar: usá «Abrir el PDF»."); }
+  }
+  $("#bajar-pdf").onclick = () => bajar("material/tarjetas-icon-outfit.pdf", "tarjetas-icon-outfit.pdf", $("#pdf-aviso"));
+  $("#bajar-qr").onclick = () => bajar("material/qr-icon-outfit.png", "qr-icon-outfit.png", $("#pdf-aviso"));
+})();
 </script>
 <script id="lector">
 /*LECTOR*/
