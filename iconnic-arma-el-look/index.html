@@ -2178,16 +2178,17 @@ function boot() {
     return `<li class="rk-fila${f.esVos ? " vos" : ""}"><span class="rk-pos${f.posicion <= 3 ? " m" + f.posicion : ""}">${f.posicion}${MEDALLA[f.posicion] ? `<span class="sr-only">, ${MEDALLA[f.posicion]}</span>` : ""}</span>`
       + `<span class="rk-nom">${esc(f.nombre)}${f.esVos ? " <small>(vos)</small>" : ""}</span><span class="rk-pts num">${f.puntaje}</span><span class="rk-fecha num">${fechaCorta(f.fecha)}</span></li>`;
   }
+  const RANKING_MAX = 100;   // cuántas personas muestra el ranking completo (el servidor admite hasta 100)
   async function cargarRanking() {
     $("#rk-apodo").textContent = S.nombre || "todavía no elegiste";
     document.querySelectorAll("#s-ranking .seg .chip").forEach(c => c.setAttribute("aria-pressed", c.dataset.p === periodo));
     const lista = $("#rk-lista"), estado = $("#rk-estado");
     estado.textContent = "Cargando…"; lista.innerHTML = "";
-    const r = await obtenerRanking({ p_desde: desdePeriodo(periodo), p_limite: 50 });
+    const r = await obtenerRanking({ p_desde: desdePeriodo(periodo), p_limite: RANKING_MAX });
     if (!r.ok) { estado.textContent = "No pudimos cargar el ranking. Revisá tu conexión y tocá Actualizar."; return; }
     const { total, filas, yo } = r.json;
     if (!total) { estado.textContent = ""; lista.innerHTML = `<li class="rk-vacio">Todavía nadie jugó. ¡Estrenalo vos!</li>`; return; }
-    estado.textContent = `${RANKING_ON ? "" : "En este dispositivo · "}${total} ${total === 1 ? "participante" : "participantes"}`;
+    estado.textContent = `${RANKING_ON ? "" : "En este dispositivo · "}${total > RANKING_MAX ? `Top ${RANKING_MAX} de ` : ""}${total} ${total === 1 ? "participante" : "participantes"}`;
     lista.innerHTML = filas.map(filaRanking).join("") + (yo && yo.posicion > filas.length ? `<li class="rk-sep" aria-hidden="true">…</li>${filaRanking(yo)}` : "");
   }
   document.querySelector("#s-ranking .seg").addEventListener("click", e => { const c = e.target.closest(".chip"); if (c) { periodo = c.dataset.p; cargarRanking(); } });
