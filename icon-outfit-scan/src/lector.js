@@ -731,5 +731,5 @@ if (typeof document !== "undefined") (function () {
   pintarLeidas(); pintarDiag();
 
   // Para pruebas automáticas y soporte
-  window.ICON_LECTOR = { analizarFoto, leerTextoLocal, prepararOCR, ocr, ultima, ocupado: () => ocupado };
+  window.ICON_LECTOR = { analizarFoto, leerTextoLocal, prepararOCR, ocr, ultima, ocupado: () => ocupado, int: { gris, binarizar, aLienzo, bloquesDeTexto } };
 })();
