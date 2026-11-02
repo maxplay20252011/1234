@@ -143,7 +143,7 @@ returns jsonb language plpgsql security definer set search_path = public as $$
 declare v_id uuid;
 begin
   if (select count(*) from games where device_id = p_device and created_at > now() - interval '1 hour') >= 30
-     or (p_ip is not null and (select count(*) from games where ip = p_ip and created_at > now() - interval '1 hour') >= 120) then
+     or (p_ip is not null and (select count(*) from games where ip = p_ip and created_at > now() - interval '1 hour') >= 1000) then
     return jsonb_build_object('ok', false, 'error', 'demasiadas_partidas');
   end if;
   delete from games where used_at is null and created_at < now() - interval '1 day';
