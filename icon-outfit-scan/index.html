@@ -2416,12 +2416,12 @@ if (typeof document !== "undefined") (function () {
     const oscura = G.g.reduce((a, v) => a + v, 0) / G.g.length < 95; // foto de pantalla oscura
     let paso = 0; const total = 3 + 6 + 6 + 3;
     // 1) foto entera
-    for (const prep of ["gris", "tinta", "invertida"]) {
+    for (const prep of ["tinta", "invertida", "gris"]) {
       if (progreso) progreso(paso++, total);
       const lienzo = prep === "gris" ? aLienzo({ ...G, g: G.g.map(v => Math.min(255, Math.max(0, (v - 128) * 1.35 + 128))) }) : aLienzo(B[prep]);
       sumar(await leer(lienzo, "11", { sx: 0, sy: 0, k: k0 }));
       if (n() >= 3) break;
-      if (n() === 1 && prep === "gris" && !/\S+\s+\S+\s+\S+/.test(textos[textos.length - 1])) break; // una sola palabra: una tarjeta
+      if (n() === 1 && prep === "tinta" && !/\S+\s+\S+\s+\S+/.test(textos[textos.length - 1])) break; // una sola palabra: una tarjeta
     }
     // 2) columnas y filas superpuestas: tarjetas una al lado de la otra o una lista de renglones
     if (n() < 3) {
@@ -2432,8 +2432,9 @@ if (typeof document !== "undefined") (function () {
       for (const f of franjas) {
         if (n() >= 3 || performance.now() - t0 > 18000) break;
         if (progreso) progreso(Math.min(paso++, total - 4), total);
-        const t = await leer(recorteBloque(bmp, f, oscura ? "gris-inv" : "gris", 1400), "11");
-        if (!sumar(t, f)) sumar(await leer(recorteBloque(bmp, f, oscura ? "gris" : "tinta", 1400), "11"), f);
+        const t = await leer(recorteBloque(bmp, f, "tinta", 1400), "11");
+        if (!sumar(t, f) && oscura) sumar(await leer(recorteBloque(bmp, f, "tinta-inv", 1400), "11"), f);
+        if (!sumar(t, f) && n() < 3) sumar(await leer(recorteBloque(bmp, f, oscura ? "gris-inv" : "gris", 1400), "11"), f);
       }
     }
     // 3) cada bloque de texto por separado
@@ -2445,10 +2446,11 @@ if (typeof document !== "undefined") (function () {
         if (progreso) progreso(Math.min(paso++, total - 4), total);
         const caja = { x0: b.x0 / k0, y0: b.y0 / k0, x1: b.x1 / k0, y1: b.y1 / k0 };
         const oscuro = b.inv; // el bloque se detectó como letra clara sobre fondo oscuro
-        // recetas de mejor a peor según el experimento: gris psm 6 (alto 80), gris psm 7 (alto 140), binarizado psm 6
+        // Cada receta suma a las anteriores (el experimento de 60 fotos mostró que ninguna sola alcanza):
+        // binarizado psm 6, gris psm 6 (alto 80) y gris psm 7 (alto 140). Se corta al primer acierto.
+        if (sumar(await leer(recorteBloque(bmp, caja, oscuro ? "tinta-inv" : "tinta"), "6"), caja)) continue;
         if (sumar(await leer(recorteBloque(bmp, caja, oscuro ? "gris-inv" : "gris", 80), "6"), caja)) continue;
-        if (sumar(await leer(recorteBloque(bmp, caja, oscuro ? "gris-inv" : "gris", 140), "7"), caja)) continue;
-        sumar(await leer(recorteBloque(bmp, caja, oscuro ? "tinta-inv" : "tinta", 100), "6"), caja);
+        sumar(await leer(recorteBloque(bmp, caja, oscuro ? "gris-inv" : "gris", 140), "7"), caja);
       }
     }
     // 4) foto girada, solo si no apareció nada
