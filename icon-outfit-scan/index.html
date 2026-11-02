@@ -2227,30 +2227,49 @@ if (typeof document !== "undefined") (function () {
      ===================================================================== */
   const ocr = { estado: "sin cargar", worker: null, promesa: null, avance: 0, error: "" };
   function prepararOCR() {
+    // Si falló por la red (una descarga lenta o cortada), se vuelve a intentar con la siguiente foto, hasta 3 veces.
+    if (ocr.promesa && ocr.estado === "no disponible" && ocr.reintentable && ocr.intentos < 3) { ocr.promesa = null; ocr.estado = "sin cargar"; ocr.error = ""; ocr.errorA = ""; }
     if (ocr.promesa) return ocr.promesa;
+    ocr.intentos = (ocr.intentos || 0) + 1;
     if (typeof Tesseract === "undefined" || !window.Worker || typeof WebAssembly === "undefined") { ocr.estado = "no disponible"; ocr.error = "falta el motor"; pintarDiag(); return (ocr.promesa = Promise.resolve(null)); }
     // Si el visor no permite WebAssembly, se sabe al instante compilando un módulo vacío.
     try { new WebAssembly.Module(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0])); }
     catch (e) { ocr.estado = "no disponible"; ocr.error = "esta pantalla no permite WebAssembly"; pintarDiag(); return (ocr.promesa = Promise.resolve(null)); }
     const base = new URL("vendor/", document.baseURI).href;
     ocr.estado = "cargando"; pintarDiag();
-    // El idioma (español) viaja como texto base64 porque el visor no sirve archivos .gz. Se guarda en la
-    // caché de Tesseract (IndexedDB "keyval-store", clave "./spa.traineddata") y Tesseract lo lee de ahí.
-    const crear = fetch(base + "spa-traineddata-gz.b64.txt").then(r => { if (!r.ok) throw new Error("no se pudo bajar el idioma (" + r.status + ")"); return r.text(); }).then(async b64 => {
+    const opciones = extra => ({
+      corePath: base, langPath: base.replace(/\/$/, ""), cacheMethod: "none", ...extra,
+      logger: m => { if (ocr.pulso) ocr.pulso(); if (m && typeof m.progress === "number" && /load|init/i.test(m.status || "")) { ocr.avance = m.progress; pintarDiag(); } },
+      errorHandler: e => { ocr.error = String((e && e.message) || e); },
+    });
+    // El idioma (español) viaja como texto base64 porque el visor no sirve archivos .gz. Dos formas de dárselo a Tesseract:
+    // A) un worker intermedio que contesta el pedido del idioma desde ese texto: no usa ningún almacenamiento del navegador
+    //    (anda en pestañas privadas, iPhone y visores restringidos).
+    // B) si A falla, la caché de Tesseract (IndexedDB).
+    const viaWorker = () => {
+      const guion = `const base=${JSON.stringify(base)};const f0=self.fetch.bind(self);let L;`
+        + `self.fetch=async(u,o)=>{if(String(u).indexOf("spa.traineddata")>=0){if(!L){const t=await(await f0(base+"spa-traineddata-gz.b64.txt")).text();const b=atob(t.trim());L=new Uint8Array(b.length);for(let i=0;i<b.length;i++)L[i]=b.charCodeAt(i);}return new Response(L.slice(),{status:200});}return f0(u,o);};`
+        + `importScripts(base+"worker.min.js");`;
+      const url = URL.createObjectURL(new Blob([guion], { type: "application/javascript" }));
+      return Tesseract.createWorker("spa", 1, opciones({ workerPath: url }));
+    };
+    const viaCache = () => fetch(base + "spa-traineddata-gz.b64.txt").then(r => { if (!r.ok) throw new Error("no se pudo bajar el idioma (" + r.status + ")"); return r.text(); }).then(async b64 => {
       const bin = atob(b64.trim()), datos = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) datos[i] = bin.charCodeAt(i);
       await guardarEnCache("./spa.traineddata", datos);
-      return Tesseract.createWorker("spa", 1, {
-        workerPath: base + "worker.min.js", corePath: base, langPath: base.replace(/\/$/, ""), cacheMethod: "readOnly",
-        logger: m => { if (m && typeof m.progress === "number" && /load|init/i.test(m.status || "")) { ocr.avance = m.progress; pintarDiag(); } },
-        errorHandler: e => { ocr.error = String((e && e.message) || e); },
-      });
+      return Tesseract.createWorker("spa", 1, opciones({ workerPath: base + "worker.min.js", cacheMethod: "readOnly" }));
     });
-    const limite = new Promise((_, rej) => setTimeout(() => rej(new Error("tardó demasiado")), 60000));
-    ocr.promesa = Promise.race([crear, limite]).then(async w => {
+    // Tiempo de espera por inactividad: si la descarga sigue avanzando, no se corta; si pasa un rato sin novedades, sí.
+    const con = (f, ms) => new Promise((ok, mal) => {
+      let t; const rearmar = () => { clearTimeout(t); t = setTimeout(() => { ocr.reintentable = true; mal(new Error("tardó demasiado en cargar (red lenta)")); }, ms); };
+      ocr.pulso = rearmar; rearmar();
+      f().then(w => { clearTimeout(t); ok(w); }, e => { clearTimeout(t); mal(e); });
+    });
+    const crear = con(viaWorker, 45000).then(w => { ocr.metodo = "worker"; return w; }, e => { ocr.errorA = String((e && e.message) || e); ocr.error = ""; return con(viaCache, 45000).then(w => { ocr.metodo = "caché"; return w; }); });
+    ocr.promesa = crear.then(async w => {
       await w.setParameters({ tessedit_pageseg_mode: "11", tessedit_char_whitelist: "ABCDEFGHIJKLMNÑOPQRSTUVWXYZabcdefghijklmnñopqrstuvwxyzÁÉÍÓÚÜáéíóúü ", preserve_interword_spaces: "1" });
       ocr.worker = w; ocr.estado = "listo"; pintarDiag(); return w;
-    }).catch(e => { ocr.estado = "no disponible"; ocr.error = ocr.error || String((e && e.message) || e); pintarDiag(); return null; });
+    }).catch(e => { ocr.estado = "no disponible"; ocr.error = [ocr.errorA, ocr.error, String((e && e.message) || e)].filter(Boolean).join(" · "); if (/fetch|network|red|Failed|tardó/i.test(ocr.error)) ocr.reintentable = true; pintarDiag(); return null; });
     return ocr.promesa;
   }
   /** Escribe en la misma base que usa Tesseract (idb-keyval: base "keyval-store", almacén "keyval"). */
@@ -2509,9 +2528,9 @@ if (typeof document !== "undefined") (function () {
       poner(textos.flatMap(interpretar), "qr");
       if (!cuantos() && textos.length) { estado("Leí un QR, pero no es de una tarjeta ICON.", "error"); return; }
       // 2) Texto sin internet: si no hubo QR, o si hay varias tarjetas y falta alguna
-      if (cuantos() < 3 && ocr.estado !== "no disponible" && (!cuantos() || analizarFoto.variasTarjetas)) {
-        if (ocr.estado !== "listo") progreso("Preparando el lector de texto…", 0.38);
-        poner(await leerTextoLocal(bmp, (i, n) => progreso(`Leyendo lo que dice… (${i + 1} de ${n})`, 0.4 + 0.45 * (i / n))), "texto");
+      if (cuantos() < 3 && (ocr.estado !== "no disponible" || (ocr.reintentable && ocr.intentos < 3)) && (!cuantos() || analizarFoto.variasTarjetas)) {
+        if (ocr.estado !== "listo") { progreso("Descargando el lector de texto (solo la primera vez)…", 0.38); const iv = setInterval(() => { if (ocr.estado === "cargando") progreso(`Descargando el lector de texto (solo la primera vez)… ${Math.round(ocr.avance * 100)} %`, 0.38 + 0.1 * ocr.avance); }, 400); await prepararOCR(); clearInterval(iv); }
+        if (ocr.estado === "listo") poner(await leerTextoLocal(bmp, (i, n) => progreso(`Leyendo lo que dice… (${i + 1} de ${n})`, 0.4 + 0.45 * (i / n))), "texto");
       }
       // 3) Claude: si no se leyó nada, o si se leyeron dos de tres (claramente es un grupo)
       let errorClaude = null;
@@ -2649,7 +2668,7 @@ if (typeof document !== "undefined") (function () {
     const ocrTxt = ocr.estado === "cargando" ? `cargando ${Math.round(ocr.avance * 100)} %` : ocr.estado;
     const items = [
       ["Lector de QR", qr.length ? "listo" : "no cargó", qr.length ? "ok" : "mal", qr.join(" + ")],
-      ["Texto sin internet", ocrTxt, ocr.estado === "listo" ? "ok" : ocr.estado === "no disponible" ? "mal" : "espera", ocr.error],
+      ["Texto sin internet", ocrTxt + (ocr.metodo && ocr.estado === "listo" ? " (" + ocr.metodo + ")" : ""), ocr.estado === "listo" ? "ok" : ocr.estado === "no disponible" ? "mal" : "espera", ocr.error],
       ["Texto con Claude", claudeEstado, puedeImagen ? "ok" : claudeEstado === "comprobando" ? "espera" : "mal", ""],
       ["Cámara en vivo", camEstado, /activa|funciona/.test(camEstado) ? "ok" : camEstado === "sin probar" ? "espera" : "mal", ""],
     ];

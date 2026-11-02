@@ -2,13 +2,16 @@
 // Cuenta una foto como bien leída si carga exactamente las tarjetas esperadas.
 const { chromium } = require("playwright"), fs = require("fs"), path = require("path");
 const dir = process.argv[2], html = process.argv[3] || path.join(__dirname, "..", "index.html");
-const casos = JSON.parse(fs.readFileSync(path.join(dir, "casos.json"), "utf8"));
+const casos = JSON.parse(fs.readFileSync(path.join(dir, "casos.json"), "utf8")).filter((_, i) => i % (+process.env.CADA || 1) === 0);
 const pagina = path.join(dir, "_pagina.html");
 fs.writeFileSync(pagina, '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>[hidden]{display:none!important}</style></head><body>' + fs.readFileSync(html, "utf8") + "</body></html>");
 const vend = path.join(path.dirname(path.resolve(html)), "vendor");
 if (fs.existsSync(vend)) { fs.mkdirSync(path.join(dir, "vendor"), { recursive: true }); for (const f of fs.readdirSync(vend)) fs.copyFileSync(path.join(vend, f), path.join(dir, "vendor", f)); }
 (async () => {
-  const b = await chromium.launch(), p = await b.newPage({ viewport: { width: 1280, height: 900 } });
+  // Simula un celular: CELU=1 (pantalla y toque de teléfono), LENTO=4 (CPU 4 veces más lenta), CADA=3 (una de cada 3 fotos), SIN_IDB=1 (sin IndexedDB, como pestaña privada).
+  const b = await chromium.launch(), ctx = await b.newContext(process.env.CELU ? { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, userAgent: "Mozilla/5.0 (Linux; Android 12; SM-A325M) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Mobile Safari/537.36" } : { viewport: { width: 1280, height: 900 } }), p = await ctx.newPage();
+  if (process.env.SIN_IDB) await p.addInitScript(() => { Object.defineProperty(window, "indexedDB", { get() { throw new DOMException("denied", "SecurityError"); } }); });
+  if (process.env.LENTO) await (await ctx.newCDPSession(p)).send("Emulation.setCPUThrottlingRate", { rate: +process.env.LENTO });
   if (process.env.JSQR) await p.route(/jsQR\.js$/, r => r.fulfill({ path: process.env.JSQR, contentType: "text/javascript" }));
   await p.goto(process.env.URL || "file://" + pagina); await p.waitForTimeout(600);
   let bien = 0, tiempo = 0, tarjetas = 0, totalT = 0, malas = 0; const fallas = [], vias = {};
@@ -16,7 +19,7 @@ if (fs.existsSync(vend)) { fs.mkdirSync(path.join(dir, "vendor"), { recursive: t
     await p.click("#nuevo"); await p.click("#crear");
     const t0 = Date.now();
     await p.setInputFiles("#scan-foto", path.join(dir, c.archivo));
-    if (await p.evaluate(() => !!window.ICON_LECTOR)) { await p.waitForFunction(() => window.ICON_LECTOR.ocupado(), null, { timeout: 5000 }).catch(() => {}); await p.waitForFunction(() => !window.ICON_LECTOR.ocupado(), null, { timeout: 90000 }); }
+    if (await p.evaluate(() => !!window.ICON_LECTOR)) { await p.waitForFunction(() => window.ICON_LECTOR.ocupado(), null, { timeout: 5000 }).catch(() => {}); await p.waitForFunction(() => !window.ICON_LECTOR.ocupado(), null, { timeout: 240000 }); }
     else { await p.waitForTimeout(100); await p.waitForFunction(() => !/^(Buscando|Analizando)/.test(document.querySelector("#scan-estado").textContent), null, { timeout: 60000 }); }
     const det = await p.evaluate(() => window.ICON_LECTOR ? `${window.ICON_LECTOR.ultima.ms}ms ${window.ICON_LECTOR.ultima.motor} ocr=«${window.ICON_LECTOR.ultima.ocr}»` : "");
     tiempo += Date.now() - t0;
