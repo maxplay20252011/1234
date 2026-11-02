@@ -2368,25 +2368,15 @@ if (typeof document !== "undefined") (function () {
     return out.sort((a, b) => b.area - a.area).slice(0, 12);
   }
   /** Recorta un bloque de la foto original, lo agranda si es chico y lo binariza. */
-  /** modo: "gris" (contraste, sin binarizar: lo que mejor lee según el experimento), "gris-inv" (letra clara sobre fondo oscuro),
-      "tinta" y "tinta-inv" (binarizado). alto: alto objetivo del recorte en píxeles. */
-  function recorteBloque(bmp, b, modo, alto) {
-    if (typeof modo === "boolean") modo = modo ? "tinta-inv" : "tinta";
+  function recorteBloque(bmp, b, invertir) {
     const m = Math.max(b.x1 - b.x0, b.y1 - b.y0) * 0.08;
     const sx = Math.max(0, b.x0 - m), sy = Math.max(0, b.y0 - m), sw = Math.min(bmp.width, b.x1 + m) - sx, sh = Math.min(bmp.height, b.y1 + m) - sy;
-    const k = Math.min(4, Math.max(0.2, Math.min(1800 / sw, 900 / sh, (alto || 160) / sh)));
+    const k = Math.min(3, Math.max(0.25, Math.min(1400 / sw, 700 / sh, Math.max(1, 160 / sh))));
     const c = document.createElement("canvas"); c.width = Math.max(1, Math.round(sw * k)); c.height = Math.max(1, Math.round(sh * k));
     const ctx = c.getContext("2d", { willReadFrequently: true }); ctx.imageSmoothingQuality = "high"; ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, c.width, c.height);
     const dd = ctx.getImageData(0, 0, c.width, c.height).data, gg = new Uint8ClampedArray(c.width * c.height);
     for (let i = 0, j = 0; i < gg.length; i++, j += 4) gg[i] = (dd[j] * 77 + dd[j + 1] * 150 + dd[j + 2] * 29) >> 8;
-    let lz;
-    if (modo.startsWith("gris")) {
-      const inv = modo === "gris-inv", S = { g: gg, w: c.width, h: c.height };
-      let lo = 255, hi = 0; for (let i = 0; i < gg.length; i += 7) { const v = gg[i]; if (v < lo) lo = v; if (v > hi) hi = v; }
-      const f = hi - lo > 20 ? 255 / (hi - lo) : 1.5; // estira el contraste de este recorte
-      S.g = gg.map(v => { const x = Math.max(0, Math.min(255, (v - lo) * f)); return inv ? 255 - x : x; });
-      lz = aLienzo(S);
-    } else lz = aLienzo(binarizar({ g: gg, w: c.width, h: c.height }, modo === "tinta-inv"));
+    const lz = aLienzo(binarizar({ g: gg, w: c.width, h: c.height }, invertir));
     lz._map = { sx, sy, k }; return lz;
   }
   /** Lee el texto de la foto. 1) foto entera en tres versiones, 2) cada bloque de texto por separado
@@ -2413,7 +2403,6 @@ if (typeof document !== "undefined") (function () {
     };
     const G = gris(bmp, 0, 1600), k0 = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
     const B = { tinta: binarizar(G, false), invertida: binarizar(G, true) };
-    const oscura = G.g.reduce((a, v) => a + v, 0) / G.g.length < 95; // foto de pantalla oscura
     let paso = 0; const total = 3 + 6 + 6 + 3;
     // 1) foto entera
     for (const prep of ["tinta", "invertida", "gris"]) {
@@ -2429,12 +2418,12 @@ if (typeof document !== "undefined") (function () {
       for (const x of [0, 0.3, 0.6]) franjas.push({ x0: x * W, y0: 0, x1: (x + 0.4) * W, y1: H });
       for (const y of [0, 0.3, 0.6]) franjas.push({ x0: 0, y0: y * H, x1: W, y1: (y + 0.4) * H });
       if (W < H) franjas.push(...franjas.splice(0, 3)); // foto vertical: primero las filas
+      const oscura = G.g.reduce((a, v) => a + v, 0) / G.g.length < 95;
       for (const f of franjas) {
         if (n() >= 3 || performance.now() - t0 > 18000) break;
         if (progreso) progreso(Math.min(paso++, total - 4), total);
-        const t = await leer(recorteBloque(bmp, f, "tinta", 1400), "11");
-        if (!sumar(t, f) && oscura) sumar(await leer(recorteBloque(bmp, f, "tinta-inv", 1400), "11"), f);
-        if (!sumar(t, f) && n() < 3) sumar(await leer(recorteBloque(bmp, f, oscura ? "gris-inv" : "gris", 1400), "11"), f);
+        const t = await leer(recorteBloque(bmp, f, false), "11");
+        if (!sumar(t, f) && oscura) sumar(await leer(recorteBloque(bmp, f, true), "11"), f);
       }
     }
     // 3) cada bloque de texto por separado
@@ -2445,12 +2434,7 @@ if (typeof document !== "undefined") (function () {
         if (n() >= 3 || performance.now() - t0 > 22000) break;
         if (progreso) progreso(Math.min(paso++, total - 4), total);
         const caja = { x0: b.x0 / k0, y0: b.y0 / k0, x1: b.x1 / k0, y1: b.y1 / k0 };
-        const oscuro = b.inv; // el bloque se detectó como letra clara sobre fondo oscuro
-        // Cada receta suma a las anteriores (el experimento de 60 fotos mostró que ninguna sola alcanza):
-        // binarizado psm 6, gris psm 6 (alto 80) y gris psm 7 (alto 140). Se corta al primer acierto.
-        if (sumar(await leer(recorteBloque(bmp, caja, oscuro ? "tinta-inv" : "tinta"), "6"), caja)) continue;
-        if (sumar(await leer(recorteBloque(bmp, caja, oscuro ? "gris-inv" : "gris", 80), "6"), caja)) continue;
-        sumar(await leer(recorteBloque(bmp, caja, oscuro ? "gris-inv" : "gris", 140), "7"), caja);
+        sumar(await leer(recorteBloque(bmp, caja, b.inv), "6"), caja);
       }
     }
     // 4) foto girada, solo si no apareció nada
@@ -2702,7 +2686,7 @@ if (typeof document !== "undefined") (function () {
   pintarLeidas(); pintarDiag();
 
   // Para pruebas automáticas y soporte
-  window.ICON_LECTOR = { analizarFoto, leerTextoLocal, prepararOCR, ocr, ultima, ocupado: () => ocupado, int: { gris, binarizar, aLienzo, bloquesDeTexto } };
+  window.ICON_LECTOR = { analizarFoto, leerTextoLocal, prepararOCR, ocr, ultima, ocupado: () => ocupado };
 })();
 
 </script>

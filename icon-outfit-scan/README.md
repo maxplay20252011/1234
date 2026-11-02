@@ -95,3 +95,11 @@ python3 pruebas/banco.py BANCO && URL=http://localhost:8811/index.html node prue
 | 28 fotos con las tres juntas sin QR | 22 / 28 (79 %) |
 
 Si se leen dos de tres, Claude completa la que falta automáticamente (cuando el visor lo permite).
+
+## Límites medidos de la lectura de texto
+
+Con las fotos de prueba (`pruebas/banco-texto.*`), el lector sin internet llega a ~83 % de las fotos de texto. Las que quedan fallan por letra manuscrita muy cursiva (por ejemplo «Homemade Apple», «Reenie Beanie») o muy desenfocada.
+
+Se probaron 36 combinaciones de lectura (modo de página 6, 7, 8 y 13; tres alturas de recorte; binarizado, gris con contraste e invertido) sobre 60 fotos de una palabra: **11 de las 12 fotos que fallan no las lee ninguna combinación**. Sumar recetas no mejoró el total (56/70 con una lectura equivocada, contra 58/70 sin equivocadas), por eso no se incluyeron.
+
+Para esa letra, lo que funciona es «Leer esta foto con Claude» (si el visor lo permite) o escribir en letra de imprenta. Con las tarjetas impresas del PDF no hace falta nada de esto: se leen por QR.
