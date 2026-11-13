@@ -1,104 +1,164 @@
 <!doctype html>
-<html lang="es-AR">
+<html lang="es-AR" data-theme="auto">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#3e63dd">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>Juegos de Psicopedagogía</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🧠%3C/text%3E%3C/svg%3E">
 <style>
 :root{
   --bg:#f6f4ee; --panel:#ffffff; --ink:#1f2430; --muted:#5b6475; --line:#e3dfd3;
   --brand:#3e63dd; --brand-ink:#fff; --good:#1f9d62; --bad:#d6403f; --warn:#c98a00;
-  --shadow:0 2px 0 rgba(0,0,0,.06), 0 8px 24px rgba(31,36,48,.07);
+  --shadow:0 2px 0 rgba(0,0,0,.06), 0 8px 24px rgba(31,36,48,.07); --fs:1;
 }
 @media (prefers-color-scheme:dark){
-  :root{--bg:#14161c; --panel:#1e222b; --ink:#eef0f5; --muted:#a2aabb; --line:#2f3542; --shadow:0 2px 0 rgba(0,0,0,.4);}
+  html[data-theme=auto]{--bg:#14161c;--panel:#1e222b;--ink:#eef0f5;--muted:#a2aabb;--line:#2f3542;--shadow:0 2px 0 rgba(0,0,0,.4);--brand:#6e8bf0}
 }
+html[data-theme=dark]{--bg:#14161c;--panel:#1e222b;--ink:#eef0f5;--muted:#a2aabb;--line:#2f3542;--shadow:0 2px 0 rgba(0,0,0,.4);--brand:#6e8bf0}
+html[data-contrast=on]{--bg:#fff;--panel:#fff;--ink:#000;--muted:#222;--line:#000;--brand:#0027b3;--good:#006b3c;--bad:#b00020}
+html[data-theme=dark][data-contrast=on]{--bg:#000;--panel:#000;--ink:#fff;--muted:#ddd;--line:#fff;--brand:#8fb0ff;--good:#5fe3a1;--bad:#ff7b7b}
+html[data-easy=on]{--bg:#fbf5e3}
+html[data-easy=on] body{font-family:Verdana,"Trebuchet MS",Tahoma,sans-serif;letter-spacing:.04em;word-spacing:.14em;line-height:1.8}
+html[data-motion=reduced] *{transition:none!important;animation:none!important}
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-.wrap{max-width:900px;margin:0 auto;padding:16px}
-header.top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
-h1{font-size:1.5rem;margin:0}
-h2{font-size:1.25rem;margin:.2rem 0}
+html{font-size:calc(100% * var(--fs));-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:1.0625rem/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:14px}
+header.top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:8px}
+h1{font-size:1.4rem;margin:0}
+h2{font-size:1.2rem;margin:.2rem 0}
+h3{margin:.6rem 0 .2rem}
 .muted{color:var(--muted)}
 .tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-input[type=text]{font:inherit;padding:9px 12px;border:2px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);min-width:0}
-.btn{font:inherit;font-weight:600;border:0;border-radius:14px;padding:11px 18px;background:var(--brand);color:var(--brand-ink);cursor:pointer;box-shadow:var(--shadow)}
+input[type=text],input[type=number],select,textarea{font:inherit;padding:8px 11px;border:2px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);min-width:0}
+textarea{width:100%}
+.btn{font:inherit;font-weight:600;border:0;border-radius:14px;padding:10px 16px;background:var(--brand);color:var(--brand-ink);cursor:pointer;box-shadow:var(--shadow)}
 .btn.ghost{background:var(--panel);color:var(--ink);border:2px solid var(--line);box-shadow:none}
-.btn:focus-visible,.opt:focus-visible,.pad:focus-visible,.mc:focus-visible,.card:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
+.btn.sm{padding:6px 11px;font-size:.9rem}
+.btn.danger{background:var(--bad)}
+.btn:focus-visible,.opt:focus-visible,.pad:focus-visible,.mc:focus-visible,.card:focus-visible,.chip:focus-visible,.cell:focus-visible,.ref:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
 .btn:active{transform:translateY(1px)}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
-.card{background:var(--panel);border:2px solid var(--line);border-radius:18px;padding:16px;text-align:left;font:inherit;color:inherit;cursor:pointer;box-shadow:var(--shadow);transition:transform .12s}
+.nav{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 14px}
+.nav .btn{padding:8px 13px;font-size:.95rem}
+.nav .btn.act{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.chip{font:inherit;font-size:.9rem;padding:5px 12px;border-radius:99px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.chip.on{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(235px,1fr));gap:12px}
+.card{position:relative;background:var(--panel);border:2px solid var(--line);border-radius:18px;padding:14px;text-align:left;font:inherit;color:inherit;cursor:pointer;box-shadow:var(--shadow);transition:transform .12s}
 .card:hover{transform:translateY(-3px)}
-.card .ic{font-size:2.2rem}
-.card .tag{display:inline-block;font-size:.78rem;font-weight:700;padding:2px 9px;border-radius:99px;background:color-mix(in srgb,var(--brand) 16%,transparent);color:var(--brand);margin:4px 0}
-.panel{background:var(--panel);border:2px solid var(--line);border-radius:20px;padding:18px;box-shadow:var(--shadow)}
-.bar{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap}
+.card .ic{font-size:2rem}
+.card h2{font-size:1.1rem}
+.card p{margin:.2rem 0 0;font-size:.92rem}
+.card .tag{display:inline-block;font-size:.75rem;font-weight:700;padding:2px 9px;border-radius:99px;background:color-mix(in srgb,var(--brand) 16%,transparent);color:var(--brand)}
+.badge{position:absolute;top:10px;right:12px;font-size:.78rem;font-weight:700}
+.panel{background:var(--panel);border:2px solid var(--line);border-radius:20px;padding:16px;box-shadow:var(--shadow);margin-bottom:12px}
+.reco{display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:space-between;background:color-mix(in srgb,var(--warn) 14%,var(--panel));border:2px solid var(--warn);border-radius:16px;padding:10px 14px;margin-bottom:10px}
+.bar{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap}
 .prog{height:10px;background:var(--line);border-radius:9px;overflow:hidden;flex:1;min-width:120px}
 .prog>i{display:block;height:100%;background:var(--brand);width:0;transition:width .25s}
 .stage{text-align:center}
-.status{min-height:2em;font-size:1.15rem;font-weight:600;margin:8px 0}
-.big{font-size:5rem;line-height:1.1;margin:6px 0}
+.status{min-height:2em;font-size:1.12rem;font-weight:600;margin:6px 0}
+.big{font-size:4.5rem;line-height:1.1;margin:4px 0}
 .row{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:10px 0}
-.opt{font:inherit;font-size:1.4rem;font-weight:700;min-width:64px;min-height:64px;padding:8px 18px;border-radius:16px;border:3px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.opt{font:inherit;font-size:1.35rem;font-weight:700;min-width:64px;min-height:64px;padding:8px 18px;border-radius:16px;border:3px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
 .opt:hover:not(:disabled){border-color:var(--brand)}
 .opt.right{background:var(--good);border-color:var(--good);color:#fff}
 .opt.wrong{background:var(--bad);border-color:var(--bad);color:#fff}
+.opt.emo{font-size:2.4rem}
 .pads{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:380px;margin:12px auto}
-.pad{min-height:110px;border-radius:22px;border:0;font:inherit;font-weight:800;color:#111;background:var(--c);opacity:.55;cursor:pointer;font-size:1.1rem}
+.pad{min-height:105px;border-radius:22px;border:0;font:inherit;font-weight:800;color:#111;background:var(--c);opacity:.55;cursor:pointer;font-size:1.1rem}
 .pad.on{opacity:1;transform:scale(1.04);box-shadow:0 0 0 6px color-mix(in srgb,var(--c) 40%,transparent)}
 .pad:disabled{cursor:default}
 .lives{letter-spacing:4px}
-.go-btn{width:min(100%,420px);min-height:100px;font-size:1.6rem}
-.stim{height:140px;display:flex;align-items:center;justify-content:center;font-size:6rem}
+.go-btn{width:min(100%,420px);min-height:96px;font-size:1.6rem}
+.stim{height:130px;display:flex;align-items:center;justify-content:center;font-size:5.5rem}
 .mem{display:grid;gap:10px;margin:12px auto;max-width:520px}
-.mc{aspect-ratio:1;border-radius:16px;border:3px solid var(--line);background:var(--brand);color:#fff;font-size:2.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.mc{aspect-ratio:1;border-radius:16px;border:3px solid var(--line);background:var(--brand);color:#fff;font-size:2.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
 .mc.up{background:var(--panel);color:var(--ink)}
 .mc.done{background:color-mix(in srgb,var(--good) 25%,var(--panel));border-color:var(--good)}
-.shape{font-size:3.4rem;line-height:1}
-.ref{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:96px;padding:12px 10px;border-radius:16px;border:3px solid var(--line);background:var(--panel);cursor:pointer;font:inherit;color:var(--ink)}
+.shape{font-size:3.2rem;line-height:1}
+.ref{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:92px;padding:10px;border-radius:16px;border:3px solid var(--line);background:var(--panel);cursor:pointer;font:inherit;color:var(--ink)}
 .ref:hover{border-color:var(--brand)}
-.stimcard{display:inline-flex;flex-direction:column;align-items:center;padding:14px 26px;border-radius:18px;border:3px dashed var(--muted);margin:8px 0;background:var(--panel)}
-.seq{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;font-size:2.2rem;font-weight:800;margin:14px 0}
-.seq span{min-width:52px;padding:6px 8px;border-radius:12px;background:color-mix(in srgb,var(--brand) 10%,var(--panel))}
+.stimcard{display:inline-flex;flex-direction:column;align-items:center;padding:12px 24px;border-radius:18px;border:3px dashed var(--muted);margin:8px 0;background:var(--panel)}
+.seq{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;font-size:2.1rem;font-weight:800;margin:12px 0}
+.seq span{min-width:50px;padding:6px 8px;border-radius:12px;background:color-mix(in srgb,var(--brand) 10%,var(--panel))}
 .seq .q{background:var(--warn);color:#fff}
-.fb{min-height:1.8em;font-weight:700;font-size:1.1rem}
+.letter{font-family:Arial,Helvetica,sans-serif;font-size:5rem;font-weight:700;letter-spacing:.12em}
+.optletter{font-family:Arial,Helvetica,sans-serif;font-size:2.2rem}
+.cgrid{display:grid;gap:6px;margin:10px auto;max-width:480px}
+.cell{aspect-ratio:1;border-radius:10px;border:2px solid var(--line);background:var(--panel);color:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:1.5rem;font-weight:700;cursor:pointer;padding:0}
+.cell.right{background:var(--good);color:#fff;border-color:var(--good)}
+.cell.wrong{background:var(--bad);color:#fff;border-color:var(--bad)}
+.fb{min-height:1.8em;font-weight:700;font-size:1.08rem}
 .fb.good{color:var(--good)} .fb.bad{color:var(--bad)}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0;text-align:center}
-.stat{background:color-mix(in srgb,var(--brand) 8%,var(--panel));border-radius:14px;padding:10px}
-.stat b{display:block;font-size:1.5rem}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;margin:12px 0;text-align:center}
+.stat{background:color-mix(in srgb,var(--brand) 8%,var(--panel));border-radius:14px;padding:9px}
+.stat b{display:block;font-size:1.4rem}
+.sem{display:inline-block;padding:4px 14px;border-radius:99px;font-weight:700;border:2px solid var(--line)}
 ul.notes{text-align:left;padding-left:20px}
-fieldset{border:2px solid var(--line);border-radius:14px;margin:12px auto;max-width:420px;text-align:left}
+fieldset{border:2px solid var(--line);border-radius:14px;margin:12px auto;max-width:440px;text-align:left}
 fieldset label{display:block;padding:4px 0;cursor:pointer}
-table{width:100%;border-collapse:collapse;font-size:.92rem}
-th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.lv{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:10px 0}
+.lv label{border:2px solid var(--line);border-radius:14px;padding:8px 14px;cursor:pointer;background:var(--panel)}
+.lv input{margin-right:6px}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
 .scroll{overflow-x:auto}
-footer{margin:22px 0 8px;font-size:.85rem;color:var(--muted)}
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.ach{display:inline-block;margin:3px;padding:4px 10px;border-radius:99px;background:color-mix(in srgb,var(--good) 18%,var(--panel));border:2px solid var(--good);font-size:.88rem}
+.ach.off{background:transparent;border-color:var(--line);color:var(--muted);filter:grayscale(1);opacity:.7}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:14px;z-index:50}
+.ov[hidden]{display:none}
+.mbox{background:var(--panel);color:var(--ink);border-radius:20px;padding:20px;max-width:480px;width:100%;max-height:90vh;overflow:auto}
+.mbox label{display:block;margin:8px 0 2px;font-weight:600}
+.mbox input{width:100%}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:99px;z-index:60;font-weight:600;max-width:92vw}
+.conf{position:fixed;top:-20px;width:10px;height:14px;z-index:70;pointer-events:none;animation:fall 2.6s ease-in forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+.printonly{display:none}
+footer{margin:18px 0 8px;font-size:.82rem;color:var(--muted)}
+body.np .timer,body.np .lives,body.np .pl{display:none}
+@media print{
+  body{background:#fff;color:#000}
+  .noprint,.nav,header.top,footer{display:none!important}
+  .printonly{display:block}
+  .panel{box-shadow:none;border:1px solid #999;break-inside:avoid}
+}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header class="top">
+  <header class="top noprint">
     <h1>🧠 Juegos de Psicopedagogía</h1>
     <div class="tools">
-      <input type="text" id="student" placeholder="Nombre del alumno/a" aria-label="Nombre del alumno o alumna" maxlength="40">
-      <button class="btn ghost" id="snd" aria-pressed="true">🔊 Sonido</button>
-      <button class="btn ghost" id="resBtn">📊 Resultados</button>
+      <select id="prof" aria-label="Alumno o alumna"></select>
+      <button class="btn ghost sm" id="addP" aria-label="Agregar alumno o alumna">➕ Alumno/a</button>
+      <button class="btn ghost sm" id="editP" aria-label="Editar alumno o alumna">✏️</button>
     </div>
   </header>
+  <nav class="nav noprint" id="nav"></nav>
   <main id="app"></main>
-  <footer>Material lúdico de apoyo: no es un test estandarizado ni reemplaza una evaluación psicopedagógica. Los resultados se guardan solo en este navegador.</footer>
+  <footer class="noprint">Material lúdico de apoyo: no es un test estandarizado ni reemplaza una evaluación psicopedagógica. Los datos se guardan solo en este navegador.</footer>
 </div>
+<div class="ov" id="pause" hidden><div class="mbox" style="text-align:center"><h2>⏸ En pausa</h2><p class="muted">Tomate un respiro. La partida sigue donde la dejaste.</p><button class="btn" id="resume">▶ Continuar</button></div></div>
 
 <script>
-/* ---------- utilidades ---------- */
+/* ================= utilidades ================= */
 const $ = (s, el = document) => el.querySelector(s);
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+const rs_ = ms => new Promise(r => setTimeout(r, ms));
+let paused = false;
+async function sleep(ms) { await rs_(ms); while (paused) await rs_(100); }
 const rnd = n => Math.floor(Math.random() * n);
+const R = (a, b) => a + rnd(b - a + 1);
+const pick = a => a[rnd(a.length)];
 const shuffle = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
 const sd = a => { if (a.length < 2) return 0; const m = mean(a); return Math.sqrt(mean(a.map(x => (x - m) ** 2))); };
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const dayKey = ts => new Date(ts).toLocaleDateString('sv');
 function h(tag, props = {}, ...kids) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(props || {})) {
@@ -114,96 +174,224 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 };
+function download(name, mime, text) {
+  const a = h('a', { href: URL.createObjectURL(new Blob(['﻿' + text], { type: mime + ';charset=utf-8' })), download: name });
+  document.body.append(a); a.click(); a.remove();
+}
+function toast(msg) { const t = h('div', { class: 'toast', role: 'status' }, msg); document.body.append(t); setTimeout(() => t.remove(), 3800); }
+function confetti() {
+  if (S.reduce) return;
+  const cols = ['#e5484d', '#3e63dd', '#30a46c', '#f5c518', '#9d4edd'];
+  for (let i = 0; i < 46; i++) {
+    const c = h('div', { class: 'conf', style: 'left:' + rnd(100) + 'vw;background:' + pick(cols) + ';animation-delay:' + (rnd(600) / 1000) + 's' });
+    document.body.append(c); setTimeout(() => c.remove(), 3400);
+  }
+}
+function modal(node) {
+  const ov = h('div', { class: 'ov', role: 'dialog', 'aria-modal': 'true' }, h('div', { class: 'mbox' }, node));
+  document.body.append(ov);
+  const close = () => ov.remove();
+  ov.addEventListener('click', e => { if (e.target === ov) close(); });
+  return close;
+}
 
-/* ---------- sonido y voz ---------- */
-let audioCtx = null, soundOn = store.get('pp_sound', true);
+/* ================= ajustes ================= */
+const DEF = { theme: 'auto', fs: 1, easy: false, contrast: false, reduce: false, volume: .6, voice: false, np: false };
+let S = { ...DEF, ...store.get('pp2_settings', {}) };
+function applySettings() {
+  const r = document.documentElement;
+  r.dataset.theme = S.theme; r.style.setProperty('--fs', S.fs);
+  r.dataset.easy = S.easy ? 'on' : 'off'; r.dataset.contrast = S.contrast ? 'on' : 'off'; r.dataset.motion = S.reduce ? 'reduced' : 'normal';
+  document.body.classList.toggle('np', S.np);
+  store.set('pp2_settings', S);
+}
+applySettings();
+
+/* ================= sonido y voz ================= */
+let audioCtx = null;
 function beep(freq = 440, dur = .15, type = 'sine', vol = .08) {
-  if (!soundOn) return;
+  if (!S.volume) return;
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    const o = audioCtx.createOscillator(), g = audioCtx.createGain(), t = audioCtx.currentTime;
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain(), t = audioCtx.currentTime, v = vol * S.volume / .6;
     o.type = type; o.frequency.value = freq; o.connect(g); g.connect(audioCtx.destination);
-    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.start(t); o.stop(t + dur);
   } catch (e) {}
 }
 const sOk = () => { beep(660, .12); setTimeout(() => beep(880, .15), 110); };
 const sBad = () => beep(190, .25, 'sawtooth', .05);
-function speak(t) { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = 'es-AR'; u.rate = .8; speechSynthesis.speak(u); } catch (e) {} }
+function speak(t) { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = 'es-AR'; u.rate = .8; u.volume = Math.max(.1, S.volume); speechSynthesis.speak(u); } catch (e) {} }
+const say = t => { if (S.voice) speak(t); };
+const PRAISE = ['¡Muy bien!', '¡Excelente!', '¡Eso es!', '¡Genial!', '¡Bien pensado!', '¡Lo lograste!'];
+const RETRY = ['Casi. ¡Seguí intentando!', 'Los errores ayudan a aprender', 'Probemos con la que sigue', 'No pasa nada, ¡vamos!'];
 
-/* ---------- navegación ---------- */
+/* ================= datos: perfiles, resultados, logros ================= */
+let profiles = store.get('pp2_profiles', []);
+let curId = store.get('pp2_cur', null);
+let results = store.get('pp2_results', []);
+let achs = store.get('pp2_ach', {});
+const saveP = () => { store.set('pp2_profiles', profiles); store.set('pp2_cur', curId); };
+const saveR = () => store.set('pp2_results', results);
+const saveA = () => store.set('pp2_ach', achs);
+const cur = () => profiles.find(p => p.id === curId) || profiles[0];
+if (!profiles.length) { profiles = [{ id: 'p' + uid(), name: 'Alumno/a 1', age: 8 }]; curId = profiles[0].id; saveP(); }
+if (!profiles.find(p => p.id === curId)) { curId = profiles[0].id; saveP(); }
+const levelByAge = age => age <= 6 ? 1 : age <= 9 ? 2 : 3;
+const LV = ['', 'Fácil', 'Medio', 'Difícil'];
+const resOf = pid => results.filter(r => r.pid === pid);
+function streak(pid) {
+  const days = new Set(resOf(pid).map(r => dayKey(r.ts)));
+  let d = new Date(), n = 0;
+  if (!days.has(dayKey(d))) d.setDate(d.getDate() - 1);
+  while (days.has(dayKey(d))) { n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+const ACH = [
+  { id: 'first', t: '🌱 Primera partida', f: rs => rs.length >= 1 },
+  { id: 'ten', t: '🔟 10 partidas jugadas', f: rs => rs.length >= 10 },
+  { id: 'five', t: '🧭 Explorador (5 juegos distintos)', f: rs => new Set(rs.map(r => r.gid)).size >= 5 },
+  { id: 'all', t: '🏅 Todoterreno (todos los juegos)', f: rs => new Set(rs.map(r => r.gid)).size >= GAMES.length },
+  { id: 'perfect', t: '💯 Puntaje perfecto', f: rs => rs.some(r => r.pct >= 100) },
+  { id: 'perf3', t: '🌟 3 partidas de 85% o más', f: rs => rs.filter(r => r.pct >= 85).length >= 3 },
+  { id: 'streak3', t: '🔥 Racha de 3 días', f: (rs, pid) => streak(pid) >= 3 },
+  { id: 'hard', t: '🦾 Terminó un juego en Difícil', f: rs => rs.some(r => r.level === 3) },
+  { id: 'circuit', t: '🎲 Circuito completo', f: () => false }
+];
+function unlock(pid, id) {
+  achs[pid] = achs[pid] || {};
+  if (achs[pid][id]) return null;
+  achs[pid][id] = Date.now(); saveA();
+  return ACH.find(a => a.id === id);
+}
+function checkAch(pid) {
+  const rs = resOf(pid), out = [];
+  ACH.forEach(a => { if (a.f(rs, pid)) { const u = unlock(pid, a.id); if (u) out.push(u); } });
+  return out;
+}
+
+/* ================= navegación ================= */
 const app = $('#app');
-let session = 0;
-const studentEl = $('#student');
-studentEl.value = store.get('pp_student', '');
-studentEl.addEventListener('input', () => store.set('pp_student', studentEl.value.trim()));
-const sndBtn = $('#snd');
-const paintSnd = () => { sndBtn.textContent = soundOn ? '🔊 Sonido' : '🔇 Sin sonido'; sndBtn.setAttribute('aria-pressed', soundOn); };
-paintSnd();
-sndBtn.onclick = () => { soundOn = !soundOn; store.set('pp_sound', soundOn); paintSnd(); };
-$('#resBtn').onclick = () => { session++; showResults(); };
+let session = 0, playing = false, rerender = () => showHub(), curNav = 'hub';
+const NAVS = [['hub', '🏠 Juegos'], ['circuit', '🎲 Circuito'], ['progress', '📈 Progreso'], ['settings', '⚙️ Ajustes'], ['help', '❓ Ayuda']];
+function setNav(v) { curNav = v; $('#nav').querySelectorAll('button[data-v]').forEach(b => b.classList.toggle('act', b.dataset.v === v)); }
+function guard() {
+  if (playing && !confirm('¿Salir de la partida? Se pierde el avance.')) return false;
+  session++; playing = false; setPause(false); try { speechSynthesis.cancel(); } catch (e) {}
+  return true;
+}
+const GO = { hub: () => showHub(), circuit: () => startCircuit(), progress: () => showProgress(), settings: () => showSettings(), help: () => showHelp() };
+$('#nav').append(...NAVS.map(([v, l]) => h('button', { class: 'btn ghost', 'data-v': v, onclick: () => { if (guard()) GO[v](); } }, l)),
+  h('button', { class: 'btn ghost', 'aria-label': 'Pantalla completa', onclick: () => { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) {} } }, '⛶'));
 function show(node) { app.replaceChildren(node); window.scrollTo(0, 0); }
-function menuBtn() { return h('button', { class: 'btn ghost', onclick: () => { session++; try { speechSynthesis.cancel(); } catch (e) {} showHub(); } }, '← Menú'); }
+function setPause(v) { paused = v; $('#pause').hidden = !v; }
+$('#resume').onclick = () => setPause(false);
+document.addEventListener('keydown', e => {
+  if (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+  if (e.key === 'Escape' || e.key.toLowerCase() === 'p') { if (playing) { setPause(!paused); e.preventDefault(); } return; }
+  if (/^[1-9]$/.test(e.key) && playing && !paused) {
+    const b = [...app.querySelectorAll('.opt:not(:disabled)')].filter(x => x.style.visibility !== 'hidden')[+e.key - 1];
+    if (b) b.click();
+  }
+});
 
-function showHub() {
-  session++;
-  const grid = h('div', { class: 'grid' }, GAMES.map(g =>
-    h('button', { class: 'card', onclick: () => openGame(g) },
-      h('div', { class: 'ic' }, g.icon), h('h2', {}, g.title), h('span', { class: 'tag' }, g.area), h('p', { class: 'muted' }, g.desc))));
-  show(h('div', {}, h('p', { class: 'muted' }, 'Elegí un juego. Cada uno trabaja un área distinta y, al terminar, muestra qué observar. Escribí el nombre del alumno/a arriba para guardar los resultados.'), grid));
+/* perfiles: selector y formularios */
+function paintProfiles() {
+  const sel = $('#prof'); sel.replaceChildren(...profiles.map(p => h('option', { value: p.id, selected: p.id === curId }, p.name + ' (' + p.age + ')')));
+}
+$('#prof').onchange = e => { if (!guard()) { paintProfiles(); return; } curId = e.target.value; saveP(); rerender(); };
+$('#addP').onclick = () => { if (guard()) profileForm(null); };
+$('#editP').onclick = () => { if (guard()) profileForm(cur()); };
+function profileForm(p) {
+  const name = h('input', { type: 'text', value: p ? p.name : '', maxlength: 40, placeholder: 'Nombre' });
+  const age = h('input', { type: 'number', min: 4, max: 17, value: p ? p.age : 8 });
+  let close;
+  const save = () => {
+    const n = name.value.trim() || 'Alumno/a', a = Math.min(17, Math.max(4, +age.value || 8));
+    if (p) { p.name = n; p.age = a; } else { const q = { id: 'p' + uid(), name: n, age: a }; profiles.push(q); curId = q.id; }
+    saveP(); paintProfiles(); close(); rerender();
+  };
+  const del = () => {
+    if (!confirm('¿Eliminar a ' + p.name + ' y todos sus resultados?')) return;
+    results = results.filter(r => r.pid !== p.id); delete achs[p.id]; profiles = profiles.filter(x => x.id !== p.id);
+    if (!profiles.length) profiles = [{ id: 'p' + uid(), name: 'Alumno/a 1', age: 8 }];
+    curId = profiles[0].id; saveR(); saveA(); saveP(); paintProfiles(); close(); rerender();
+  };
+  close = modal(h('div', {}, h('h2', {}, p ? 'Editar alumno/a' : 'Nuevo alumno/a'),
+    h('label', {}, 'Nombre'), name, h('label', {}, 'Edad (años)'), age,
+    h('p', { class: 'muted' }, 'La edad solo se usa para sugerir el nivel de dificultad inicial.'),
+    h('div', { class: 'row' }, h('button', { class: 'btn', onclick: save }, 'Guardar'), h('button', { class: 'btn ghost', onclick: () => close() }, 'Cancelar'),
+      p && profiles.length > 0 ? h('button', { class: 'btn danger', onclick: del }, 'Eliminar') : null)));
+  name.focus();
 }
 
-function openGame(g) {
-  const s = ++session;
-  const api = { alive: () => s === session, end: r => { if (s === session) finish(g, r); } };
-  let chosen = g.options ? g.options[0].value : null;
-  const body = h('div', { class: 'stage' });
-  const opts = g.options ? h('fieldset', {}, h('legend', {}, g.optionsLabel || 'Nivel'),
-    g.options.map((o, i) => h('label', {}, h('input', { type: 'radio', name: 'opt', value: o.value, checked: i === 0, onchange: () => chosen = o.value }), ' ' + o.label))) : null;
-  body.append(h('div', { class: 'big' }, g.icon), h('p', {}, g.how), opts,
-    h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { body.replaceChildren(); g.run(body, api, chosen); } }, '▶ Empezar')));
-  show(h('div', {}, h('div', { class: 'bar' }, menuBtn(), h('h2', {}, g.title)), h('div', { class: 'panel' }, body)));
-}
-
+/* ================= componentes de juego ================= */
 function progress(root) {
-  const bar = h('div', { class: 'prog' }, h('i'));
-  const lbl = h('span', { class: 'muted' }, '');
+  const bar = h('div', { class: 'prog' }, h('i')), lbl = h('span', { class: 'pl muted' }, '');
   root.append(h('div', { class: 'bar' }, bar, lbl));
   return (i, n) => { bar.firstChild.style.width = (100 * i / n) + '%'; lbl.textContent = i + ' / ' + n; };
 }
-
-function finish(g, r) {
-  const rec = { ts: new Date().toISOString(), student: studentEl.value.trim() || '(sin nombre)', game: g.title, score: r.score, max: r.max, lines: r.lines };
-  const all = store.get('pp_results', []); all.push(rec); store.set('pp_results', all);
-  const pct = r.max ? Math.round(100 * r.score / r.max) : 0;
-  const stars = pct >= 85 ? '🌟🌟🌟' : pct >= 60 ? '🌟🌟' : '🌟';
-  const notes = [...(r.notes || []), ...g.observe];
-  show(h('div', {}, h('div', { class: 'bar' }, menuBtn(), h('h2', {}, g.title + ' · resultado')),
-    h('div', { class: 'panel stage' },
-      h('div', { class: 'big' }, stars),
-      h('h2', {}, r.score + ' de ' + r.max + (r.max ? ' (' + pct + '%)' : '')),
-      h('div', { class: 'stats' }, r.lines.map(([k, v]) => h('div', { class: 'stat' }, h('b', {}, String(v)), k))),
-      h('h3', {}, 'Qué observar'), h('ul', { class: 'notes' }, notes.map(n => h('li', {}, n))),
-      h('div', { class: 'row' },
-        h('button', { class: 'btn', onclick: () => openGame(g) }, '🔁 Jugar de nuevo'),
-        h('button', { class: 'btn ghost', onclick: showHub }, 'Otro juego')))));
+const numOpts = a => {
+  const s = new Set([a]);
+  for (const d of shuffle([1, -1, 2, -2, 10, -10, 3, -3])) { if (a + d >= 0) s.add(a + d); if (s.size === 4) break; }
+  return shuffle([...s]).map(v => ({ label: String(v), ok: v === a }));
+};
+/* Motor genérico de preguntas de elección: tiempo de respuesta, pistas, repaso de errores */
+async function runQuiz(root, api, cfg) {
+  const items = cfg.items, N = items.length, setP = progress(root);
+  const stageEl = h('div'), choices = h('div', { class: 'row' }), fb = h('div', { class: 'fb', 'aria-live': 'polite' }), tools = h('div', { class: 'row' });
+  let cur = null, correct = 0, hints = 0; const rts = [], fails = [], cats = {};
+  const listenBtn = cfg.speak ? h('button', { class: 'btn ghost sm', onclick: () => speak(cfg.speak(cur.it)) }, '🔊 Escuchar') : null;
+  const hintBtn = cfg.hint ? h('button', { class: 'btn ghost sm', onclick: () => {
+    const c = [...choices.children].filter(b => !b.disabled && b.dataset.ok === '0');
+    if (c.length > 1) { const b = pick(c); b.disabled = true; b.style.visibility = 'hidden'; hints++; cur.hinted = true; }
+  } }, '💡 Pista') : null;
+  tools.append(listenBtn, hintBtn);
+  root.append(h('div', { class: 'status' }, cfg.instr), stageEl, tools, choices, fb);
+  for (let i = 0; i < N; i++) {
+    if (!api.alive()) return;
+    setP(i, N); fb.textContent = ''; fb.className = 'fb';
+    cur = { it: items[i], hinted: false }; const it = cur.it;
+    stageEl.replaceChildren(cfg.render(it));
+    if (cfg.speak) say(cfg.speak(it));
+    const opts = cfg.options(it), t0 = performance.now();
+    const p = await new Promise(res => choices.replaceChildren(...opts.map(o => h('button', { class: 'opt' + (o.cls ? ' ' + o.cls : ''), 'data-ok': o.ok ? 1 : 0, onclick: e => res({ o, el: e.currentTarget }) }, o.label))));
+    if (!api.alive()) return;
+    rts.push(performance.now() - t0);
+    [...choices.children].forEach(b => b.disabled = true);
+    if (p.o.ok) { correct++; p.el.classList.add('right'); fb.textContent = '🦉 ' + (cfg.fbRight ? cfg.fbRight(it) : pick(PRAISE)); fb.className = 'fb good'; sOk(); }
+    else {
+      p.el.classList.add('wrong'); [...choices.children].find(b => b.dataset.ok === '1')?.classList.add('right');
+      fails.push(cfg.failLabel(it)); if (cfg.cat) cats[cfg.cat(it)] = (cats[cfg.cat(it)] || 0) + 1;
+      fb.textContent = '🦉 ' + (cfg.fbWrong ? cfg.fbWrong(it) : pick(RETRY)); fb.className = 'fb bad'; sBad();
+    }
+    cfg.onAnswer && cfg.onAnswer(it, p.o.ok, stageEl);
+    await sleep(p.o.ok ? 1200 : 1800);
+  }
+  const rt = mean(rts) / 1000, notes = cfg.notes ? cfg.notes({ correct, N, rt, cats }) : [];
+  const cs = Object.entries(cats).map(([k, v]) => k + ' (' + v + ')');
+  if (cs.length) notes.push('Errores por categoría: ' + cs.join(', ') + '.');
+  if (rt > 6) notes.push('Tiempo de respuesta medio alto (' + rt.toFixed(1) + ' s): puede indicar procesamiento lento o inseguridad; observar si hay estrategia.');
+  api.end({
+    score: correct, max: N, rt: Math.round(rt * 10) / 10, review: fails,
+    lines: [['Aciertos', correct], ['Errores', N - correct], ['Tiempo medio (s)', rt.toFixed(1)], ...(cfg.hint ? [['Pistas usadas', hints]] : [])],
+    notes
+  });
 }
 
-/* ---------- 1. MEMORIA DE TRABAJO: secuencia de colores ---------- */
+/* ================= JUEGOS ================= */
+/* 1. Secuencia de colores: memoria de trabajo */
 async function runSimon(root, api, mode) {
-  const cols = [{ n: 'Rojo', c: '#e5484d', f: 261 }, { n: 'Azul', c: '#6e8bf0', f: 329 }, { n: 'Verde', c: '#46c28a', f: 392 }, { n: 'Amarillo', c: '#f5c518', f: 523 }];
-  let len = 2, lives = 3, best = 0, ok = 0, fail = 0, accepting = false, pending = null;
-  const status = h('div', { class: 'status' });
-  const livesEl = h('div', { class: 'lives' });
+  const cols = [{ n: 'Rojo', s: '▲', c: '#e5484d', f: 261 }, { n: 'Azul', s: '●', c: '#6e8bf0', f: 329 }, { n: 'Verde', s: '■', c: '#46c28a', f: 392 }, { n: 'Amarillo', s: '★', c: '#f5c518', f: 523 }];
+  let len = [0, 2, 3, 4][api.level], lives = 3, best = 0, ok = 0, fail = 0, accepting = false, pending = null;
+  const status = h('div', { class: 'status', 'aria-live': 'polite' }), livesEl = h('div', { class: 'lives' });
   const paintLives = () => livesEl.textContent = '❤️'.repeat(lives) + '🖤'.repeat(3 - lives);
-  const btns = cols.map((c, i) => h('button', { class: 'pad', style: '--c:' + c.c, disabled: true, onclick: () => tap(i) }, c.n));
-  root.append(livesEl, status, h('div', { class: 'pads' }, btns));
-  paintLives();
+  const btns = cols.map((c, i) => h('button', { class: 'pad', style: '--c:' + c.c, disabled: true, onclick: () => tap(i) }, c.s + ' ' + c.n));
+  root.append(livesEl, status, h('div', { class: 'pads' }, btns)); paintLives();
   const flash = async (i, d = 500) => { btns[i].classList.add('on'); beep(cols[i].f, d / 1000, 'triangle', .1); await sleep(d); btns[i].classList.remove('on'); };
   function tap(i) {
     if (!accepting || !pending) return;
-    flash(i, 220);
-    const p = pending; p.arr.push(i);
+    flash(i, 220); const p = pending; p.arr.push(i);
     if (p.arr[p.arr.length - 1] !== p.exp[p.arr.length - 1]) { accepting = false; pending = null; p.res(false); }
     else if (p.arr.length === p.exp.length) { accepting = false; pending = null; p.res(true); }
   }
@@ -216,156 +404,117 @@ async function runSimon(root, api, mode) {
     const exp = mode === 'inverso' ? [...seq].reverse() : seq;
     status.textContent = mode === 'inverso' ? 'Ahora repetí AL REVÉS 🔁' : '¡Tu turno! 👆';
     btns.forEach(b => b.disabled = false);
-    const res = await waitTaps(exp);
-    if (!api.alive()) return;
+    const res = await waitTaps(exp); if (!api.alive()) return;
     btns.forEach(b => b.disabled = true);
-    if (res) { best = Math.max(best, len); ok++; len++; status.textContent = '¡Bien! 🎉'; sOk(); }
-    else { fail++; lives--; paintLives(); status.textContent = 'Casi… probemos de nuevo'; sBad(); }
+    if (res) { best = Math.max(best, len); ok++; len++; status.textContent = '🦉 ' + pick(PRAISE); sOk(); }
+    else { fail++; lives--; paintLives(); status.textContent = '🦉 Casi… probemos de nuevo'; sBad(); }
     await sleep(1100);
   }
-  api.end({
-    score: best, max: 9, lines: [['Span máximo', best], ['Aciertos', ok], ['Errores', fail], ['Modo', mode]],
-    notes: [mode === 'inverso' ? 'Modo inverso: exige retener Y manipular la información (memoria de trabajo).' : 'Modo directo: mide principalmente retención inmediata (span).']
-  });
+  api.end({ score: best, max: 9, pct: Math.round(100 * best / 9), nosem: true, lines: [['Span máximo', best], ['Aciertos', ok], ['Errores', fail], ['Modo', mode]],
+    notes: [mode === 'inverso' ? 'Modo inverso: exige retener Y manipular la información (memoria de trabajo).' : 'Modo directo: mide principalmente retención inmediata (span).'] });
 }
 
-/* ---------- 2. ATENCIÓN / INHIBICIÓN: Go / No-Go ---------- */
+/* 2. Estrella y bomba: Go/No-Go con práctica */
 async function runGoNoGo(root, api) {
-  const trials = shuffle([...Array(30).fill('go'), ...Array(10).fill('nogo')]);
-  const N = trials.length;
-  const setP = progress(root);
+  const dur = [0, 1100, 900, 700][api.level], isi = [0, 600, 450, 350][api.level];
   const stim = h('div', { class: 'stim', 'aria-live': 'polite' });
   const status = h('div', { class: 'status' }, 'Tocá SOLO con la estrella ⭐. Con la bomba 💣 ¡no toques!');
   const btn = h('button', { class: 'btn go-btn', onpointerdown: e => { e.preventDefault(); respond(); } }, '¡TOCAR!');
-  root.append(status, stim, h('div', { class: 'row' }, btn));
-  const key = e => { if (e.code === 'Space' && !e.repeat) { e.preventDefault(); respond(); } };
+  const setP = progress(root); root.append(status, stim, h('div', { class: 'row' }, btn));
+  const key = e => { if (e.code === 'Space' && !e.repeat && playing && !paused) { e.preventDefault(); respond(); } };
   document.addEventListener('keydown', key);
-  let cur = null, hits = 0, omis = 0, comm = 0, rej = 0, antic = 0; const rts = [];
+  let cur = null, counting = false, hits = 0, omis = 0, comm = 0, rej = 0, antic = 0; const rts = [];
   function respond() {
-    if (!cur) { antic++; return; }
+    if (!cur) { if (counting) antic++; return; }
     if (cur.responded) return;
-    cur.responded = true;
-    if (cur.type === 'go') { hits++; rts.push(performance.now() - cur.t0); sOk(); stim.style.opacity = .4; }
-    else { comm++; sBad(); status.textContent = '¡Esa era la bomba! 💥'; }
+    cur.responded = true; cur.rt = performance.now() - cur.t0;
+    if (cur.type === 'go') { if (counting) { hits++; rts.push(cur.rt); } sOk(); stim.style.opacity = .4; } else { if (counting) comm++; sBad(); }
   }
-  await sleep(1200);
+  const trial = async type => { cur = { type, t0: performance.now(), responded: false, rt: 0 }; stim.style.opacity = 1; stim.textContent = type === 'go' ? '⭐' : '💣'; await sleep(dur); const c = cur; cur = null; stim.textContent = ''; return c; };
+  const bye = () => document.removeEventListener('keydown', key);
+  status.textContent = 'Práctica: 4 intentos de prueba (no cuentan)'; await sleep(1800);
+  for (const t of shuffle(['go', 'go', 'nogo', 'nogo'])) {
+    if (!api.alive()) return bye();
+    const c = await trial(t);
+    status.textContent = t === 'go' ? (c.responded ? '¡Bien!' : 'Tenías que tocar la estrella') : (c.responded ? 'Esa era la bomba 💥' : '¡Bien, te aguantaste!');
+    await sleep(1000);
+  }
+  status.textContent = '¡Ahora va en serio! 💪'; await sleep(1300);
+  const trials = shuffle([...Array(30).fill('go'), ...Array(10).fill('nogo')]), N = trials.length; counting = true;
   for (let i = 0; i < N; i++) {
-    if (!api.alive()) { document.removeEventListener('keydown', key); return; }
-    setP(i, N);
-    status.textContent = ' ';
-    cur = { type: trials[i], t0: performance.now(), responded: false };
-    stim.style.opacity = 1; stim.textContent = trials[i] === 'go' ? '⭐' : '💣';
-    await sleep(900);
-    if (!cur.responded) { if (cur.type === 'go') omis++; else rej++; }
-    cur = null; stim.textContent = '';
-    await sleep(450 + rnd(400));
+    if (!api.alive()) return bye();
+    setP(i, N); status.textContent = ' ';
+    const c = await trial(trials[i]);
+    if (!c.responded) { if (c.type === 'go') omis++; else rej++; }
+    await sleep(isi + rnd(400));
   }
-  document.removeEventListener('keydown', key);
-  if (!api.alive()) return;
-  const rt = Math.round(mean(rts)), v = Math.round(sd(rts));
-  const notes = [];
+  bye(); if (!api.alive()) return;
+  const rt = Math.round(mean(rts)), v = Math.round(sd(rts)), notes = [];
   if (omis >= 5) notes.push('Muchas omisiones (' + omis + '): posible dificultad para sostener la atención.');
-  if (comm >= 4) notes.push('Muchos toques ante la bomba (' + comm + '): posible dificultad en control inhibitorio / impulsividad.');
-  if (antic >= 5) notes.push('Respuestas anticipadas frecuentes (' + antic + '): respuesta impulsiva fuera del estímulo.');
-  if (!notes.length) notes.push('Desempeño sin señales marcadas de desatención o impulsividad en esta muestra breve.');
-  api.end({
-    score: hits + rej, max: N,
-    lines: [['Aciertos ⭐', hits + '/30'], ['Omisiones', omis], ['Errores 💣', comm + '/10'], ['TR medio (ms)', rt || '-'], ['Variabilidad TR (ms)', v || '-'], ['Anticipaciones', antic]],
-    notes
+  if (comm >= 4) notes.push('Muchos toques ante la bomba (' + comm + '): posible dificultad de control inhibitorio / impulsividad.');
+  if (antic >= 5) notes.push('Respuestas anticipadas frecuentes (' + antic + ').');
+  if (v > 220) notes.push('Alta variabilidad del tiempo de reacción (' + v + ' ms): suele asociarse a fluctuaciones de atención.');
+  if (!notes.length) notes.push('Sin señales marcadas de desatención o impulsividad en esta muestra breve.');
+  api.end({ score: hits + rej, max: N, lines: [['Aciertos ⭐', hits + '/30'], ['Omisiones', omis], ['Errores 💣', comm + '/10'], ['TR medio (ms)', rt || '-'], ['Variabilidad TR (ms)', v || '-'], ['Anticipaciones', antic]], notes, rt: rt ? Math.round(rt / 100) / 10 : null });
+}
+
+/* 3. Contá las sílabas */
+const SYL = [
+  [['☀️', 'sol'], ['🐟', 'pez'], ['🚂', 'tren'], ['🌸', 'flor'], ['🍞', 'pan'], ['💡', 'luz']],
+  [['🐱', 'ga-to'], ['🏠', 'ca-sa'], ['🌙', 'lu-na'], ['🎈', 'glo-bo'], ['📖', 'li-bro'], ['🐙', 'pul-po'], ['🪑', 'me-sa'], ['🐶', 'pe-rro']],
+  [['🍌', 'ba-na-na'], ['🐢', 'tor-tu-ga'], ['🦒', 'ji-ra-fa'], ['🕷️', 'a-ra-ña'], ['🍅', 'to-ma-te'], ['⚽', 'pe-lo-ta'], ['🪟', 'ven-ta-na'], ['👕', 'ca-mi-sa']],
+  [['🐘', 'e-le-fan-te'], ['🦋', 'ma-ri-po-sa'], ['🚲', 'bi-ci-cle-ta'], ['🥕', 'za-na-ho-ria'], ['🍪', 'ga-lle-ti-ta']],
+  [['🚁', 'he-li-cóp-te-ro'], ['🦛', 'hi-po-pó-ta-mo'], ['💻', 'com-pu-ta-do-ra']]
+];
+function runSyllables(root, api) {
+  const g = [[0, 1, 2], [1, 2, 3], [2, 3, 4]][api.level - 1], take = [3, 4, 3];
+  const items = g.flatMap((gi, k) => shuffle(SYL[gi]).slice(0, take[k]));
+  return runQuiz(root, api, {
+    instr: '¿Cuántas sílabas (golpes) tiene la palabra?', items, speak: it => it[1].replace(/-/g, ''),
+    render: it => h('div', {}, h('div', { class: 'big' }, it[0]), h('h2', {}, it[1].replace(/-/g, ''))),
+    options: it => [1, 2, 3, 4, 5].map(n => ({ label: String(n), ok: n === it[1].split('-').length })),
+    fbRight: it => '¡Correcto! ' + it[1], fbWrong: it => 'Eran ' + it[1].split('-').length + ' → ' + it[1],
+    failLabel: it => it[1].replace(/-/g, '') + ' → ' + it[1].split('-').length + ' sílabas (' + it[1] + ')',
+    notes: () => ['La conciencia silábica es predictora de la adquisición lectora (ideal de nivel inicial a 2.º grado). Si falla en palabras cortas, explorar discriminación auditiva.']
   });
 }
 
-/* ---------- 3. CONCIENCIA FONOLÓGICA: contar sílabas ---------- */
-async function runSyllables(root, api) {
-  const bank = [
-    [['☀️', 'sol'], ['🐟', 'pez'], ['🚂', 'tren'], ['🌸', 'flor']],
-    [['🐱', 'ga-to'], ['🏠', 'ca-sa'], ['🌙', 'lu-na'], ['🎈', 'glo-bo'], ['📖', 'li-bro'], ['🐙', 'pul-po']],
-    [['🍌', 'ba-na-na'], ['🐢', 'tor-tu-ga'], ['🦒', 'ji-ra-fa'], ['🕷️', 'a-ra-ña'], ['🍅', 'to-ma-te']],
-    [['🐘', 'e-le-fan-te'], ['🦋', 'ma-ri-po-sa'], ['🚲', 'bi-ci-cle-ta'], ['🥕', 'za-na-ho-ria'], ['🍪', 'ga-lle-ti-ta']],
-    [['🚁', 'he-li-cóp-te-ro'], ['🦛', 'hi-po-pó-ta-mo']]
-  ];
-  const take = [2, 3, 2, 2, 1];
-  const items = bank.flatMap((g, i) => shuffle(g).slice(0, take[i]));
-  const N = items.length, setP = progress(root);
-  const emo = h('div', { class: 'big' }), word = h('h2', {}), fb = h('div', { class: 'fb' });
-  const speakBtn = h('button', { class: 'btn ghost', onclick: () => speak(cur[1].replace(/-/g, '')) }, '🔊 Escuchar');
-  const choices = h('div', { class: 'row' });
-  root.append(h('div', { class: 'status' }, '¿Cuántas sílabas (golpes) tiene la palabra?'), emo, word, speakBtn, choices, fb);
-  let cur, correct = 0; const errs = [];
-  for (let i = 0; i < N; i++) {
-    if (!api.alive()) return;
-    setP(i, N); cur = items[i]; fb.textContent = ''; fb.className = 'fb';
-    const real = cur[1].split('-').length, plain = cur[1].replace(/-/g, '');
-    emo.textContent = cur[0]; word.textContent = plain; speak(plain);
-    const pick = await new Promise(res => {
-      choices.replaceChildren(...[1, 2, 3, 4, 5].map(n => h('button', { class: 'opt', onclick: e => res({ n, el: e.currentTarget }) }, String(n))));
-    });
-    if (!api.alive()) return;
-    [...choices.children].forEach(b => b.disabled = true);
-    if (pick.n === real) { correct++; pick.el.classList.add('right'); fb.textContent = '¡Correcto! ' + cur[1]; fb.className = 'fb good'; sOk(); }
-    else { pick.el.classList.add('wrong'); errs.push(plain + ' (' + real + ')'); fb.textContent = 'Eran ' + real + ' → ' + cur[1]; fb.className = 'fb bad'; sBad(); }
-    await sleep(1500);
-  }
-  api.end({
-    score: correct, max: N, lines: [['Aciertos', correct], ['Errores', N - correct]],
-    notes: errs.length ? ['Palabras falladas (sílabas reales): ' + errs.join(', ') + '.'] : []
+/* 4. Completá la palabra: ortografía arbitraria */
+const ORT = [
+  ['🐄', 'vaca', '', 'v', 'aca', ['b', 'v'], 'b/v'], ['🐴', 'caballo', 'ca', 'b', 'allo', ['b', 'v'], 'b/v'], ['🪟', 'ventana', '', 'v', 'entana', ['b', 'v'], 'b/v'],
+  ['👜', 'bolsa', '', 'b', 'olsa', ['b', 'v'], 'b/v'], ['🐻', 'oso', 'o', 's', 'o', ['s', 'z'], 'c/s/z'], ['🌧️', 'lluvia', '', 'll', 'uvia', ['ll', 'y'], 'll/y'],
+  ['🤡', 'payaso', 'pa', 'y', 'aso', ['ll', 'y'], 'll/y'], ['🍼', 'botella', 'bote', 'll', 'a', ['ll', 'y'], 'll/y'], ['🦒', 'jirafa', '', 'j', 'irafa', ['g', 'j'], 'g/j'],
+  ['🌻', 'girasol', '', 'g', 'irasol', ['g', 'j'], 'g/j'], ['🧳', 'viaje', 'via', 'j', 'e', ['g', 'j'], 'g/j'], ['🐜', 'hormiga', '', 'h', 'ormiga', ['h', '∅'], 'h'],
+  ['🦴', 'hueso', '', 'h', 'ueso', ['h', '∅'], 'h'], ['🥚', 'huevo', '', 'h', 'uevo', ['h', '∅'], 'h'], ['🏨', 'hotel', '', 'h', 'otel', ['h', '∅'], 'h'],
+  ['👟', 'zapato', '', 'z', 'apato', ['s', 'z', 'c'], 'c/s/z'], ['🦓', 'cebra', '', 'c', 'ebra', ['s', 'z', 'c'], 'c/s/z'], ['🐸', 'sapo', '', 's', 'apo', ['s', 'z', 'c'], 'c/s/z'],
+  ['🥄', 'cuchara', '', 'c', 'uchara', ['q', 'c', 'k'], 'q/c/k'], ['🧀', 'queso', '', 'q', 'ueso', ['q', 'c', 'k'], 'q/c/k'], ['🍎', 'manzana', 'man', 'z', 'ana', ['s', 'z', 'c'], 'c/s/z'],
+  ['👃', 'nariz', 'nari', 'z', '', ['s', 'z', 'c'], 'c/s/z'], ['🥫', 'lata', 'la', 't', 'a', ['t', 'd'], 't/d'], ['🧑‍🍳', 'cocinero', 'co', 'c', 'inero', ['s', 'z', 'c'], 'c/s/z']
+];
+function runSpelling(root, api) {
+  const pool = api.level === 1 ? ORT.filter(o => o[5].length === 2) : ORT, N = [10, 12, 16][api.level - 1];
+  const items = shuffle(pool).slice(0, Math.min(N, pool.length));
+  return runQuiz(root, api, {
+    instr: 'Completá la palabra con la letra correcta', items, hint: true, speak: it => it[1], cat: it => it[6],
+    render: it => h('div', {}, h('div', { class: 'big' }, it[0]), h('div', { class: 'big', style: 'font-size:2.8rem;letter-spacing:2px', 'data-w': 1 }, it[2] + '＿' + it[4])),
+    options: it => shuffle(it[5]).map(o => ({ label: o === '∅' ? 'sin h' : o, ok: o === (it[3] === 'h' ? 'h' : it[3]) })),
+    onAnswer: (it, ok, st) => { st.querySelector('[data-w]').textContent = it[1]; },
+    fbWrong: it => 'Se escribe «' + it[1] + '»', failLabel: it => it[1] + ' (' + it[6] + ')',
+    notes: () => ['Distinguir errores de ortografía arbitraria (b/v, h) de errores fonológicos. Ojo con c/s/z: en el habla rioplatense hay seseo y la pronunciación no ayuda.']
   });
 }
 
-/* ---------- 4. LECTOESCRITURA: ortografía arbitraria ---------- */
-async function runSpelling(root, api) {
-  const bank = [
-    ['🐄', 'vaca', '', 'v', 'aca', ['b', 'v'], 'b/v'], ['🐴', 'caballo', 'ca', 'b', 'allo', ['b', 'v'], 'b/v'],
-    ['🪟', 'ventana', '', 'v', 'entana', ['b', 'v'], 'b/v'], ['👜', 'bolsa', '', 'b', 'olsa', ['b', 'v'], 'b/v'],
-    ['🌧️', 'lluvia', '', 'll', 'uvia', ['ll', 'y'], 'll/y'], ['🤡', 'payaso', 'pa', 'y', 'aso', ['ll', 'y'], 'll/y'],
-    ['🍼', 'botella', 'bote', 'll', 'a', ['ll', 'y'], 'll/y'], ['🦒', 'jirafa', '', 'j', 'irafa', ['g', 'j'], 'g/j'],
-    ['🌻', 'girasol', '', 'g', 'irasol', ['g', 'j'], 'g/j'], ['🧳', 'viaje', 'via', 'j', 'e', ['g', 'j'], 'g/j'],
-    ['👟', 'zapato', '', 'z', 'apato', ['s', 'z', 'c'], 'c/s/z'], ['🦓', 'cebra', '', 'c', 'ebra', ['s', 'z', 'c'], 'c/s/z'],
-    ['🐸', 'sapo', '', 's', 'apo', ['s', 'z', 'c'], 'c/s/z'], ['🥄', 'cuchara', '', 'c', 'uchara', ['q', 'c', 'k'], 'q/c/k'],
-    ['🧀', 'queso', '', 'q', 'ueso', ['q', 'c', 'k'], 'q/c/k'], ['🐜', 'hormiga', '', 'h', 'ormiga', ['h', '∅'], 'h'],
-    ['🦴', 'hueso', '', 'h', 'ueso', ['h', '∅'], 'h'], ['🥚', 'huevo', '', 'h', 'uevo', ['h', '∅'], 'h'],
-    ['🍎', 'manzana', 'man', 'z', 'ana', ['s', 'z', 'c'], 'c/s/z'], ['👃', 'nariz', 'nari', 'z', '', ['s', 'z', 'c'], 'c/s/z']
-  ];
-  const items = shuffle(bank).slice(0, 12), N = items.length, setP = progress(root);
-  const emo = h('div', { class: 'big' }), wd = h('div', { class: 'big', style: 'font-size:3rem;letter-spacing:2px' }), fb = h('div', { class: 'fb' });
-  const choices = h('div', { class: 'row' });
-  let cur;
-  root.append(h('div', { class: 'status' }, 'Completá la palabra con la letra correcta'), emo, wd,
-    h('button', { class: 'btn ghost', onclick: () => speak(cur[1]) }, '🔊 Escuchar'), choices, fb);
-  let correct = 0; const bad = {};
-  for (let i = 0; i < N; i++) {
-    if (!api.alive()) return;
-    setP(i, N); cur = items[i]; fb.textContent = ''; fb.className = 'fb';
-    const [e, w, pre, gap, post, opts, cat] = cur;
-    emo.textContent = e; wd.textContent = pre + '＿' + post; speak(w);
-    const label = o => o === '∅' ? 'sin h' : o;
-    const pick = await new Promise(res => {
-      choices.replaceChildren(...shuffle(opts).map(o => h('button', { class: 'opt', onclick: ev => res({ o, el: ev.currentTarget }) }, label(o))));
-    });
-    if (!api.alive()) return;
-    [...choices.children].forEach(b => b.disabled = true);
-    const right = (pick.o === (gap === 'h' ? 'h' : gap));
-    wd.textContent = w;
-    if (right) { correct++; pick.el.classList.add('right'); fb.textContent = '¡Muy bien!'; fb.className = 'fb good'; sOk(); }
-    else { pick.el.classList.add('wrong'); bad[cat] = (bad[cat] || 0) + 1; fb.textContent = 'Se escribe «' + w + '»'; fb.className = 'fb bad'; sBad(); }
-    await sleep(1500);
-  }
-  const cats = Object.entries(bad).map(([k, v]) => k + ' (' + v + ')');
-  api.end({
-    score: correct, max: N, lines: [['Aciertos', correct], ['Errores', N - correct]],
-    notes: cats.length ? ['Errores por tipo de grafema: ' + cats.join(', ') + '. Útil para planificar el trabajo sobre ortografía arbitraria.'] : ['Sin errores ortográficos en esta muestra.']
-  });
-}
-
-/* ---------- 5. MEMORIA VISUAL: memotest ---------- */
-async function runMemotest(root, api, level) {
-  const pairs = +level, pool = shuffle(['🐶', '🐱', '🐸', '🦊', '🐼', '🐵', '🦁', '🐯', '🐷', '🐰', '🐨', '🐙']).slice(0, pairs);
-  const cards = shuffle([...pool, ...pool]);
-  const cols = pairs <= 4 ? 4 : pairs <= 6 ? 4 : 4;
-  const grid = h('div', { class: 'mem', style: 'grid-template-columns:repeat(' + cols + ',1fr)' });
-  const status = h('div', { class: 'status' }, 'Encontrá las parejas');
-  root.append(status, grid);
-  let first = null, lock = false, moves = 0, found = 0, misses = 0; const t0 = performance.now();
+/* 5. Memotest con temas */
+const THEMES = {
+  animales: ['🐶', '🐱', '🐸', '🦊', '🐼', '🐵', '🦁', '🐯', '🐷', '🐰', '🐨', '🐙'],
+  frutas: ['🍎', '🍌', '🍇', '🍓', '🍉', '🍐', '🍒', '🍍', '🥝', '🍋', '🍑', '🥭'],
+  transportes: ['🚗', '🚌', '🚲', '✈️', '🚂', '🚢', '🚁', '🛵', '🚜', '🚒', '🚑', '🛶']
+};
+function runMemotest(root, api, theme) {
+  const pairs = [0, 4, 6, 8][api.level], pool = shuffle(THEMES[theme] || THEMES.animales).slice(0, pairs), cards = shuffle([...pool, ...pool]);
+  const grid = h('div', { class: 'mem', style: 'grid-template-columns:repeat(4,1fr)' }), status = h('div', { class: 'status' }, 'Encontrá las parejas'), tm = h('div', { class: 'timer muted' }, '⏱ 0 s');
+  root.append(status, tm, grid);
+  let first = null, lock = false, moves = 0, found = 0, misses = 0, elapsed = 0;
+  const iv = setInterval(() => { if (!api.alive()) return clearInterval(iv); if (!paused) { elapsed++; tm.textContent = '⏱ ' + elapsed + ' s'; } }, 1000);
   const els = cards.map((c, i) => h('button', { class: 'mc', 'aria-label': 'Carta ' + (i + 1), onclick: () => flip(i) }, '❓'));
   els.forEach(e => grid.append(e));
   async function flip(i) {
@@ -374,157 +523,437 @@ async function runMemotest(root, api, level) {
     if (first === null) { first = i; return; }
     moves++; const a = first; first = null; lock = true;
     if (cards[a] === cards[i]) {
-      found++; els[a].className = els[i].className = 'mc done'; sOk(); lock = false;
-      status.textContent = 'Parejas: ' + found + ' / ' + pairs;
+      found++; els[a].className = els[i].className = 'mc done'; sOk(); lock = false; status.textContent = 'Parejas: ' + found + ' / ' + pairs + ' · Intentos: ' + moves;
       if (found === pairs && api.alive()) {
-        await sleep(700);
-        const secs = Math.round((performance.now() - t0) / 1000);
-        api.end({
-          score: pairs, max: pairs, lines: [['Parejas', pairs], ['Intentos', moves], ['Intentos fallidos', misses], ['Tiempo (s)', secs]],
-          notes: ['Intentos óptimos ≈ ' + pairs + '–' + pairs * 2 + '. Muchos fallos repetidos sobre la misma carta sugieren dificultad para retener la ubicación (memoria visoespacial).']
-        });
+        clearInterval(iv); await sleep(700);
+        const eff = Math.round(100 * pairs / moves);
+        api.end({ score: pairs, max: pairs, pct: eff, nosem: true, headline: pairs + ' parejas en ' + moves + ' intentos',
+          lines: [['Parejas', pairs], ['Intentos', moves], ['Fallidos', misses], ['Tiempo (s)', elapsed], ['Eficiencia', eff + '%']],
+          notes: ['Intentos ideales ≈ ' + pairs + ' a ' + pairs * 2 + '. Repetir errores sobre la misma carta sugiere dificultad para retener la ubicación (memoria visoespacial).'] });
       }
-    } else {
-      misses++; sBad(); await sleep(1000); if (!api.alive()) return;
-      [a, i].forEach(k => { els[k].classList.remove('up'); els[k].textContent = '❓'; }); lock = false;
-    }
+    } else { misses++; sBad(); await sleep(1000); if (!api.alive()) return; [a, i].forEach(k => { els[k].classList.remove('up'); els[k].textContent = '❓'; }); lock = false; }
   }
 }
 
-/* ---------- 6. FLEXIBILIDAD COGNITIVA: clasificar cartas (tipo WCST) ---------- */
+/* formas y colores compartidos (juegos 6 y 14) */
+const SH = ['●', '■', '▲', '★'], SN = ['círculo', 'cuadrado', 'triángulo', 'estrella'], SG = [0, 0, 0, 1];
+const CO = ['#e5484d', '#3e63dd', '#30a46c', '#e0a800'], CN = [['rojo', 'roja'], ['azul', 'azul'], ['verde', 'verde'], ['amarillo', 'amarilla']];
+const desc = (s, c) => (SG[s] ? 'la ' : 'el ') + SN[s] + ' ' + CN[c][SG[s]];
+
+/* 6. Descubrí la regla: flexibilidad cognitiva */
 async function runSort(root, api) {
-  const shapes = ['●', '■', '▲', '★'], names = ['Círculo', 'Cuadrado', 'Triángulo', 'Estrella'];
-  const colors = ['#e5484d', '#3e63dd', '#30a46c', '#e0a800'], cnames = ['rojo', 'azul', 'verde', 'amarillo'];
-  const N = 48, setP = progress(root);
-  const status = h('div', { class: 'status' }, 'Poné la carta de arriba debajo de la que crea que va. Te voy a decir si acertaste: ¡descubrí la regla!');
-  const stimBox = h('div'), fb = h('div', { class: 'fb' });
-  const refs = h('div', { class: 'row' });
-  const mk = (si, ci, cls) => h('div', { class: cls }, h('span', { class: 'shape', style: 'color:' + colors[ci] }, shapes[si]), h('small', { class: 'muted' }, names[si] + ' ' + cnames[ci]));
-  [0, 1, 2, 3].forEach(i => refs.append(h('button', { class: 'ref', 'data-i': i, onclick: () => choose(i), 'aria-label': names[i] + ' ' + cnames[i] }, mk(i, i, 'x').childNodes)));
+  const crit = [0, 4, 5, 6][api.level], N = 48, setP = progress(root);
+  const status = h('div', { class: 'status' }, 'Elegí debajo de qué carta va la de arriba. Te digo si acertaste: ¡descubrí la regla!');
+  const stimBox = h('div'), fb = h('div', { class: 'fb', 'aria-live': 'polite' }), refs = h('div', { class: 'row' });
+  const mk = (si, ci, cls) => h('div', { class: cls }, h('span', { class: 'shape', style: 'color:' + CO[ci] }, SH[si]), h('small', { class: 'muted' }, SN[si] + ' ' + CN[ci][SG[si]]));
+  [0, 1, 2, 3].forEach(i => refs.append(h('button', { class: 'ref', onclick: () => choose(i), 'aria-label': desc(i, i) }, ...mk(i, i, 'x').childNodes)));
   root.append(status, stimBox, refs, fb);
-  let rule = rnd(2) ? 'color' : 'forma', consec = 0, cats = 0, errors = 0, persev = 0, switches = 0, since = 0, prevRule = null, resolve = null, sw = [];
+  let rule = rnd(2) ? 'color' : 'forma', consec = 0, cats = 0, errors = 0, persev = 0, prevRule = null, resolve = null;
   const choose = i => resolve && resolve(i);
   for (let t = 0; t < N; t++) {
-    if (!api.alive()) return;
-    setP(t, N);
+    if (!api.alive()) return; setP(t, N);
     let si = rnd(4), ci; do { ci = rnd(4); } while (ci === si);
     stimBox.replaceChildren(mk(si, ci, 'stimcard'));
     const target = rule === 'color' ? ci : si;
-    const pick = await new Promise(r => resolve = r); resolve = null;
-    if (!api.alive()) return;
-    since++;
-    if (pick === target) {
-      consec++; fb.textContent = '✔ Correcto'; fb.className = 'fb good'; sOk();
-      if (consec === 6) { cats++; consec = 0; prevRule = rule; rule = rule === 'color' ? 'forma' : 'color'; switches++; since = 0; }
-    } else {
-      errors++; consec = 0; fb.textContent = '✖ Incorrecto'; fb.className = 'fb bad'; sBad();
-      if (prevRule) { const old = prevRule === 'color' ? ci : si; if (pick === old) persev++; }
-    }
-    await sleep(700);
+    const pk = await new Promise(r => resolve = r); resolve = null; if (!api.alive()) return;
+    if (pk === target) { consec++; fb.textContent = '✔ Correcto'; fb.className = 'fb good'; sOk(); if (consec === crit) { cats++; consec = 0; prevRule = rule; rule = rule === 'color' ? 'forma' : 'color'; } }
+    else { errors++; consec = 0; fb.textContent = '✖ Incorrecto'; fb.className = 'fb bad'; sBad(); if (prevRule && pk === (prevRule === 'color' ? ci : si)) persev++; }
+    await sleep(650);
   }
-  api.end({
-    score: N - errors, max: N,
-    lines: [['Categorías completadas', cats], ['Errores totales', errors], ['Errores perseverativos', persev]],
+  api.end({ score: N - errors, max: N, lines: [['Categorías completadas', cats], ['Errores totales', errors], ['Errores perseverativos', persev]],
     notes: [persev >= 4 ? 'Varios errores perseverativos (' + persev + '): dificultad para abandonar la regla anterior (rigidez / flexibilidad cognitiva).' : 'Pocos errores perseverativos: buena adaptación al cambio de regla.',
-      cats === 0 ? 'No logró completar ninguna categoría: revisar comprensión de la consigna y uso del feedback.' : 'Categorías completadas: ' + cats + ' (cada una = 6 aciertos seguidos).']
-  });
+      cats === 0 ? 'No completó ninguna categoría: revisar comprensión de la consigna y uso del feedback.' : 'Categorías completadas: ' + cats + ' (cada una = ' + crit + ' aciertos seguidos).',
+      'Inspirado en la lógica del test de clasificación de cartas de Wisconsin; es una versión lúdica, no equivalente.'] });
 }
 
-/* ---------- 7. RAZONAMIENTO LÓGICO: series ---------- */
+/* 7. Series lógicas */
 const EMO = ['🔴', '🔵', '🟢', '🟡', '⭐', '🌙', '🍎', '🐱', '🐶', '🚗', '🌸', '⚽'];
 const SERIES = [
   () => { const [a, b] = shuffle(EMO); return { seq: [a, b, a, b, a], ans: b, pool: EMO }; },
   () => { const [a, b] = shuffle(EMO); return { seq: [a, a, b, a, a], ans: b, pool: EMO }; },
   () => { const [a, b, c] = shuffle(EMO); return { seq: [a, b, c, a, b], ans: c, pool: EMO }; },
-  () => { const k = 1 + rnd(3), s = 1 + rnd(5), q = Array.from({ length: 5 }, (_, i) => s + i * k); return { seq: q, ans: s + 5 * k, num: true }; },
-  () => { const k = 2 + rnd(3), s = 25 + rnd(6), q = Array.from({ length: 5 }, (_, i) => s - i * k); return { seq: q, ans: s - 5 * k, num: true }; },
+  () => { const k = R(1, 3), s = R(1, 5), q = Array.from({ length: 5 }, (_, i) => s + i * k); return { seq: q, ans: s + 5 * k, num: true }; },
+  () => { const k = R(2, 4), s = R(25, 30), q = Array.from({ length: 5 }, (_, i) => s - i * k); return { seq: q, ans: s - 5 * k, num: true }; },
   () => { const [a, b, c] = shuffle(EMO); return { seq: [a, b, b, c, a, b, b], ans: c, pool: EMO }; },
-  () => { const s = 1 + rnd(3), q = [s, s * 2, s * 4, s * 8]; return { seq: q, ans: s * 16, num: true }; },
-  () => { const a = 2 + rnd(3), b = 1 + rnd(3), s = 1 + rnd(4), q = [s]; for (let i = 0; i < 5; i++) q.push(q[i] + (i % 2 ? b : a)); return { seq: q.slice(0, 5), ans: q[5], num: true }; },
-  () => { const s = 1 + rnd(3), q = [s]; for (let i = 1; i < 6; i++) q.push(q[i - 1] + i); return { seq: q.slice(0, 5), ans: q[5], num: true }; },
-  () => { const a = 1 + rnd(3), b = 5 * (1 + rnd(3)), q = [a, b, a * 2, b * 2, a * 3, b * 3]; return { seq: q.slice(0, 5), ans: q[5], num: true }; }
+  () => { const s = R(1, 3), q = [s, s * 2, s * 4, s * 8]; return { seq: q, ans: s * 16, num: true }; },
+  () => { const a = R(2, 4), b = R(1, 3), s = R(1, 4), q = [s]; for (let i = 0; i < 5; i++) q.push(q[i] + (i % 2 ? b : a)); return { seq: q.slice(0, 5), ans: q[5], num: true }; },
+  () => { const s = R(1, 3), q = [s]; for (let i = 1; i < 6; i++) q.push(q[i - 1] + i); return { seq: q.slice(0, 5), ans: q[5], num: true }; },
+  () => { const a = R(1, 3), b = 5 * R(1, 3), q = [a, b, a * 2, b * 2, a * 3, b * 3]; return { seq: q.slice(0, 5), ans: q[5], num: true }; }
 ];
-async function runSeries(root, api) {
-  const N = SERIES.length, setP = progress(root);
-  const seqEl = h('div', { class: 'seq', 'aria-live': 'polite' }), choices = h('div', { class: 'row' }), fb = h('div', { class: 'fb' });
-  root.append(h('div', { class: 'status' }, '¿Qué sigue en la serie?'), seqEl, choices, fb);
-  let correct = 0; const failed = [];
-  for (let i = 0; i < N; i++) {
-    if (!api.alive()) return;
-    setP(i, N); fb.textContent = ''; fb.className = 'fb';
-    const it = SERIES[i]();
-    seqEl.replaceChildren(...it.seq.map(x => h('span', {}, String(x))), h('span', { class: 'q' }, '?'));
-    let opts;
-    if (it.num) {
-      const set = new Set([it.ans]);
-      for (const d of shuffle([1, -1, 2, -2, 3, it.seq[it.seq.length - 1] - it.ans < 0 ? 0 : 4])) { const v = it.ans + d; if (v > 0) set.add(v); if (set.size === 4) break; }
-      for (let z = 1; set.size < 4; z++) set.add(it.ans + 10 + z);
-      opts = shuffle([...set]);
-    } else {
-      const pool = shuffle([...new Set([...it.seq, ...it.pool])].filter(x => x !== it.ans));
-      opts = shuffle([it.ans, ...pool.slice(0, 3)]);
-    }
-    const pick = await new Promise(res => choices.replaceChildren(...opts.map(o => h('button', { class: 'opt', onclick: e => res({ o, el: e.currentTarget }) }, String(o)))));
-    if (!api.alive()) return;
-    [...choices.children].forEach(b => b.disabled = true);
-    if (pick.o === it.ans) { correct++; pick.el.classList.add('right'); fb.textContent = '¡Correcto!'; fb.className = 'fb good'; sOk(); }
-    else { pick.el.classList.add('wrong'); failed.push(i + 1); fb.textContent = 'La respuesta era ' + it.ans; fb.className = 'fb bad'; sBad(); }
-    await sleep(1400);
-  }
-  api.end({
-    score: correct, max: N, lines: [['Aciertos', correct], ['Errores', N - correct]],
-    notes: [failed.length ? 'Ítems fallados: ' + failed.join(', ') + ' (1–3 series de figuras simples, 4–5 números con suma/resta, 6–10 mayor complejidad).' : 'Sin errores en las 10 series.']
+function runSeries(root, api) {
+  const idx = [[0, 1, 2, 3, 4, 0, 1, 3], [1, 2, 3, 4, 5, 6, 7, 8], [3, 5, 6, 7, 8, 9, 7, 9]][api.level - 1];
+  const items = idx.map(i => SERIES[i]());
+  return runQuiz(root, api, {
+    instr: '¿Qué sigue en la serie?', items, hint: true,
+    render: it => h('div', { class: 'seq' }, ...it.seq.map(x => h('span', {}, String(x))), h('span', { class: 'q' }, '?')),
+    options: it => it.num ? numOpts(it.ans) : shuffle([it.ans, ...shuffle([...new Set([...it.seq, ...it.pool])].filter(x => x !== it.ans)).slice(0, 3)]).map(o => ({ label: o, ok: o === it.ans })),
+    fbWrong: it => 'La respuesta era ' + it.ans, failLabel: it => it.seq.join(', ') + ', ? → ' + it.ans,
+    notes: () => ['Preguntarle cómo lo pensó: la verbalización de la estrategia aporta tanto como el acierto. Si resuelve figuras pero no números, explorar el área de cálculo.']
   });
 }
 
-/* ---------- catálogo ---------- */
-const GAMES = [
-  { id: 'simon', icon: '🎵', title: 'Secuencia de colores', area: 'Memoria de trabajo', desc: 'Repetir secuencias cada vez más largas, en orden directo o inverso.',
-    how: 'Mirá cómo se iluminan los botones y repetí la secuencia. Tenés 3 vidas.', options: [{ label: 'Directo (repetir igual)', value: 'directo' }, { label: 'Inverso (repetir al revés)', value: 'inverso' }], optionsLabel: 'Modo', run: runSimon,
-    observe: ['Span típico en primaria: 4–6 elementos en directo; el inverso suele ser 1–2 menos.', 'Anotar si los errores son de orden (confunde posición) o de omisión (olvida elementos).'] },
-  { id: 'gonogo', icon: '🎯', title: 'Estrella y bomba', area: 'Atención e inhibición', desc: 'Tocar la estrella, aguantarse con la bomba (Go/No-Go).',
-    how: 'Van a aparecer estrellas ⭐ y bombas 💣. Tocá el botón (o barra espaciadora) solo con la estrella. Dura aproximadamente 1 minuto.', run: runGoNoGo,
-    observe: ['Es una muestra breve y orientativa: no reemplaza pruebas de atención estandarizadas.', 'Observar también conducta durante la tarea: movimiento, mirada, consignas repetidas.'] },
-  { id: 'syl', icon: '👏', title: 'Contá las sílabas', area: 'Conciencia fonológica', desc: 'Segmentar palabras en sílabas, de 1 a 5 golpes de voz.',
-    how: 'Mirá el dibujo, escuchá la palabra y elegí cuántas sílabas tiene. Podés aplaudir mientras la decís.', run: runSyllables,
-    observe: ['La conciencia silábica es predictora de la adquisición lectora: ideal para 4.º nivel inicial a 2.º grado.', 'Si falla en palabras cortas, explorar discriminación auditiva.'] },
-  { id: 'spell', icon: '✏️', title: 'Completá la palabra', area: 'Lectoescritura', desc: 'Ortografía arbitraria: b/v, ll/y, g/j, c/s/z, h, q/c.',
-    how: 'Mirá el dibujo, escuchá la palabra y elegí la letra que falta.', run: runSpelling,
-    observe: ['Distinguir errores de ortografía arbitraria (b/v, h) de errores fonológicos.', 'Ojo con c/s/z: en el habla rioplatense hay seseo, por lo que la pronunciación no ayuda.'] },
-  { id: 'memo', icon: '🃏', title: 'Memotest', area: 'Memoria visoespacial', desc: 'Encontrar parejas de cartas recordando su ubicación.',
-    how: 'Da vuelta dos cartas por vez. Si son iguales, quedan a la vista.', options: [{ label: '4 parejas (fácil)', value: 4 }, { label: '6 parejas (medio)', value: 6 }, { label: '8 parejas (difícil)', value: 8 }], run: runMemotest,
-    observe: ['Observar si usa una estrategia (recorrer en orden) o si elige al azar.', 'Registrar tiempo y cantidad de intentos fallidos.'] },
-  { id: 'sort', icon: '🔀', title: 'Descubrí la regla', area: 'Flexibilidad cognitiva', desc: 'Clasificar cartas por una regla oculta que cambia sin aviso.',
-    how: 'Elegí debajo de qué carta va la de arriba. Solo te digo si acertaste o no. La regla puede cambiar sin avisar: ¡estate atento/a!', run: runSort,
-    observe: ['Basado en la lógica del test de clasificación de cartas de Wisconsin (versión lúdica simplificada, no equivalente).', 'Los errores perseverativos reflejan dificultad para soltar la regla anterior.'] },
-  { id: 'series', icon: '🧩', title: 'Series lógicas', area: 'Razonamiento', desc: 'Completar series de figuras y números de dificultad creciente.',
-    how: 'Mirá la serie, descubrí la regla y elegí qué viene después.', run: runSeries,
-    observe: ['Preguntarle cómo lo pensó: la verbalización de la estrategia aporta tanto como el acierto.', 'Si resuelve figuras pero no números, explorar el área de cálculo.'] }
-];
-
-/* ---------- resultados ---------- */
-function showResults() {
-  const all = store.get('pp_results', []);
-  const rows = all.slice().reverse().map(r => h('tr', {},
-    h('td', {}, new Date(r.ts).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })),
-    h('td', {}, r.student), h('td', {}, r.game),
-    h('td', {}, r.score + '/' + r.max), h('td', {}, (r.lines || []).map(l => l.join(': ')).join(' · '))));
-  const csv = () => {
-    const q = s => '"' + String(s).replace(/"/g, '""') + '"';
-    const t = ['fecha,alumno,juego,puntaje,maximo,detalle', ...all.map(r => [r.ts, r.student, r.game, r.score, r.max, (r.lines || []).map(l => l.join(': ')).join(' | ')].map(q).join(','))].join('\n');
-    const a = h('a', { href: URL.createObjectURL(new Blob(['﻿' + t], { type: 'text/csv;charset=utf-8' })), download: 'resultados-psicopedagogia.csv' });
-    document.body.append(a); a.click(); a.remove();
-  };
-  show(h('div', {}, h('div', { class: 'bar' }, menuBtn(), h('h2', {}, 'Resultados guardados')),
-    h('div', { class: 'panel' },
-      all.length ? [h('div', { class: 'row', style: 'justify-content:flex-start' },
-        h('button', { class: 'btn', onclick: csv }, '⬇ Descargar CSV'),
-        h('button', { class: 'btn ghost', onclick: () => { if (confirm('¿Borrar todos los resultados de este navegador?')) { store.set('pp_results', []); showResults(); } } }, '🗑 Borrar todo')),
-        h('div', { class: 'scroll' }, h('table', {}, h('thead', {}, h('tr', {}, ['Fecha', 'Alumno/a', 'Juego', 'Puntaje', 'Detalle'].map(x => h('th', {}, x)))), h('tbody', {}, rows)))]
-        : h('p', { class: 'muted' }, 'Todavía no hay resultados. Jugá una partida y aparece acá.'))));
+/* 8. Cálculo mental */
+function calcItem(L) {
+  const t = rnd(L === 1 ? 2 : L === 2 ? 4 : 5); let q, a;
+  if (t === 0) { const x = R(1, L === 1 ? 5 : L === 2 ? 12 : 60), y = R(1, L === 1 ? 5 : L === 2 ? 9 : 40); q = x + ' + ' + y; a = x + y; }
+  else if (t === 1) { const x = R(L === 1 ? 3 : 8, L === 1 ? 10 : L === 2 ? 20 : 99), y = R(1, Math.min(x - 1, L === 1 ? 9 : L === 2 ? 9 : 50)); q = x + ' − ' + y; a = x - y; }
+  else if (t === 2) { const x = R(1, 9), z = x + R(2, L === 2 ? 11 : 40); q = x + ' + ❓ = ' + z; a = z - x; }
+  else if (t === 3) { if (L === 2) { const n = R(1, 10); q = 'El doble de ' + n; a = 2 * n; } else { const x = pick([2, 3, 4, 5, 10]), y = R(2, 10); q = x + ' × ' + y; a = x * y; } }
+  else { const y = pick([2, 3, 4, 5]), a0 = R(2, 10); q = (y * a0) + ' ÷ ' + y; a = a0; }
+  return { q, a };
+}
+function runCalc(root, api) {
+  const seen = new Set(), items = []; while (items.length < 10) { const it = calcItem(api.level); if (!seen.has(it.q)) { seen.add(it.q); items.push(it); } }
+  return runQuiz(root, api, {
+    instr: 'Resolvé de cabeza', items, hint: true,
+    render: it => h('div', { class: 'big', style: 'font-size:3rem' }, it.q + (it.q.includes('❓') ? '' : ' = ❓')),
+    options: it => numOpts(it.a), fbWrong: it => 'El resultado era ' + it.a, failLabel: it => it.q + ' = ' + it.a,
+    notes: () => ['Observar si usa estrategia (conteo con dedos, descomposición, cálculo directo). Diferenciar error de cálculo de error de comprensión de la operación.']
+  });
 }
 
+/* 9. Rimas */
+const RIMAS = [
+  ['gato', 'pato', ['mesa', 'perro', 'sol', 'luz']], ['luna', 'cuna', ['gato', 'mano', 'flor', 'pan']], ['botón', 'camión', ['mesa', 'sapo', 'lápiz', 'nube']],
+  ['pelo', 'cielo', ['mono', 'pato', 'nube', 'sol']], ['mano', 'hermano', ['pie', 'ojo', 'cama', 'luz']], ['rana', 'manzana', ['perro', 'sol', 'mono', 'tren']],
+  ['cama', 'rama', ['mesa', 'pato', 'luna', 'pez']], ['ratón', 'balcón', ['gato', 'queso', 'sol', 'mesa']], ['dedo', 'miedo', ['mano', 'pie', 'ojo', 'luz']],
+  ['rosa', 'mariposa', ['sol', 'nube', 'pan', 'tren']], ['queso', 'beso', ['pan', 'mesa', 'sol', 'luna']], ['luz', 'cruz', ['sol', 'pan', 'flor', 'gato']],
+  ['sol', 'farol', ['luna', 'pan', 'mesa', 'pato']], ['pie', 'café', ['mano', 'ojo', 'dedo', 'luz']], ['casa', 'masa', ['luna', 'pelo', 'tren', 'sol']], ['flor', 'color', ['casa', 'pan', 'dedo', 'luna']]
+];
+function runRimas(root, api) {
+  const items = shuffle(RIMAS).slice(0, 10), nd = api.level === 3 ? 3 : 2;
+  return runQuiz(root, api, {
+    instr: '¿Qué palabra rima? (termina con el mismo sonido)', items, speak: it => it[0],
+    render: it => h('div', {}, h('div', { class: 'big' }, '🎵'), h('h2', {}, 'Rima con «' + it[0] + '»')),
+    options: it => shuffle([it[1], ...shuffle(it[2]).slice(0, nd)]).map(o => ({ label: o, ok: o === it[1] })),
+    fbWrong: it => '«' + it[0] + '» rima con «' + it[1] + '»', failLabel: it => it[0] + ' – ' + it[1],
+    notes: () => ['La detección de rimas es una habilidad fonológica temprana. Si no logra rimar pero sí segmenta sílabas, explorar la discriminación del sonido final.']
+  });
+}
+
+/* 10. Letras espejo b/d/p/q */
+function runEspejo(root, api) {
+  const sets = [['b', 'd'], ['p', 'q'], ['m', 'n', 'u', 'w'], ['b', 'd', 'p', 'q']];
+  const items = Array.from({ length: 12 }, () => {
+    if (api.level === 1) { const s = pick(sets.slice(0, 2)); return { m: pick(s), opts: s }; }
+    if (api.level === 2) { const s = pick([sets[3], sets[3], sets[2]]); return { m: pick(s), opts: s }; }
+    const L = ['b', 'd', 'p', 'q'], m = Array.from({ length: 3 }, () => pick(L)).join(''), o = new Set([m]);
+    while (o.size < 4) { const a = m.split(''); a[rnd(3)] = pick(L); o.add(a.join('')); }
+    return { m, opts: [...o] };
+  });
+  return runQuiz(root, api, {
+    instr: 'Encontrá la que es IGUAL al modelo', items, cat: it => it.m.length > 1 ? 'tríadas' : it.m,
+    render: it => h('div', { class: 'letter' }, it.m),
+    options: it => shuffle(it.opts).map(o => ({ label: h('span', { class: 'optletter' }, o), ok: o === it.m })),
+    fbWrong: it => 'Mirá bien: era «' + it.m + '»', failLabel: it => 'modelo «' + it.m + '»',
+    notes: () => ['Las confusiones b/d/p/q (rotaciones y espejos) son esperables hasta ~7 años; si persisten, explorar percepción visual y orientación espacial. No es por sí solo indicador de dislexia.']
+  });
+}
+
+/* 11. Cancelación de letras: atención visual */
+async function runCancel(root, api) {
+  const cfg = [null, { n: 5, m: 6, t: ['A'], d: ['O', 'T', 'L', 'E', 'F'], time: 60 }, { n: 6, m: 6, t: ['b'], d: ['d', 'p', 'q'], time: 50 }, { n: 7, m: 8, t: ['b', 'd'], d: ['p', 'q', 'h'], time: 40 }][api.level];
+  const total = cfg.n * cfg.m, k = Math.round(total * .3), limit = S.np ? Infinity : cfg.time;
+  const cells = shuffle([...Array.from({ length: k }, () => pick(cfg.t)), ...Array.from({ length: total - k }, () => pick(cfg.d))]);
+  const status = h('div', { class: 'status' }, 'Tocá todas las letras «' + cfg.t.join('» y «') + '»'), tm = h('div', { class: 'timer muted' }, '');
+  const grid = h('div', { class: 'cgrid', style: 'grid-template-columns:repeat(' + cfg.m + ',1fr)' });
+  let hits = 0, wrong = 0, done = false, elapsed = 0;
+  const els = cells.map(c => h('button', { class: 'cell', onclick: e => {
+    if (done) return; const b = e.currentTarget; b.disabled = true;
+    if (cfg.t.includes(c)) { hits++; b.classList.add('right'); sOk(); if (hits === k) done = true; } else { wrong++; b.classList.add('wrong'); sBad(); }
+    status.textContent = 'Encontradas: ' + hits + ' / ' + k;
+  } }, c));
+  els.forEach(e => grid.append(e)); root.append(status, tm, grid);
+  while (!done && elapsed < limit) {
+    if (!api.alive()) return;
+    tm.textContent = limit === Infinity ? '' : '⏱ ' + Math.max(0, Math.ceil(limit - elapsed)) + ' s';
+    await sleep(250); elapsed += .25;
+  }
+  done = true; els.forEach(e => e.disabled = true); if (!api.alive()) return;
+  const omis = k - hits, pct = Math.round(100 * Math.max(0, hits - wrong) / k), notes = [];
+  if (omis > k * .3) notes.push('Muchas omisiones (' + omis + '): posible dificultad en atención sostenida o búsqueda visual.');
+  if (wrong > 3) notes.push('Varios toques equivocados (' + wrong + '): posible impulsividad o dificultad para discriminar letras similares.');
+  if (!notes.length) notes.push('Búsqueda visual eficiente en esta tarea.');
+  api.end({ score: Math.max(0, hits - wrong), max: k, pct, lines: [['Encontradas', hits + '/' + k], ['Omitidas', omis], ['Toques equivocados', wrong], ['Tiempo (s)', Math.round(elapsed)]], notes });
+}
+
+/* 12. Intruso: clasificación semántica */
+const CAT = {
+  animales: ['🐶', '🐱', '🐮', '🐷', '🐴', '🐔'], frutas: ['🍎', '🍌', '🍇', '🍓', '🍉', '🍐'], transportes: ['🚗', '🚌', '🚲', '✈️', '🚂', '🚢'],
+  ropa: ['👕', '👖', '🧦', '🧢', '👗', '🧤'], instrumentos: ['🎸', '🥁', '🎹', '🎺', '🎻'], escuela: ['✏️', '📏', '📖', '✂️', '🖍️'],
+  herramientas: ['🔨', '🔧', '🪚', '🪛'], pelotas: ['⚽', '🏀', '🎾', '🏐'], mar: ['🐟', '🐙', '🐬', '🦀', '🐳'], verduras: ['🥕', '🥦', '🌽', '🥔'], insectos: ['🐝', '🐞', '🦋', '🐜']
+};
+function runIntruso(root, api) {
+  const far = Object.keys(CAT), near = [['frutas', 'verduras'], ['animales', 'insectos'], ['mar', 'animales'], ['pelotas', 'escuela'], ['verduras', 'frutas']];
+  const items = Array.from({ length: 10 }, () => {
+    let a, b; if (api.level === 3) [a, b] = pick(near); else { a = pick(far); do { b = pick(far); } while (b === a || (api.level === 2 && near.some(n => n[0] === a && n[1] === b))); }
+    const grp = shuffle(CAT[a]).slice(0, 3), odd = pick(CAT[b]);
+    return { grp, odd, a, b };
+  });
+  return runQuiz(root, api, {
+    instr: 'Tocá el que NO va con los demás', items, cat: it => it.a,
+    render: it => h('div', { class: 'big' }, '🤔'),
+    options: it => shuffle([...it.grp.map(e => ({ label: e, ok: false, cls: 'emo' })), { label: it.odd, ok: true, cls: 'emo' }]),
+    fbRight: it => '¡Sí! Los otros son ' + it.a, fbWrong: it => 'Los otros tres son ' + it.a, failLabel: it => it.grp.join('') + ' + ' + it.odd + ' (' + it.a + ')',
+    notes: () => ['Preguntar «¿por qué no va?»: la categoría que nombra (perceptual vs. semántica) informa sobre el nivel de abstracción del lenguaje.']
+  });
+}
+
+/* 13. Palabra o no palabra: decisión léxica */
+const REAL = ['mesa', 'sol', 'pelota', 'ventana', 'camisa', 'jirafa', 'cuaderno', 'escuela', 'amigo', 'naranja', 'familia', 'zapato', 'pájaro', 'cocina', 'ladrillo', 'tormenta', 'montaña', 'espejo', 'semáforo', 'biblioteca', 'mariposa', 'paraguas', 'ventilador', 'calendario', 'termómetro', 'libro', 'perro', 'nube', 'tren', 'puerta'];
+const PSEUDO = ['torpa', 'merifo', 'casilo', 'pelufa', 'brono', 'dalete', 'sumapa', 'lunido', 'gatiro', 'manesa', 'corbilo', 'plopa', 'crimo', 'tavero', 'binaza', 'molsa', 'rotena', 'fregola', 'campiro', 'nubeto', 'pitaro', 'zonela', 'bapuco', 'relmo', 'vensana', 'mirafa', 'esquiloda', 'tormeño', 'bibliorena', 'termolito'];
+function runPseudo(root, api) {
+  const lim = api.level === 1 ? 6 : api.level === 2 ? 9 : 99, min = api.level === 3 ? 6 : 0;
+  const f = w => w.length <= lim && w.length >= min;
+  const items = shuffle([...shuffle(REAL.filter(f)).slice(0, 7).map(w => ({ w, real: true })), ...shuffle(PSEUDO.filter(f)).slice(0, 7).map(w => ({ w, real: false }))]);
+  return runQuiz(root, api, {
+    instr: '¿Esta palabra existe en español?', items, speak: it => it.w,
+    render: it => h('div', { class: 'letter', style: 'font-size:3.2rem;letter-spacing:.05em' }, it.w),
+    options: it => [{ label: '✅ Existe', ok: it.real }, { label: '❌ No existe', ok: !it.real }],
+    fbWrong: it => it.real ? '«' + it.w + '» sí existe' : '«' + it.w + '» es inventada', failLabel: it => it.w + (it.real ? ' (existe)' : ' (inventada)'),
+    notes: () => ['Aceptar pseudopalabras como reales sugiere lectura por reconocimiento global; rechazar palabras reales poco frecuentes puede indicar vocabulario limitado. Relacionar con la ruta léxica/fonológica de lectura.']
+  });
+}
+
+/* 14. Seguí las consignas */
+async function runConsignas(root, api) {
+  const steps = [[1, 1, 1, 1, 2, 2, 2, 2], [2, 2, 2, 2, 3, 3, 3, 3], [3, 3, 3, 3, 4, 4, 4, 4]][api.level - 1], N = steps.length, setP = progress(root);
+  const instr = h('div', { class: 'status', style: 'font-size:1.25rem', 'aria-live': 'polite' }), board = h('div', { class: 'row' }), fb = h('div', { class: 'fb', 'aria-live': 'polite' });
+  root.append(instr, board, fb);
+  let ok = 0, ordErr = 0, elemErr = 0, pending = null; const fails = [];
+  const waitTaps = exp => new Promise(res => { pending = { exp, arr: [], res }; });
+  const tap = id => {
+    if (!pending) return; const p = pending; p.arr.push(id);
+    if (id !== p.exp[p.arr.length - 1]) { pending = null; p.res(p.exp.includes(id) ? 'orden' : 'elemento'); }
+    else if (p.arr.length === p.exp.length) { pending = null; p.res('ok'); }
+  };
+  for (let i = 0; i < N; i++) {
+    if (!api.alive()) return; setP(i, N); fb.textContent = ''; fb.className = 'fb';
+    const n = steps[i], all = shuffle([...Array(16).keys()]), exp = all.slice(0, n), brd = shuffle(all.slice(0, api.level === 3 ? 8 : 6));
+    const txt = 'Tocá ' + exp.map((id, k) => (k === 0 ? '' : k === n - 1 ? (n > 2 ? ' y por último ' : ' y después ') : ', después ') + desc(id >> 2, id & 3)).join('') + '.';
+    instr.textContent = txt; say(txt);
+    board.replaceChildren(...brd.map(id => h('button', { class: 'ref', 'aria-label': desc(id >> 2, id & 3), onclick: () => tap(id) }, h('span', { class: 'shape', style: 'color:' + CO[id & 3] }, SH[id >> 2]))));
+    if (api.level === 3) { sleep(5000 + n * 800).then(() => { if (pending && api.alive()) instr.textContent = '🙈 Consigna oculta: ¡recordala!'; }); }
+    const r = await waitTaps(exp); if (!api.alive()) return;
+    instr.textContent = txt;
+    if (r === 'ok') { ok++; fb.textContent = '🦉 ' + pick(PRAISE); fb.className = 'fb good'; sOk(); }
+    else { if (r === 'orden') ordErr++; else elemErr++; fails.push(txt); fb.textContent = '🦉 ' + (r === 'orden' ? 'Tocaste bien, pero en otro orden' : 'Ese elemento no estaba en la consigna'); fb.className = 'fb bad'; sBad(); }
+    await sleep(1500);
+  }
+  api.end({ score: ok, max: N, review: fails, lines: [['Aciertos', ok], ['Errores de orden', ordErr], ['Elemento equivocado', elemErr]],
+    notes: [ordErr > elemErr ? 'Predominan errores de orden: dificultad para sostener la secuencia (memoria de trabajo verbal / secuenciación).' : elemErr > 0 ? 'Predominan elementos equivocados: revisar comprensión de adjetivos (color/forma) o atención a la consigna.' : 'Buena comprensión y retención de consignas en esta tarea.',
+      'Útil como proxy de seguimiento de instrucciones en el aula.'] });
+}
+
+/* ================= catálogo ================= */
+const GAMES = [
+  { id: 'simon', icon: '🎵', title: 'Secuencia de colores', area: 'Memoria de trabajo', ax: 'Mem. trabajo', desc: 'Repetir secuencias cada vez más largas, directo o al revés.', how: 'Mirá cómo se iluminan los botones y repetí la secuencia. Tenés 3 vidas.',
+    options: [{ label: 'Directo (repetir igual)', value: 'directo' }, { label: 'Inverso (repetir al revés)', value: 'inverso' }], optionsLabel: 'Modo', run: runSimon,
+    observe: ['Span típico en primaria: 4–6 en directo; el inverso suele ser 1–2 menos.', 'Anotar si los errores son de orden o de omisión.'] },
+  { id: 'gonogo', icon: '🎯', title: 'Estrella y bomba', area: 'Atención e inhibición', ax: 'Atención', desc: 'Tocar la estrella y aguantarse con la bomba (Go/No-Go).', how: 'Tocá el botón (o barra espaciadora) solo con la estrella ⭐; con la bomba 💣 no. Hay una práctica y después dura 1 minuto aprox.', run: runGoNoGo,
+    observe: ['Muestra breve y orientativa: no reemplaza pruebas de atención estandarizadas.', 'Observar la conducta durante la tarea: movimiento, mirada, consignas repetidas.'] },
+  { id: 'syl', icon: '👏', title: 'Contá las sílabas', area: 'Conciencia fonológica', ax: 'Fonología', desc: 'Segmentar palabras en sílabas, de 1 a 5 golpes de voz.', how: 'Mirá el dibujo, escuchá la palabra y elegí cuántas sílabas tiene. Podés aplaudir mientras la decís.', run: runSyllables, observe: ['Si falla en palabras cortas, explorar discriminación auditiva.'] },
+  { id: 'spell', icon: '✏️', title: 'Completá la palabra', area: 'Lectoescritura', ax: 'Lectoescritura', desc: 'Ortografía arbitraria: b/v, ll/y, g/j, c/s/z, h, q/c.', how: 'Mirá el dibujo, escuchá la palabra y elegí la letra que falta. Podés pedir una 💡 pista.', run: runSpelling, observe: ['Comparar con la escritura espontánea del alumno/a.'] },
+  { id: 'memo', icon: '🃏', title: 'Memotest', area: 'Memoria visoespacial', ax: 'Mem. visual', desc: 'Encontrar parejas recordando su ubicación (3 temas).', how: 'Da vuelta dos cartas por vez. Si son iguales, quedan a la vista.',
+    options: [{ label: 'Animales', value: 'animales' }, { label: 'Frutas', value: 'frutas' }, { label: 'Transportes', value: 'transportes' }], optionsLabel: 'Tema', run: runMemotest, observe: ['Observar si usa una estrategia (recorrer en orden) o elige al azar.'] },
+  { id: 'sort', icon: '🔀', title: 'Descubrí la regla', area: 'Flexibilidad cognitiva', ax: 'Flexibilidad', desc: 'Clasificar cartas por una regla oculta que cambia sin aviso.', how: 'Elegí debajo de qué carta va la de arriba. Solo te digo si acertaste. La regla puede cambiar sin avisar: ¡estate atento/a!', run: runSort, observe: ['Los errores perseverativos reflejan dificultad para soltar la regla anterior.'] },
+  { id: 'series', icon: '🧩', title: 'Series lógicas', area: 'Razonamiento', ax: 'Razonamiento', desc: 'Completar series de figuras y números.', how: 'Mirá la serie, descubrí la regla y elegí qué viene después. Hay 💡 pistas.', run: runSeries, observe: ['Preguntarle cómo lo pensó: la verbalización de la estrategia es información valiosa.'] },
+  { id: 'calc', icon: '🔢', title: 'Cálculo mental', area: 'Sentido numérico', ax: 'Cálculo', desc: 'Sumas, restas, dobles, tablas y divisiones según el nivel.', how: 'Resolvé de cabeza y elegí el resultado. Hay 💡 pistas.', run: runCalc, observe: ['Diferenciar fallas de cálculo de fallas de comprensión de la operación.'] },
+  { id: 'rima', icon: '🎶', title: 'Buscá la rima', area: 'Conciencia fonológica', ax: 'Fonología', desc: 'Elegir la palabra que rima con la dada.', how: 'Escuchá la palabra y elegí la que termina con el mismo sonido.', run: runRimas, observe: ['Sirve como complemento del juego de sílabas.'] },
+  { id: 'espejo', icon: '🪞', title: 'Letras parecidas', area: 'Percepción visual', ax: 'Lectoescritura', desc: 'Discriminar b/d/p/q y m/n/u/w.', how: 'Mirá el modelo y tocá la que es exactamente igual.', run: runEspejo, observe: ['Complementar con tareas de lateralidad y orientación espacial.'] },
+  { id: 'cancel', icon: '🔍', title: 'Buscá las letras', area: 'Atención visual', ax: 'Atención', desc: 'Encontrar letras objetivo entre distractores, contra reloj.', how: 'Tocá todas las letras que te piden. Si tocás una equivocada, se marca en rojo.', run: runCancel, observe: ['Observar el patrón de búsqueda: ordenado (filas) o caótico.'] },
+  { id: 'intruso', icon: '🤔', title: 'El intruso', area: 'Lenguaje y categorización', ax: 'Lenguaje', desc: 'Encontrar el elemento que no pertenece a la categoría.', how: 'Hay cuatro dibujos: tres van juntos y uno no. ¡Encontralo!', run: runIntruso, observe: ['Pedir que explique el criterio: refleja abstracción y vocabulario.'] },
+  { id: 'pseudo', icon: '📝', title: 'Palabra o no palabra', area: 'Lectura', ax: 'Lectoescritura', desc: 'Decidir si una palabra existe o es inventada.', how: 'Leé la palabra (o escuchala) y decí si existe en español o es inventada.', run: runPseudo, observe: ['Si lee todo como palabra real, puede estar usando reconocimiento global sin decodificar.'] },
+  { id: 'consig', icon: '📣', title: 'Seguí las consignas', area: 'Comprensión y memoria', ax: 'Mem. trabajo', desc: 'Tocar formas siguiendo órdenes de 1 a 4 pasos.', how: 'Leé (o escuchá) la orden y tocá las formas en el orden indicado. En Difícil la orden se esconde.', run: runConsignas, observe: ['Relacionar con el seguimiento de instrucciones en el aula.'] }
+];
+const AXES = [...new Set(GAMES.map(g => g.ax))];
+
+/* ================= pantallas ================= */
+const lastOf = (pid, gid) => results.filter(r => r.pid === pid && r.gid === gid).slice(-1)[0];
+const semOf = pct => pct >= 80 ? ['🟢 Logrado', '#1f9d62'] : pct >= 50 ? ['🟡 En proceso', '#c98a00'] : ['🔴 A reforzar', '#d6403f'];
+let filterAx = 'Todas';
+function recommended(p) {
+  const last = GAMES.map((g, i) => { const l = lastOf(p.id, g.id); return { g, t: l ? l.ts : 0, i }; });
+  const day = Math.floor(Date.now() / 864e5); const min = Math.min(...last.map(x => x.t));
+  const c = last.filter(x => x.t === min); return c[day % c.length];
+}
+function showHub() {
+  session++; playing = false; setNav('hub'); rerender = showHub;
+  const p = cur(), rec = recommended(p);
+  const chips = h('div', { class: 'chips' }, ['Todas', ...AXES].map(a => h('button', { class: 'chip' + (a === filterAx ? ' on' : ''), onclick: () => { filterAx = a; showHub(); } }, a)));
+  const grid = h('div', { class: 'grid' }, GAMES.filter(g => filterAx === 'Todas' || g.ax === filterAx).map(g => {
+    const l = lastOf(p.id, g.id);
+    return h('button', { class: 'card', onclick: () => openGame(g, null) },
+      l ? h('span', { class: 'badge', style: 'color:' + semOf(l.pct)[1] }, '● ' + l.pct + '%') : null,
+      h('div', { class: 'ic' }, g.icon), h('h2', {}, g.title), h('span', { class: 'tag' }, g.area), h('p', { class: 'muted' }, g.desc));
+  }));
+  const ago = rec.t ? Math.max(1, Math.round((Date.now() - rec.t) / 864e5)) : 0;
+  show(h('div', {},
+    h('div', { class: 'reco' }, h('div', {}, h('b', {}, '🎯 Recomendado hoy para ' + p.name + ': '), rec.g.icon + ' ' + rec.g.title, h('span', { class: 'muted' }, rec.t ? ' (última vez hace ' + ago + ' día' + (ago > 1 ? 's' : '') + ')' : ' (todavía no lo jugó)')),
+      h('button', { class: 'btn', onclick: () => openGame(rec.g, null) }, 'Jugar')),
+    chips, grid));
+}
+
+function openGame(g, circuit) {
+  const s = ++session; playing = false; setPause(false);
+  const p = cur(), sug = levelByAge(p.age); let lvl = sug, chosen = g.options ? g.options[0].value : null;
+  const body = h('div', { class: 'stage' });
+  const lv = h('div', { class: 'lv', role: 'radiogroup', 'aria-label': 'Nivel' }, [1, 2, 3].map(n => h('label', {}, h('input', { type: 'radio', name: 'lv', checked: n === sug, onchange: () => lvl = n }), LV[n] + (n === sug ? ' (sugerido)' : ''))));
+  const opts = g.options ? h('fieldset', {}, h('legend', {}, g.optionsLabel), g.options.map((o, i) => h('label', {}, h('input', { type: 'radio', name: 'opt', checked: i === 0, onchange: () => chosen = o.value }), ' ' + o.label))) : null;
+  body.append(h('div', { class: 'big' }, g.icon), circuit ? h('p', { class: 'muted' }, '🎲 Circuito · juego ' + (circuit.i + 1) + ' de ' + circuit.queue.length) : null, h('p', {}, g.how), h('p', { class: 'muted' }, 'Nivel:'), lv, opts,
+    h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => startGame(g, lvl, chosen, circuit) }, '▶ Empezar'), h('button', { class: 'btn ghost', onclick: () => { if (guard()) showHub(); } }, circuit ? 'Salir del circuito' : 'Volver')));
+  say(g.how);
+  show(h('div', {}, h('div', { class: 'bar' }, h('h2', {}, g.title)), h('div', { class: 'panel' }, body)));
+}
+
+function startGame(g, level, opt, circuit) {
+  const s = ++session; playing = true; setPause(false);
+  const api = { alive: () => s === session, level, end: r => { if (s === session) finish(g, r, level, circuit); } };
+  const body = h('div', { class: 'stage' });
+  show(h('div', {}, h('div', { class: 'bar' }, h('h2', {}, g.title + ' · ' + LV[level]), h('button', { class: 'btn ghost sm', onclick: () => setPause(true), 'aria-label': 'Pausa' }, '⏸ Pausa (P)')), h('div', { class: 'panel' }, body)));
+  g.run(body, api, opt);
+}
+
+function finish(g, r, level, circuit) {
+  playing = false; const p = cur();
+  const pct = r.pct != null ? r.pct : (r.max ? Math.round(100 * r.score / r.max) : 0);
+  const prev = lastOf(p.id, g.id);
+  const rec = { id: uid(), ts: Date.now(), pid: p.id, gid: g.id, game: g.title, area: g.area, level, score: r.score, max: r.max, pct, headline: r.headline || (r.score + ' de ' + r.max), lines: r.lines, rt: r.rt || null, obs: '' };
+  results.push(rec); saveR();
+  const newAch = checkAch(p.id); newAch.forEach(a => toast('🏆 Logro desbloqueado: ' + a.t));
+  if (pct >= 85) confetti();
+  const stars = pct >= 85 ? '🌟🌟🌟' : pct >= 60 ? '🌟🌟' : '🌟', [semT, semC] = semOf(pct);
+  let cmp = null;
+  if (prev) { const d = pct - prev.pct; cmp = (d > 0 ? '▲ +' + d : d < 0 ? '▼ ' + d : '＝ igual') + ' puntos respecto de la vez anterior (' + prev.pct + '%)' + (prev.level !== level ? ' · nivel distinto' : ''); }
+  const notes = [...(r.notes || []), ...g.observe];
+  const obs = h('textarea', { rows: 2, placeholder: 'Observaciones del profesional (opcional): conducta, estrategias, comentarios…', oninput: e => { rec.obs = e.target.value; saveR(); } });
+  let nextBtns;
+  if (circuit) {
+    circuit.recs.push(rec); const last = circuit.i + 1 >= circuit.queue.length;
+    if (last) { const u = unlock(p.id, 'circuit'); if (u) toast('🏆 Logro desbloqueado: ' + u.t); }
+    nextBtns = last ? [h('button', { class: 'btn', onclick: () => circuitSummary(circuit) }, '🏁 Ver resumen del circuito')]
+      : [h('button', { class: 'btn', onclick: () => openGame(GAMES.find(x => x.id === circuit.queue[circuit.i + 1]), { ...circuit, i: circuit.i + 1 }) }, 'Siguiente juego →'), h('button', { class: 'btn ghost', onclick: () => { if (guard()) showHub(); } }, 'Terminar circuito')];
+  } else nextBtns = [h('button', { class: 'btn', onclick: () => openGame(g, null) }, '🔁 Jugar de nuevo'), h('button', { class: 'btn ghost', onclick: showHub }, 'Otro juego'), h('button', { class: 'btn ghost', onclick: showProgress }, '📈 Ver progreso')];
+  say(pct >= 60 ? '¡Muy bien!' : '¡Buen intento!');
+  show(h('div', {}, h('div', { class: 'bar' }, h('h2', {}, g.title + ' · resultado')),
+    h('div', { class: 'panel stage' }, h('div', { class: 'big' }, stars), h('h2', {}, rec.headline + (r.headline ? '' : ' (' + pct + '%)')),
+      r.nosem ? null : h('p', {}, h('span', { class: 'sem', style: 'color:' + semC + ';border-color:' + semC }, semT), h('small', { class: 'muted' }, ' referencia interna, no normativa')),
+      cmp ? h('p', { class: 'muted' }, cmp) : null,
+      h('div', { class: 'stats' }, r.lines.map(([k, v]) => h('div', { class: 'stat' }, h('b', {}, String(v)), k))),
+      r.review && r.review.length ? h('div', { style: 'text-align:left' }, h('h3', {}, '📚 Para repasar'), h('ul', { class: 'notes' }, r.review.map(x => h('li', {}, x)))) : null,
+      h('div', { style: 'text-align:left' }, h('h3', {}, 'Qué observar'), h('ul', { class: 'notes' }, notes.map(n => h('li', {}, n))), h('h3', {}, 'Notas'), obs),
+      h('div', { class: 'row' }, nextBtns))));
+}
+
+/* ----- circuito ----- */
+function startCircuit() {
+  session++; playing = false; setNav('circuit'); rerender = startCircuit;
+  const seen = new Set(), queue = []; shuffle(GAMES).forEach(g => { if (!seen.has(g.ax) && queue.length < 5) { seen.add(g.ax); queue.push(g.id); } });
+  show(h('div', {}, h('div', { class: 'panel stage' }, h('div', { class: 'big' }, '🎲'), h('h2', {}, 'Circuito de 5 juegos'),
+    h('p', {}, 'Una batería corta (≈10–15 min) que recorre áreas distintas: ' + queue.map(id => GAMES.find(g => g.id === id).title).join(' · ') + '.'),
+    h('p', { class: 'muted' }, 'Se usa el nivel sugerido por la edad de ' + cur().name + ' y podés cambiarlo en cada juego.'),
+    h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => openGame(GAMES.find(g => g.id === queue[0]), { queue, i: 0, recs: [] }) }, '▶ Empezar circuito'), h('button', { class: 'btn ghost', onclick: startCircuit }, '🔀 Otro sorteo')))));
+}
+function circuitSummary(c) {
+  const avg = Math.round(mean(c.recs.map(r => r.pct)));
+  show(h('div', {}, h('div', { class: 'panel stage' }, h('div', { class: 'big' }, '🏁'), h('h2', {}, 'Circuito completo · promedio ' + avg + '%'), confetti(),
+    h('div', { class: 'scroll' }, h('table', {}, h('thead', {}, h('tr', {}, ['Juego', 'Área', 'Nivel', 'Resultado'].map(x => h('th', {}, x)))), h('tbody', {}, c.recs.map(r => h('tr', {}, h('td', {}, r.game), h('td', {}, r.area), h('td', {}, LV[r.level]), h('td', {}, r.headline + ' · ' + r.pct + '%')))))),
+    h('div', { class: 'row' }, h('button', { class: 'btn', onclick: showProgress }, '📈 Ver progreso'), h('button', { class: 'btn ghost', onclick: showHub }, 'Menú')))));
+}
+
+/* ----- gráficos SVG ----- */
+function radar(vals) {
+  const n = vals.length, Rr = 100, cx = 150, cy = 135, pt = (i, r) => { const a = -Math.PI / 2 + 2 * Math.PI * i / n; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; };
+  const poly = f => vals.map((v, i) => pt(i, Rr * f(v)).map(x => x.toFixed(1)).join(',')).join(' ');
+  let s = '<svg viewBox="-30 0 360 280" role="img" aria-label="Perfil de rendimiento por área" style="width:100%;max-width:420px">';
+  [.25, .5, .75, 1].forEach(f => s += '<polygon points="' + poly(() => f) + '" fill="none" stroke="var(--line)"/>');
+  vals.forEach((v, i) => { const [x, y] = pt(i, Rr), [lx, ly] = pt(i, Rr + 16); s += '<line x1="' + cx + '" y1="' + cy + '" x2="' + x.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="var(--line)"/><text x="' + lx.toFixed(1) + '" y="' + (ly + 4).toFixed(1) + '" font-size="10.5" fill="var(--ink)" text-anchor="' + (Math.abs(lx - cx) < 8 ? 'middle' : lx > cx ? 'start' : 'end') + '">' + v.l + (v.v == null ? ' –' : '') + '</text>'; });
+  s += '<polygon points="' + poly(v => (v.v || 0) / 100) + '" fill="color-mix(in srgb,var(--brand) 30%,transparent)" stroke="var(--brand)" stroke-width="2"/></svg>';
+  return h('div', { html: s });
+}
+function spark(vals) {
+  if (!vals.length) return '';
+  const w = 100, hh = 26, pts = vals.map((v, i) => (vals.length === 1 ? w / 2 : i * w / (vals.length - 1)).toFixed(1) + ',' + (hh - 2 - (hh - 4) * v / 100).toFixed(1)).join(' ');
+  return h('span', { html: '<svg width="100" height="26" viewBox="0 0 100 26" aria-hidden="true"><polyline points="' + pts + '" fill="none" stroke="var(--brand)" stroke-width="2"/></svg>' });
+}
+
+/* ----- progreso e informe ----- */
+function csvOf(list) {
+  const q = s => '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"', pn = id => (profiles.find(p => p.id === id) || { name: '?', age: '' });
+  return ['fecha,alumno,edad,juego,area,nivel,puntaje,maximo,porcentaje,detalle,observaciones', ...list.map(r => [new Date(r.ts).toISOString(), pn(r.pid).name, pn(r.pid).age, r.game, r.area, LV[r.level], r.score, r.max, r.pct, (r.lines || []).map(l => l.join(': ')).join(' | '), r.obs].map(q).join(','))].join('\n');
+}
+function showProgress() {
+  session++; playing = false; setNav('progress'); rerender = showProgress;
+  const p = cur(), rs = resOf(p.id), got = achs[p.id] || {};
+  const days = new Set(rs.map(r => dayKey(r.ts))).size;
+  const rv = AXES.map(ax => { const ids = GAMES.filter(g => g.ax === ax).map(g => g.id), l3 = rs.filter(r => ids.includes(r.gid)).slice(-3); return { l: ax, v: l3.length ? Math.round(mean(l3.map(r => r.pct))) : null }; });
+  const rows = GAMES.map(g => { const l = rs.filter(r => r.gid === g.id); if (!l.length) return null; const last = l[l.length - 1]; return h('tr', {}, h('td', {}, g.icon + ' ' + g.title), h('td', {}, last.pct + '%'), h('td', {}, Math.max(...l.map(r => r.pct)) + '%'), h('td', {}, String(l.length)), h('td', {}, spark(l.slice(-10).map(r => r.pct)))); }).filter(Boolean);
+  const hist = rs.slice(-30).reverse().map(r => h('tr', {}, h('td', {}, new Date(r.ts).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })), h('td', {}, r.game), h('td', {}, LV[r.level]), h('td', {}, r.headline + ' · ' + r.pct + '%'), h('td', {}, r.obs || '')));
+  show(h('div', {},
+    h('div', { class: 'printonly' }, h('h2', {}, 'Informe de juegos psicopedagógicos'), h('p', {}, 'Alumno/a: ' + p.name + ' · Edad: ' + p.age + ' · Fecha: ' + new Date().toLocaleDateString('es-AR') + ' · Material lúdico orientativo, no es un test estandarizado.')),
+    h('div', { class: 'bar noprint' }, h('h2', {}, '📈 Progreso de ' + p.name), h('div', { class: 'tools' },
+      h('button', { class: 'btn sm', onclick: () => window.print() }, '🖨 Imprimir informe'),
+      h('button', { class: 'btn ghost sm', onclick: () => download('resultados-' + p.name.replace(/\W+/g, '_') + '.csv', 'text/csv', csvOf(rs)) }, '⬇ CSV'),
+      h('button', { class: 'btn ghost sm', onclick: () => { if (confirm('¿Borrar los resultados de ' + p.name + '?')) { results = results.filter(r => r.pid !== p.id); delete achs[p.id]; saveR(); saveA(); showProgress(); } } }, '🗑 Borrar datos'))),
+    !rs.length ? h('div', { class: 'panel' }, h('p', { class: 'muted' }, 'Todavía no hay partidas de ' + p.name + '. Jugá algo y el progreso aparece acá.')) : h('div', {},
+      h('div', { class: 'stats' }, [['Partidas', rs.length], ['Días jugados', days], ['Racha (días)', streak(p.id)], ['Logros', Object.keys(got).length + '/' + ACH.length]].map(([k, v]) => h('div', { class: 'stat' }, h('b', {}, String(v)), k))),
+      h('div', { class: 'two' },
+        h('div', { class: 'panel stage' }, h('h3', {}, 'Perfil por área'), radar(rv), h('small', { class: 'muted' }, 'Promedio de las últimas 3 partidas por área. Refleja el rendimiento en estos juegos, no es un baremo.')),
+        h('div', { class: 'panel' }, h('h3', {}, 'Evolución por juego'), h('div', { class: 'scroll' }, h('table', {}, h('thead', {}, h('tr', {}, ['Juego', 'Última', 'Mejor', 'Veces', 'Últimas 10'].map(x => h('th', {}, x)))), h('tbody', {}, rows))))),
+      h('div', { class: 'panel' }, h('h3', {}, '🏆 Logros'), ACH.map(a => h('span', { class: 'ach' + (got[a.id] ? '' : ' off') }, a.t))),
+      h('div', { class: 'panel' }, h('h3', {}, 'Historial (últimas 30)'), h('div', { class: 'scroll' }, h('table', {}, h('thead', {}, h('tr', {}, ['Fecha', 'Juego', 'Nivel', 'Resultado', 'Notas'].map(x => h('th', {}, x)))), h('tbody', {}, hist)))))));
+}
+
+/* ----- ajustes ----- */
+function showSettings() {
+  session++; playing = false; setNav('settings'); rerender = showSettings;
+  const tg = (label, key, after) => h('label', { style: 'display:block;padding:4px 0' }, h('input', { type: 'checkbox', checked: !!S[key], onchange: e => { S[key] = e.target.checked; applySettings(); after && after(); } }), ' ' + label);
+  const fileIn = h('input', { type: 'file', accept: '.json,application/json', style: 'display:none', onchange: e => {
+    const f = e.target.files[0]; if (!f) return; const fr = new FileReader();
+    fr.onload = () => { try {
+      const d = JSON.parse(fr.result); if (!Array.isArray(d.profiles) || !Array.isArray(d.results)) throw 0;
+      const pids = new Set(profiles.map(p => p.id)), rids = new Set(results.map(r => r.id));
+      d.profiles.forEach(p => { if (p && p.id && !pids.has(p.id)) profiles.push(p); }); d.results.forEach(r => { if (r && r.id && !rids.has(r.id)) results.push(r); });
+      Object.entries(d.ach || {}).forEach(([k, v]) => achs[k] = { ...v, ...(achs[k] || {}) });
+      saveP(); saveR(); saveA(); paintProfiles(); toast('Copia importada (se combinó con lo existente)'); showSettings();
+    } catch (err) { alert('El archivo no es una copia válida.'); } };
+    fr.readAsText(f);
+  } });
+  show(h('div', {}, h('h2', {}, '⚙️ Ajustes'), h('div', { class: 'two' },
+    h('div', { class: 'panel' }, h('h3', {}, 'Accesibilidad y apariencia'),
+      h('label', {}, 'Tema ', h('select', { onchange: e => { S.theme = e.target.value; applySettings(); } }, [['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Oscuro']].map(([v, l]) => h('option', { value: v, selected: S.theme === v }, l)))),
+      h('div', { class: 'row', style: 'justify-content:flex-start' }, 'Tamaño de letra:', h('button', { class: 'btn ghost sm', onclick: () => { S.fs = Math.max(.8, +(S.fs - .1).toFixed(1)); applySettings(); } }, 'A−'), h('button', { class: 'btn ghost sm', onclick: () => { S.fs = Math.min(1.6, +(S.fs + .1).toFixed(1)); applySettings(); } }, 'A+')),
+      tg('Lectura fácil (letra espaciada, fondo crema; útil en dislexia)', 'easy'), tg('Alto contraste', 'contrast'), tg('Reducir movimiento y animaciones', 'reduce'),
+      tg('Modo sin presión (oculta cronómetros, vidas y contadores)', 'np'), tg('Leer consignas y palabras en voz alta', 'voice'),
+      h('label', {}, 'Volumen ', h('input', { type: 'range', min: 0, max: 1, step: .1, value: S.volume, oninput: e => { S.volume = +e.target.value; applySettings(); beep(660, .1); } }))),
+    h('div', { class: 'panel' }, h('h3', {}, 'Datos'),
+      h('p', { class: 'muted' }, 'Todo se guarda solo en este navegador. Hacé copias de seguridad si es información que querés conservar.'),
+      h('div', { class: 'row', style: 'justify-content:flex-start' },
+        h('button', { class: 'btn sm', onclick: () => download('copia-psicopedagogia.json', 'application/json', JSON.stringify({ v: 2, profiles, results, ach: achs })) }, '💾 Exportar copia (JSON)'),
+        h('button', { class: 'btn ghost sm', onclick: () => fileIn.click() }, '📂 Importar copia'),
+        h('button', { class: 'btn ghost sm', onclick: () => download('resultados-todos.csv', 'text/csv', csvOf(results)) }, '⬇ CSV de todos')), fileIn,
+      h('h3', {}, 'Alumnos/as'), h('ul', {}, profiles.map(p => h('li', {}, p.name + ' (' + p.age + ') — ' + resOf(p.id).length + ' partidas '))),
+      h('button', { class: 'btn danger sm', onclick: () => { if (confirm('¿Borrar TODOS los datos (alumnos, resultados, ajustes)?')) { ['pp2_profiles', 'pp2_cur', 'pp2_results', 'pp2_ach', 'pp2_settings', 'pp2_seen'].forEach(k => localStorage.removeItem(k)); location.reload(); } } }, '🗑 Borrar todo')))));
+}
+
+function showHelp() {
+  session++; playing = false; setNav('help'); rerender = showHelp;
+  show(h('div', {}, h('h2', {}, '❓ Ayuda'), h('div', { class: 'panel' },
+    h('h3', {}, 'Cómo usarlo'), h('ol', {}, h('li', {}, 'Creá un alumno/a (➕) con su edad: el nivel inicial se sugiere automáticamente.'), h('li', {}, 'Elegí un juego, el nivel (Fácil/Medio/Difícil) y jugá. Podés pausar con P o Esc.'), h('li', {}, 'Al terminar vas a ver qué observar y podés anotar notas.'), h('li', {}, 'En 📈 Progreso: perfil por área, evolución, logros e informe imprimible.'), h('li', {}, '🎲 Circuito arma una batería de 5 juegos de áreas distintas.')),
+    h('h3', {}, 'Atajos'), h('ul', {}, h('li', {}, h('b', {}, '1–9'), ': elegir la opción número N en juegos de elección'), h('li', {}, h('b', {}, 'Barra espaciadora'), ': tocar en «Estrella y bomba»'), h('li', {}, h('b', {}, 'P / Esc'), ': pausa')),
+    h('h3', {}, 'Importante'), h('ul', {}, h('li', {}, 'No son tests estandarizados ni tienen baremos: el semáforo es una referencia interna orientativa.'), h('li', {}, 'Un resultado bajo no es un diagnóstico; sirve para orientar la observación y la intervención.'), h('li', {}, 'Los datos no salen de este dispositivo.')))));
+}
+
+/* ================= inicio ================= */
+paintProfiles();
 showHub();
+if (!store.get('pp2_seen', false)) {
+  store.set('pp2_seen', true);
+  const p = profiles[0], name = h('input', { type: 'text', value: '', maxlength: 40, placeholder: 'Nombre del alumno/a' }), age = h('input', { type: 'number', min: 4, max: 17, value: 8 });
+  const close = modal(h('div', {}, h('h2', {}, '¡Bienvenido/a! 🧠'), h('p', {}, '14 juegos para observar atención, memoria, lenguaje, lectoescritura, cálculo y razonamiento. Empecemos creando el perfil del primer alumno/a.'),
+    h('label', {}, 'Nombre'), name, h('label', {}, 'Edad (años)'), age,
+    h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { p.name = name.value.trim() || 'Alumno/a 1'; p.age = Math.min(17, Math.max(4, +age.value || 8)); saveP(); paintProfiles(); close(); showHub(); } }, 'Empezar'))));
+}
 </script>
 </body>
 </html>
