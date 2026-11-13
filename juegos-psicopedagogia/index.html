@@ -165,7 +165,7 @@ a.btn{text-decoration:none;display:inline-block}
 .dots span{display:inline-block}
 .situ p.lead{max-width:34ch;margin-inline:auto}
 .passage{text-align:left;font-size:1.15rem;background:var(--soft);padding:14px 16px;border-radius:var(--r);margin:8px 0;max-width:60ch;margin-inline:auto}
-.stroop{font-family:var(--font-d);font-weight:700;font-size:3.4rem;letter-spacing:.05em}
+.stroop{font-family:var(--font-d);font-weight:700;font-size:clamp(1.9rem,11.5vw,3.4rem);letter-spacing:.04em;overflow-wrap:anywhere}
 .swatch{width:120px;height:120px;border-radius:24px;margin:10px auto;border:3px solid var(--ink)}
 .dot{display:inline-block;width:16px;height:16px;border-radius:50%;margin-right:8px;vertical-align:-2px;border:2px solid var(--ink)}
 .money{display:inline-grid;place-items:center;font-family:var(--font-d);font-weight:700;font-size:1.2rem;border:3px solid var(--ink);background:color-mix(in srgb,var(--sun) 55%,var(--panel));color:var(--ink)}
@@ -247,6 +247,8 @@ button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .opt.demo,.tok.demo{border-color:var(--sun);animation:pulse 1.2s infinite;background:color-mix(in srgb,var(--sun) 22%,var(--panel))}
 .mc.w{font-size:.95rem;word-break:break-word;padding:2px}
 .lv label.on{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+.lv label.ultra{border-color:var(--bad);border-style:dashed}
+.lv label.ultra.on{background:var(--ink);color:var(--bg);border-color:var(--ink);border-style:solid}
 @supports not (aspect-ratio:1){.mc,.blk,.cell{min-height:54px}}
 .cgrid .cell{font-size:clamp(.85rem,4.4vw,1.5rem)}
 @supports not (background:color-mix(in srgb,red,blue)){
@@ -388,7 +390,7 @@ const cur = () => profiles.find(p => p.id === curId) || profiles[0];
 if (!profiles.length) { profiles = [{ id: 'p' + uid(), name: 'Alumno/a 1', age: 8 }]; curId = profiles[0].id; saveP(); }
 if (!profiles.find(p => p.id === curId)) { curId = profiles[0].id; saveP(); }
 const levelByAge = age => age <= 6 ? 1 : age <= 9 ? 2 : 3;
-const LV = ['', 'Fácil', 'Medio', 'Difícil'];
+const LV = ['', 'Fácil', 'Medio', 'Difícil', 'Ultra'];
 const resOf = pid => results.filter(r => r.pid === pid);
 function streak(pid) {
   const days = new Set(resOf(pid).map(r => dayKey(r.ts)));
@@ -406,6 +408,7 @@ const ACH = [
   { id: 'perf3', t: '🌟 3 partidas de 85% o más', f: rs => rs.filter(r => r.pct >= 85).length >= 3 },
   { id: 'streak3', t: '🔥 Racha de 3 días', f: (rs, pid) => streak(pid) >= 3 },
   { id: 'hard', t: '🦾 Terminó un juego en Difícil', f: rs => rs.some(r => r.level === 3) },
+  { id: 'ultra', t: '🔥 Superó un reto Ultra (60% o más)', f: rs => rs.some(r => r.level === 4 && r.pct >= 60) },
   { id: 'circuit', t: '🎲 Circuito completo', f: () => false }
 ];
 function unlock(pid, id) {
@@ -494,7 +497,7 @@ async function runQuiz(root, api, cfg) {
   const stageEl = h('div'), choices = h('div', { class: 'row' + (cfg.choiceClass ? ' ' + cfg.choiceClass : '') }), fb = h('div', { class: 'fb', 'aria-live': 'polite' }), tools = h('div', { class: 'row' });
   let cur = null, correct = 0, hints = 0; const rts = [], fails = [], cats = {};
   const listenBtn = cfg.speak ? h('button', { class: 'btn ghost sm', onclick: () => speak(cfg.speak(cur.it)) }, '🔊 Escuchar') : null;
-  const hintBtn = cfg.hint ? h('button', { class: 'btn ghost sm', onclick: () => {
+  const hintBtn = cfg.hint && !api.ultra ? h('button', { class: 'btn ghost sm', onclick: () => {
     const c = [...choices.children].filter(b => !b.disabled && b.dataset.ok === '0');
     if (c.length > 1) { const b = pick(c); b.disabled = true; b.style.visibility = 'hidden'; hints++; cur.hinted = true; }
   } }, '💡 Pista') : null;
@@ -526,7 +529,7 @@ async function runQuiz(root, api, cfg) {
   if (rt > 6) notes.push('Tiempo de respuesta medio alto (' + rt.toFixed(1) + ' s): puede indicar procesamiento lento o inseguridad; observar si hay estrategia.');
   api.end({
     score: correct, max: N, rt: Math.round(rt * 10) / 10, review: fails,
-    lines: [['Aciertos', correct], ['Errores', N - correct], ['Tiempo medio (s)', rt.toFixed(1)], ...(cfg.hint ? [['Pistas usadas', hints]] : [])],
+    lines: [['Aciertos', correct], ['Errores', N - correct], ['Tiempo medio (s)', rt.toFixed(1)], ...(cfg.hint && !api.ultra ? [['Pistas usadas', hints]] : [])],
     notes
   });
 }
@@ -734,6 +737,7 @@ const SERIES = [
   () => { const a = R(1, 3), b = 5 * R(1, 3), q = [a, b, a * 2, b * 2, a * 3, b * 3]; return { seq: q.slice(0, 5), ans: q[5], num: true }; }
 ];
 function runSeries(root, api) {
+  if (api.ultra) return runSeriesU(root, api);
   const idx = [[0, 1, 2, 3, 4, 0, 1, 3], [1, 2, 3, 4, 5, 6, 7, 8], [3, 5, 6, 7, 8, 9, 7, 9]][api.level - 1];
   const items = idx.map(i => SERIES[i]());
   return runQuiz(root, api, {
@@ -756,6 +760,7 @@ function calcItem(L) {
   return { q, a };
 }
 function runCalc(root, api) {
+  if (api.ultra) return runCalcU(root, api);
   const seen = new Set(), items = []; while (items.length < 10) { const it = calcItem(api.level); if (!seen.has(it.q)) { seen.add(it.q); items.push(it); } }
   return runQuiz(root, api, {
     instr: 'Resolvé de cabeza', items, hint: true,
@@ -805,7 +810,7 @@ function runEspejo(root, api) {
 
 /* 11. Cancelación de letras: atención visual */
 async function runCancel(root, api, _opt, cfgs) {
-  const cfg = (cfgs || [null, { n: 5, m: 6, t: ['A'], d: ['O', 'T', 'L', 'E', 'F'], time: 60 }, { n: 6, m: 6, t: ['b'], d: ['d', 'p', 'q'], time: 50 }, { n: 7, m: 8, t: ['b', 'd'], d: ['p', 'q', 'h'], time: 40 }])[api.level];
+  const cfg = (cfgs || [null, { n: 5, m: 6, t: ['A'], d: ['O', 'T', 'L', 'E', 'F'], time: 60 }, { n: 6, m: 6, t: ['b'], d: ['d', 'p', 'q'], time: 50 }, { n: 7, m: 8, t: ['b', 'd'], d: ['p', 'q', 'h'], time: 40 }, { n: 9, m: 9, t: ['b', 'd', 'p'], d: ['q', 'h', 'a', 'o', 'l'], time: 45 }])[api.ultra ? 4 : api.level];
   const total = cfg.n * cfg.m, k = Math.round(total * .3), limit = S.np ? Infinity : cfg.time;
   const cells = shuffle([...Array.from({ length: k }, () => pick(cfg.t)), ...Array.from({ length: total - k }, () => pick(cfg.d))]);
   const status = h('div', { class: 'status' }, 'Tocá todas las ' + (cfg.what || 'letras') + ' «' + cfg.t.join('» y «') + '»'), tm = h('div', { class: 'timer muted' }, '');
@@ -1026,6 +1031,7 @@ const ANA = [
   ['dentista', 'dientes', 'peluquero', 'pelo', ['tijera', 'silla', 'espejo']]
 ];
 function runAnalogias(root, api) {
+  if (api.ultra) return runAnalogiasU(root, api);
   const no = api.level === 3 ? 3 : 2;
   return runQuiz(root, api, {
     instr: 'Completá la analogía', items: take(ANA, 10),
@@ -1146,6 +1152,7 @@ function runContar(root, api) {
   });
 }
 function runMayor(root, api) {
+  if (api.ultra) return runMayorU(root, api);
   const items = Array.from({ length: 10 }, () => {
     let a, b;
     if (api.level === 1) { a = R(1, 20); do { b = R(1, 20); } while (b === a); }
@@ -1167,6 +1174,7 @@ function posItem(L) {
   const miss = rnd(nd); return { q: Array.from({ length: nd }, (_, i) => nd - 1 - i).map(k => k === miss ? '❓' : val(k)).join(' + ') + ' = ' + n, a: val(miss) };
 }
 function runValorPos(root, api) {
+  if (api.ultra) return runValorU(root, api);
   const seen = new Set(), items = []; while (items.length < 10) { const it = posItem(api.level); if (!seen.has(it.q)) { seen.add(it.q); items.push(it); } }
   return runQuiz(root, api, {
     instr: 'Pensá en unidades, decenas y centenas', items, hint: true, render: it => h('h2', { style: 'font-size:1.6rem;line-height:1.4' }, it.q),
@@ -1184,6 +1192,7 @@ function probItem(L) {
   a = R(5, 20); b = R(3, 15); c = R(2, a + b - 1); return { q: n + ' tenía ' + a + ' ' + o + ', compró ' + b + ' más y regaló ' + c + '. ¿' + cu + ' ' + o + ' tiene ahora?', a: a + b - c };
 }
 function runProblemas(root, api) {
+  if (api.ultra) return runProblemasU(root, api);
   const seen = new Set(), items = []; while (items.length < 8) { const it = probItem(api.level); if (!seen.has(it.q)) { seen.add(it.q); items.push(it); } }
   return runQuiz(root, api, {
     instr: 'Leé el problema y elegí el resultado', items, hint: true, speak: it => it.q, render: it => h('div', { class: 'passage', style: 'font-size:1.25rem' }, it.q),
@@ -1198,6 +1207,7 @@ function clockSVG(hh, mm) {
   return s + hand((hh % 12) * 30 + mm * .5, 25, 5, 'var(--ink)') + hand(mm * 6, 39, 3, 'var(--brand)') + '<circle cx="60" cy="60" r="3.5" fill="var(--ink)"/></svg>';
 }
 function runReloj(root, api) {
+  if (api.ultra) return runRelojU(root, api);
   const fmt = (h_, m) => ((h_ - 1 + 12) % 12 + 1) + ':' + String(m).padStart(2, '0');
   const items = Array.from({ length: 10 }, () => { const hh = R(1, 12), m = api.level === 1 ? 0 : api.level === 2 ? pick([0, 15, 30, 45]) : pick([5, 10, 20, 25, 35, 40, 50, 55]); return { hh, m }; });
   return runQuiz(root, api, {
@@ -1212,6 +1222,7 @@ function runReloj(root, api) {
   });
 }
 function runDinero(root, api) {
+  if (api.ultra) return runDineroU(root, api);
   const vals = [[1, 2, 5, 10], [1, 2, 5, 10, 20, 50], [5, 10, 20, 50, 100, 200]][api.level - 1], cnt = [[2, 3], [3, 5], [3, 6]][api.level - 1];
   const items = Array.from({ length: 10 }, () => Array.from({ length: R(cnt[0], cnt[1]) }, () => pick(vals)));
   return runQuiz(root, api, {
@@ -1224,6 +1235,7 @@ function runDinero(root, api) {
 
 /* ---- Visoespacial y memoria visual ---- */
 function runRotacion(root, api) {
+  if (api.ultra) return runRotacionU(root, api);
   const L = ['F', 'R', 'G', 'J', 'L', 'P'], no = [2, 3, 4][api.level - 1];
   const items = Array.from({ length: 10 }, () => { const ang = pick([90, 180, 270]); return { l: pick(L), ang, others: take([0, 90, 180, 270], no - 1) }; });
   return runQuiz(root, api, {
@@ -1259,7 +1271,8 @@ async function runCopia(root, api) {
     notes: ['Mide memoria visoespacial inmediata. Observar si memoriza por posición (arriba-izquierda), por forma (figura) o por conteo.'] });
 }
 async function runCorsi(root, api, mode) {
-  const n = api.level === 3 ? 16 : 9, cols = api.level === 3 ? 4 : 3; let len = [0, 2, 3, 4][api.level], lives = 3, best = 0, ok = 0, fail = 0, pending = null, accepting = false;
+  if (api.ultra) mode = 'inverso';
+  const n = api.level === 3 ? 16 : 9, cols = api.level === 3 ? 4 : 3; let len = api.ultra ? 5 : [0, 2, 3, 4][api.level], lives = 3, best = 0, ok = 0, fail = 0, pending = null, accepting = false;
   const status = h('div', { class: 'status', 'aria-live': 'polite' }), livesEl = h('div', { class: 'lives' });
   const paintLives = () => livesEl.textContent = '❤️'.repeat(lives) + '🖤'.repeat(3 - lives);
   const btns = Array.from({ length: n }, (_, i) => h('button', { class: 'blk', disabled: true, 'aria-label': 'Bloque ' + (i + 1), onclick: () => tap(i) }));
@@ -1298,6 +1311,7 @@ function runDiferencia(root, api) {
   });
 }
 function runMatrices(root, api) {
+  if (api.ultra) return runMatricesU(root, api);
   const items = Array.from({ length: 10 }, () => {
     const L = api.level; let n, cells, ans;
     if (L === 3) { const sh = take([0, 1, 2, 3], 3), cc = take([0, 1, 2, 3], 3), cell = (r, c) => ({ s: sh[(r + c) % 3], c: cc[r] }); n = 3; cells = []; for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) if (!(r === 2 && c === 2)) cells.push(cell(r, c)); ans = cell(2, 2); }
@@ -1316,6 +1330,7 @@ function runMatrices(root, api) {
 
 /* ---- Atención y velocidad ---- */
 function runStroop(root, api) {
+  if (api.ultra) return runStroopU(root, api);
   const items = Array.from({ length: 12 }, () => { const w = rnd(4); let ink = w; if (api.level >= 2 && (api.level === 3 || rnd(2))) { do { ink = rnd(4); } while (ink === w); } return { w, ink }; });
   return runQuiz(root, api, {
     instr: api.level === 1 ? '¿De qué color es?' : 'Tocá el COLOR de la tinta, no lo que dice', items, cat: it => it.ink === it.w ? 'coincide' : 'no coincide',
@@ -1348,11 +1363,11 @@ async function runReaccion(root, api) {
     notes: [early >= 3 ? 'Varias anticipaciones (' + early + '): tendencia a responder antes de la señal (impulsividad).' : 'Pocas anticipaciones: buen control de la respuesta.', 'Una alta variabilidad entre intentos suele asociarse a fluctuaciones de atención. No hay baremos: comparar con las propias partidas del alumno.'] });
 }
 async function runNback(root, api) {
-  const n = api.level === 3 ? 2 : 1, ms = [0, 2000, 1500, 1900][api.level], T = api.practice ? 10 : 24, E = ['🔴', '🔵', '🟢', '🟡', '🟣', '🟠'], seq = [];
+  const n = api.ultra ? 3 : api.level === 3 ? 2 : 1, ms = api.ultra ? 2100 : [0, 2000, 1500, 1900][api.level], T = api.practice ? 10 : api.ultra ? 30 : 24, E = ['🔴', '🔵', '🟢', '🟡', '🟣', '🟠'], seq = [];
   for (let i = 0; i < T; i++) { if (i >= n && rnd(100) < 30) seq.push(seq[i - n]); else { let e; do { e = pick(E); } while (i >= n && e === seq[i - n]); seq.push(e); } }
   const setP = progress(root), stim = h('div', { class: 'stim', 'aria-live': 'polite' }), fb = h('div', { class: 'fb' });
-  const btn = h('button', { class: 'btn go-btn', onpointerdown: e => { e.preventDefault(); press(); } }, n === 1 ? '¡Igual que el anterior!' : '¡Igual que el de hace 2!');
-  root.append(h('div', { class: 'status' }, n === 1 ? 'Tocá el botón si la figura es IGUAL a la anterior' : 'Tocá el botón si la figura es IGUAL a la de hace DOS'), stim, h('div', { class: 'row' }, btn), fb);
+  const btn = h('button', { class: 'btn go-btn', onpointerdown: e => { e.preventDefault(); press(); } }, n === 1 ? '¡Igual que el anterior!' : '¡Igual que el de hace ' + n + '!');
+  root.append(h('div', { class: 'status' }, n === 1 ? 'Tocá el botón si la figura es IGUAL a la anterior' : 'Tocá el botón si la figura es IGUAL a la de hace ' + n), stim, h('div', { class: 'row' }, btn), fb);
   let hits = 0, miss = 0, fa = 0, cr = 0, tapped = false, cur = -1;
   function press() { if (cur < n || tapped) return; tapped = true; if (seq[cur] === seq[cur - n]) { hits++; sOk(); fb.textContent = '✔'; fb.className = 'fb good'; } else { fa++; sBad(); fb.textContent = '✖ no era igual'; fb.className = 'fb bad'; } }
   const key = e => { if (e.code === 'Space' && !e.repeat && playing && !paused) { e.preventDefault(); press(); } };
@@ -1366,12 +1381,12 @@ async function runNback(root, api) {
   bye(); if (!api.alive()) return;
   const tot = hits + miss, N = T - n;
   api.end({ score: hits + cr, max: N, lines: [['Detectadas', hits + '/' + tot], ['Omitidas', miss], ['Falsas alarmas', fa]],
-    notes: [n === 2 ? '2-back: exige actualizar continuamente la memoria de trabajo (tarea exigente, incluso para adultos).' : '1-back: memoria de trabajo con baja carga.', fa > miss ? 'Más falsas alarmas que omisiones: tendencia impulsiva.' : miss > fa ? 'Más omisiones: tendencia a no detectar / inatención o sobrecarga de memoria.' : 'Errores equilibrados.'] });
+    notes: [n === 3 ? '3-back: carga muy alta de memoria de trabajo; incluso a los adultos les resulta muy exigente. Es normal que haya muchos errores.' : n === 2 ? '2-back: exige actualizar continuamente la memoria de trabajo (tarea exigente, incluso para adultos).' : '1-back: memoria de trabajo con baja carga.', fa > miss ? 'Más falsas alarmas que omisiones: tendencia impulsiva.' : miss > fa ? 'Más omisiones: tendencia a no detectar / inatención o sobrecarga de memoria.' : 'Errores equilibrados.'] });
 }
 
 /* ---- Funciones ejecutivas y secuenciación ---- */
 async function runHanoi(root, api) {
-  const n = api.practice ? 2 : [0, 3, 4, 5][api.level], DC = ['#e5484d', '#f08a24', '#e0b000', '#38a169', '#3b6fe0'];
+  const n = api.practice ? 2 : api.ultra ? 6 : [0, 3, 4, 5][api.level], DC = ['#e5484d', '#f08a24', '#e0b000', '#38a169', '#3b6fe0', '#9b5de5'];
   let pegs, sel = null, moves = 0, resets = 0, finish_ = null; const t0 = performance.now();
   const reset = () => { pegs = [Array.from({ length: n }, (_, i) => n - i), [], []]; sel = null; draw(); };
   const status = h('div', { class: 'status', 'aria-live': 'polite' }, 'Pasá todos los discos a la tercera torre. Un disco grande nunca va sobre uno más chico.'), area = h('div', { class: 'hanoi' }), cnt = h('div', { class: 'muted' });
@@ -1401,7 +1416,8 @@ function runHistoria(root, api) {
     fbWrong: it => 'El orden era: ' + it.parts.join(' → '), notes: ['La secuenciación temporal se vincula con la narración y con la organización de rutinas. Pedir que cuente la historia con sus palabras.'] });
 }
 async function runDigitos(root, api, mode) {
-  let len = [0, 2, 3, 4][api.level], best = 0, ok = 0, fail = 0, failsAt = 0, entry = [], resolve = null;
+  if (api.ultra) mode = 'ordenado';
+  let len = api.ultra ? 4 : [0, 2, 3, 4][api.level], best = 0, ok = 0, fail = 0, failsAt = 0, entry = [], resolve = null;
   const status = h('div', { class: 'status', 'aria-live': 'polite' }), disp = h('div', { class: 'digits' }, ' ');
   const keys = [1, 2, 3, 4, 5, 6, 7, 8, 9].map(d => h('button', { class: 'key', onclick: () => add(d) }, String(d)));
   const back = h('button', { class: 'key', onclick: () => { entry.pop(); paint(); } }, '⌫'), zero = h('button', { class: 'key', onclick: () => add(0) }, '0'), go = h('button', { class: 'key', style: 'background:var(--brand);color:var(--brand-ink)', onclick: () => resolve && resolve() }, 'Listo');
@@ -1412,9 +1428,9 @@ async function runDigitos(root, api, mode) {
     const seq = []; while (seq.length < len) { const x = rnd(10); if (x !== seq[seq.length - 1]) seq.push(x); }
     pad.style.visibility = 'hidden'; status.textContent = 'Mirá y recordá los números'; disp.textContent = ' '; await sleep(1000); if (!api.alive()) return;
     for (const d of seq) { disp.textContent = d; beep(300 + d * 40, .12); await sleep(800); if (!api.alive()) return; disp.textContent = ' '; await sleep(250); }
-    status.textContent = mode === 'inverso' ? 'Escribilos al REVÉS y tocá Listo' : 'Escribilos en el mismo orden y tocá Listo'; entry = []; paint(); pad.style.visibility = 'visible';
+    status.textContent = mode === 'ordenado' ? 'Escribilos ORDENADOS de menor a mayor y tocá Listo' : mode === 'inverso' ? 'Escribilos al REVÉS y tocá Listo' : 'Escribilos en el mismo orden y tocá Listo'; entry = []; paint(); pad.style.visibility = 'visible';
     await new Promise(res => resolve = res); resolve = null; if (!api.alive()) return;
-    const exp = mode === 'inverso' ? [...seq].reverse() : seq, good = exp.length === entry.length && exp.every((x, i) => x === entry[i]);
+    const exp = mode === 'ordenado' ? [...seq].sort((a, b) => a - b) : mode === 'inverso' ? [...seq].reverse() : seq, good = exp.length === entry.length && exp.every((x, i) => x === entry[i]);
     if (good) { best = len; ok++; len++; failsAt = 0; status.textContent = '🦉 ' + pick(PRAISE); sOk(); } else { fail++; failsAt++; status.textContent = '🦉 Eran: ' + exp.join(' '); sBad(); if (failsAt >= 2) break; }
     await sleep(1500);
   }
@@ -1616,6 +1632,7 @@ function runVecino(root, api) {
   });
 }
 function runSaltos(root, api) {
+  if (api.ultra) return runSeriesU(root, api, [2, 3, 4, 7]);
   const steps = [[2, 5, 10], [2, 3, 4, 5, 10], [3, 4, 6, 7, 8, 9]][api.level - 1];
   const items = Array.from({ length: 10 }, () => { const st = pick(steps), desc = api.level === 3 && rnd(2) === 0, start = desc ? st * R(6, 10) : st * R(0, 4) + (api.level === 3 ? R(0, st - 1) : 0), seq = Array.from({ length: 4 }, (_, i) => desc ? start - i * st : start + i * st); return { seq, a: desc ? start - 4 * st : start + 4 * st, st }; });
   return runQuiz(root, api, {
@@ -1626,6 +1643,7 @@ function runSaltos(root, api) {
   });
 }
 function runTablas(root, api) {
+  if (api.ultra) return runTablasU(root, api);
   const tabs = [[2, 5, 10], [3, 4, 6], [7, 8, 9, 12]][api.level - 1], items = Array.from({ length: 12 }, () => ({ a: pick(tabs), b: R(1, 10) }));
   return runQuiz(root, api, {
     instr: 'Contestá lo más rápido que puedas', items, render: it => h('div', { class: 'big', style: 'font-size:3.2rem' }, it.a + ' × ' + it.b),
@@ -1640,6 +1658,7 @@ function pieSVG(n, k) {
   return s + '</svg>';
 }
 function runFracciones(root, api) {
+  if (api.ultra) return runFraccU(root, api);
   const ns = [[2, 4], [3, 4, 6], [5, 6, 8, 10]][api.level - 1];
   const items = Array.from({ length: 10 }, () => { const n = pick(ns), k = R(1, n - 1); return { n, k }; });
   return runQuiz(root, api, {
@@ -1669,6 +1688,7 @@ function runFiguras(root, api) {
 }
 const DIRN = { '-1,0': 'arriba', '1,0': 'abajo', '0,-1': 'a la izquierda', '0,1': 'a la derecha', '-1,-1': 'arriba a la izquierda', '-1,1': 'arriba a la derecha', '1,-1': 'abajo a la izquierda', '1,1': 'abajo a la derecha' };
 function runDonde(root, api) {
+  if (api.ultra) return runDondeU(root, api);
   const items = Array.from({ length: 10 }, () => {
     let cr, cc, fr, fc, dr, dc; do { cr = rnd(3); cc = rnd(3); fr = rnd(3); fc = rnd(3); dr = Math.sign(fr - cr); dc = Math.sign(fc - cc); const aligned = fr === cr || fc === cc, adj = Math.abs(fr - cr) + Math.abs(fc - cc) === 1; var okp = (fr !== cr || fc !== cc) && (api.level === 1 ? adj : api.level === 2 ? aligned : true); } while (!okp);
     return { cr, cc, fr, fc, a: DIRN[dr + ',' + dc] };
@@ -1684,6 +1704,7 @@ function runDonde(root, api) {
 }
 const ARW = { '↑': [-1, 0], '↓': [1, 0], '←': [0, -1], '→': [0, 1] };
 function runFlechas(root, api) {
+  if (api.ultra) return runFlechasU(root, api);
   const n = api.level === 1 ? 3 : 4, moves = [0, 2, 3, 5][api.level];
   const items = Array.from({ length: 8 }, () => {
     let path, start; do { let r = rnd(n), c = rnd(n); start = [r, c]; path = []; for (let i = 0; i < moves; i++) { const opts = Object.entries(ARW).filter(([, d]) => r + d[0] >= 0 && r + d[0] < n && c + d[1] >= 0 && c + d[1] < n); const [a, d] = pick(opts); path.push(a); r += d[0]; c += d[1]; } var end = [r, c]; } while (end[0] === start[0] && end[1] === start[1]);
@@ -1701,7 +1722,7 @@ function runFlechas(root, api) {
 }
 
 /* ---- Atención y control ---- */
-const runBuscaNumeros = (root, api) => runCancel(root, api, null, [null, { n: 5, m: 6, t: ['7'], d: ['1', '2', '3', '4', '5'], time: 60, what: 'cifras' }, { n: 6, m: 6, t: ['6', '9'], d: ['8', '0', '3', '5'], time: 50, what: 'cifras' }, { n: 7, m: 8, t: ['2', '5'], d: ['3', '8', '6', '9', '0'], time: 40, what: 'cifras' }]);
+const runBuscaNumeros = (root, api) => runCancel(root, api, null, [null, { n: 5, m: 6, t: ['7'], d: ['1', '2', '3', '4', '5'], time: 60, what: 'cifras' }, { n: 6, m: 6, t: ['6', '9'], d: ['8', '0', '3', '5'], time: 50, what: 'cifras' }, { n: 7, m: 8, t: ['2', '5'], d: ['3', '8', '6', '9', '0'], time: 40, what: 'cifras' }, { n: 9, m: 9, t: ['6', '9', '8'], d: ['0', '3', '5', '2', '1'], time: 45, what: 'cifras' }]);
 const GOW = [null,
   { name: 'animales', yes: ['perro', 'gato', 'vaca', 'caballo', 'león', 'pez', 'pájaro', 'tigre', 'oveja', 'conejo', 'tortuga', 'jirafa', 'pato', 'mono'], no: ['mesa', 'silla', 'lápiz', 'auto', 'libro', 'nube', 'casa', 'puerta', 'pelota', 'zapato', 'reloj', 'cama'] },
   { name: 'cosas para comer', yes: ['pan', 'manzana', 'leche', 'queso', 'arroz', 'fideos', 'banana', 'sopa', 'tomate', 'galletita', 'huevo', 'torta'], no: ['mesa', 'lápiz', 'zapato', 'auto', 'libro', 'pelota', 'puerta', 'reloj', 'cama', 'nube', 'silla', 'casa'] },
@@ -1816,6 +1837,7 @@ function diaItem(L) {
   const i = rnd(7), d = R(3, 5); return { q: '¿Qué día es ' + d + ' días después del ' + DIAS[i] + '?', a: circ(DIAS, i, d), pool: DIAS };
 }
 function runDias(root, api) {
+  if (api.ultra) return runDiasU(root, api);
   const seen = new Set(), items = []; while (items.length < 10) { const it = diaItem(api.level); if (!seen.has(it.q)) { seen.add(it.q); items.push(it); } }
   return runQuiz(root, api, {
     instr: 'Pensá en el calendario', items, render: it => h('h2', { style: 'font-size:1.5rem;line-height:1.4' }, it.q), hint: true,
@@ -1897,6 +1919,299 @@ const GAMES3 = [
 ];
 GAMES.push(...GAMES3);
 
+/* ================= NIVEL ULTRA ================= */
+const fmtMiles = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+/* opciones numéricas: la correcta + 3 distractores "tentadores" (errores típicos) */
+function optsNum(ans, cands) {
+  const s = [...new Set((cands || []).filter(v => Number.isInteger(v) && v >= 0 && v !== ans))]; let k = 1;
+  while (s.length < 3) { [ans + k, ans - k].forEach(v => { if (v >= 0 && v !== ans && !s.includes(v) && s.length < 3) s.push(v); }); k++; }
+  return shuffle([ans, ...take(s, 3)]).map(v => ({ label: fmtMiles(v), ok: v === ans }));
+}
+
+/* ---- Series: reglas combinadas ---- */
+const SER_U = [
+  () => { const a = R(1, 4), b = R(2, 6), q = [a, b]; for (let i = 2; i < 8; i++) q.push(q[i - 1] + q[i - 2]); return { q: q.slice(0, 6), a: q[6], rule: 'cada número es la suma de los dos anteriores' }; },
+  () => { const k = R(0, 6), n0 = R(1, 4), q = Array.from({ length: 6 }, (_, i) => (n0 + i) ** 2 + k); return { q: q.slice(0, 5), a: q[5], rule: 'cuadrados perfectos' + (k ? ' más ' + k : '') }; },
+  () => { const pr = pick([[x => x * 2, '×2', x => x + 3, '+3'], [x => x + 5, '+5', x => x * 2, '×2'], [x => x * 3, '×3', x => x - 1, '−1']]), q = [R(2, 4)]; for (let i = 0; i < 6; i++) q.push(i % 2 ? pr[2](q[i]) : pr[0](q[i])); return { q: q.slice(0, 6), a: q[6], rule: 'se alternan dos operaciones: ' + pr[1] + ' y ' + pr[3] }; },
+  () => { const d0 = R(1, 3), c = R(1, 3), q = [R(1, 5)]; for (let i = 0; i < 5; i++) q.push(q[i] + d0 + i * c); return { q: q.slice(0, 5), a: q[5], rule: 'la diferencia entre un número y el siguiente aumenta de a ' + c }; },
+  () => { const a0 = R(2, 6), da = R(3, 6), b0 = R(30, 50), db = R(2, 4), q = []; for (let i = 0; i < 4; i++) { q.push(a0 + i * da); q.push(b0 - i * db); } return { q: q.slice(0, 6), a: q[6], rule: 'son dos series intercaladas: una sube de a ' + da + ' y la otra baja de a ' + db }; },
+  () => { const P = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37], i0 = R(0, 5); return { q: P.slice(i0, i0 + 5), a: P[i0 + 5], rule: 'números primos' }; },
+  () => { const f = pick([[x => 3 * x - 1, '×3 y restar 1'], [x => 2 * x + 1, '×2 y sumar 1'], [x => 2 * x - 1, '×2 y restar 1']]), q = [R(2, 3)]; for (let i = 0; i < 5; i++) q.push(f[0](q[i])); return { q: q.slice(0, 5), a: q[5], rule: f[1] }; },
+  () => { const ds = n => String(n).split('').reduce((x, y) => x + +y, 0), q = [R(5, 9)]; for (let i = 0; i < 5; i++) q.push(q[i] + ds(q[i])); return { q: q.slice(0, 5), a: q[5], rule: 'a cada número se le suma la suma de sus cifras' }; },
+  () => { const b = pick([2, 3]), o = pick([-1, 1]), q = Array.from({ length: 6 }, (_, i) => b ** (i + 1) + o); return { q: q.slice(0, 5), a: q[5], rule: 'potencias de ' + b + (o > 0 ? ' más 1' : ' menos 1') }; },
+  () => { const n0 = R(1, 3), q = Array.from({ length: 6 }, (_, i) => (n0 + i) * (n0 + i + 1)); return { q: q.slice(0, 5), a: q[5], rule: 'producto de dos números seguidos (1×2, 2×3, 3×4…)' }; }
+];
+function runSeriesU(root, api, only) {
+  const gens = only ? only.map(i => SER_U[i]) : SER_U, items = cyc(gens, 10).map(g => g());
+  return runQuiz(root, api, {
+    instr: 'Descubrí la regla (puede combinar dos operaciones) y completá', items, render: it => h('div', { class: 'seq' }, ...it.q.map(x => h('span', {}, String(x))), h('span', { class: 'q' }, '?')),
+    options: it => { const l = it.q.length, near = it.q[l - 1] + (it.q[l - 1] - it.q[l - 2]); return optsNum(it.a, [near, it.a + 1, it.a - 1, it.a + 2, it.a - 2, it.a * 2 - it.q[l - 1]]); },
+    fbWrong: it => 'La regla: ' + it.rule + ' → ' + it.a, failLabel: it => it.q.join(', ') + ', ' + it.a + ' (' + it.rule + ')',
+    notes: () => ['En Ultra la serie combina dos reglas (alternadas, intercaladas, recursivas). Observar si analiza las diferencias, los cocientes o ambas, o si prueba «a ver si va de a…» sin sistema.']
+  });
+}
+
+/* ---- Cálculo: jerarquía de operaciones ---- */
+const CALC_U = [
+  () => { const a = R(2, 20), b = R(2, 9), c = R(2, 9); return { e: a + ' + ' + b + ' × ' + c, v: a + b * c, w: (a + b) * c }; },
+  () => { const a = R(3, 9), b = R(3, 9), c = R(2, 9), d = R(2, 6); let v = a * b - c * d; if (v < 1) { const t = a * b; return { e: (t + c * d) + ' − ' + c + ' × ' + d, v: t, w: ((t + c * d) - c) * d }; } return { e: a + ' × ' + b + ' − ' + c + ' × ' + d, v, w: ((a * b) - c) * d }; },
+  () => { const e = R(2, 5), d = e * R(1, 6), a = R(3, 20), b = R(2, 7), c = R(2, 6); return { e: a + ' + ' + b + ' × ' + c + ' − ' + d + ' ÷ ' + e, v: a + b * c - d / e, w: ((a + b) * c - d) / e }; },
+  () => { const b = R(2, 9), a = b + R(1, 9), c = R(2, 9), d = R(1, 9); return { e: '(' + a + ' − ' + b + ') × (' + c + ' + ' + d + ')', v: (a - b) * (c + d), w: a - b * c + d }; },
+  () => { const x = R(2, 12), a = R(2, 9), b = R(1, 20), c = a * x + b; return { e: a + ' × ❓ + ' + b + ' = ' + c, v: x, w: c - b - a }; },
+  () => { const a = R(3, 12), b = R(2, 9); return { e: a + '² + ' + b + '²', v: a * a + b * b, w: (a + b) * (a + b) }; },
+  () => { const d = R(2, 6), c = d * R(2, 6), a = R(2, 20), b = R(2, 9); return { e: a + ' + ' + b + ' × ' + c + ' ÷ ' + d, v: a + b * c / d, w: (a + b) * c / d }; },
+  () => { const a = R(12, 19), b = R(4, 9), c = R(2, 6); return { e: a + ' × ' + b + ' − ' + c + '²', v: a * b - c * c, w: (a * b - c) * (a * b - c) }; }
+];
+function runCalcU(root, api) {
+  const items = cyc(CALC_U, 10).map(g => g());
+  return runQuiz(root, api, {
+    instr: 'Respetá el orden de las operaciones', items, render: it => h('div', { class: 'big', style: 'font-size:2.2rem;line-height:1.3' }, it.e.includes('=') ? it.e : it.e + ' = ❓'),
+    options: it => optsNum(it.v, [it.w, it.v + 1, it.v - 1, it.v + 10, it.v - 10]),
+    fbWrong: it => 'Primero potencias, paréntesis y multiplicaciones/divisiones; después sumas y restas. Resultado: ' + it.v, failLabel: it => it.e + ' → ' + it.v,
+    notes: () => ['El error «de izquierda a derecha» (ignorar la jerarquía) aparece como distractor en cada ítem. Si lo elige sistemáticamente, hay que trabajar la prioridad de operaciones.']
+  });
+}
+
+/* ---- Problemas de varios pasos ---- */
+const PNAM = ['Sofi', 'Mateo', 'Vale', 'Lucas', 'Cami', 'Tomás', 'Nico', 'Lucía'];
+const PROB_U = [
+  () => { const n = pick(PNAM), x = R(2, 5), p1 = R(3, 12) * 10, y = R(2, 4), p2 = R(2, 9) * 10, tot = x * p1 + y * p2, pay = Math.ceil((tot + R(1, 40)) / 50) * 50; return { q: n + ' compró ' + x + ' cuadernos de $' + p1 + ' cada uno y ' + y + ' lapiceras de $' + p2 + ' cada una. Pagó con $' + pay + '. ¿Cuánto vuelto recibió?', a: pay - tot, ver: () => pay - (p1 * x + p2 * y) }; },
+  () => { for (let g = 0; g < 80; g++) { const X = pick([24, 36, 48, 60, 72, 84, 96, 120]), f1 = pick([[1, 4], [1, 3], [1, 2], [1, 6]]), f2 = pick([[1, 3], [1, 2], [1, 4], [1, 5]]), s1 = R(3, 15), s2 = R(2, 12), b1 = X * f1[0] / f1[1]; if (!Number.isInteger(b1)) continue; const m = X - b1 + s1, b2 = m * f2[0] / f2[1]; if (!Number.isInteger(b2)) continue; const a = m - b2 + s2; return { q: 'Un tren sale con ' + X + ' pasajeros. En la primera parada bajan ' + f1[0] + '/' + f1[1] + ' de los pasajeros y suben ' + s1 + '. En la segunda parada bajan ' + f2[0] + '/' + f2[1] + ' de los que hay en el tren y suben ' + s2 + '. ¿Cuántos pasajeros quedan?', a, ver: () => (X - X / f1[1] * f1[0] + s1) - (X - X / f1[1] * f1[0] + s1) / f2[1] * f2[0] + s2 }; } return PROB_U[0](); },
+  () => { for (let g = 0; g < 80; g++) { const n = pick(PNAM), a = R(5, 30) * 10, w = R(4, 12), b = R(1, 9) * 10; if ((a * w) % 2) continue; const v = a * w / 2 - b; if (v < 10) continue; return { q: n + ' ahorra $' + a + ' por semana durante ' + w + ' semanas. Con la mitad de lo ahorrado compra un regalo y con $' + b + ' más compra una tarjeta. ¿Cuánto dinero le queda?', a: v, ver: () => a * w - (a * w / 2) - b }; } return PROB_U[0](); },
+  () => { const c = pick([[3, 2, 'el triple', 'el doble', 1], [4, 2, 'el cuádruple', 'el doble', 1 / 2], [5, 3, 'el quíntuple', 'el triple', 1], [4, 3, 'el cuádruple', 'el triple', 2]]), t = pick([4, 6, 8, 10, 12]); const x = t * (c[1] - 1) / (c[0] - c[1]); if (!Number.isInteger(x)) return PROB_U[3](); const p = pick(['Un padre', 'Una madre', 'Un tío', 'Una abuela']); return { q: 'Hoy ' + p.toLowerCase() + ' tiene ' + c[2] + ' de la edad de su hijo/a. Dentro de ' + t + ' años tendrá ' + c[3] + ' de la edad que tenga entonces su hijo/a. ¿Cuántos años tiene hoy el hijo/a?', a: x, ver: () => c[0] * x + t === c[1] * (x + t) }; },
+  () => { for (let g = 0; g < 80; g++) { const t1 = R(2, 5), v1 = R(4, 12) * 10, t2 = R(2, 5), v2 = R(4, 12) * 10, km = v1 * t1 + v2 * t2; if (km % (t1 + t2)) continue; return { q: 'Un auto viaja ' + t1 + ' horas a ' + v1 + ' km/h y después ' + t2 + ' horas a ' + v2 + ' km/h. ¿Cuál fue su velocidad media en todo el viaje (km/h)?', a: km / (t1 + t2), ver: () => (v1 * t1 + v2 * t2) / (t1 + t2) }; } return PROB_U[0](); },
+  () => { for (let g = 0; g < 80; g++) { const P = R(5, 40) * 20, d = pick([10, 20, 25, 50]), v = P - P * d / 100; if (!Number.isInteger(v)) continue; return { q: 'Una mochila cuesta $' + P + '. En oferta tiene ' + d + '% de descuento. Si además pagás con $' + (Math.ceil(v / 100) * 100 + 100) + ', ¿cuánto vuelto te dan?', a: Math.ceil(v / 100) * 100 + 100 - v, ver: () => (Math.ceil((P * (100 - d) / 100) / 100) * 100 + 100) - P * (100 - d) / 100 }; } return PROB_U[0](); },
+  () => { const T = 3 * R(10, 60) * 10, n1 = pick(PNAM); let n2; do { n2 = pick(PNAM); } while (n2 === n1); return { q: n1 + ' y ' + n2 + ' juntaron $' + T + '. ' + n1 + ' puso el doble que ' + n2 + '. ¿Cuánto puso ' + n2 + '?', a: T / 3, ver: () => T / 3 * 2 + T / 3 === T }; }
+];
+function runProblemasU(root, api) {
+  const items = take(PROB_U.map(g => g()), 6).concat(take(PROB_U.map(g => g()), 2));
+  return runQuiz(root, api, {
+    instr: 'Pensá los pasos antes de elegir', items, speak: it => it.q, render: it => h('div', { class: 'passage', style: 'font-size:1.2rem' }, it.q),
+    options: it => optsNum(it.a, [it.a + 10, it.a - 10, it.a * 2, Math.round(it.a / 2), it.a + 1]),
+    fbWrong: it => 'El resultado era ' + it.a, failLabel: it => it.q + ' → ' + it.a,
+    notes: () => ['Problemas de varios pasos con fracciones, porcentajes, edades y velocidad media. Pedir que explique el plan (qué calcula primero) es más informativo que el resultado.']
+  });
+}
+
+/* ---- Matrices 3×3 con tres atributos ---- */
+function runMatricesU(root, api) {
+  const sizes = ['1.5rem', '2.3rem', '3.2rem'];
+  const items = Array.from({ length: 8 }, () => {
+    const sh = take([0, 1, 2, 3], 3), cc = take([0, 1, 2, 3], 3), pa = pick([[1, 1], [1, 2], [2, 1]]); let pc; do { pc = pick([[1, 1], [1, 2], [2, 1]]); } while (pc[0] === pa[0] && pc[1] === pa[1]);
+    const sizeBy = pick(['r', 'c']), cell = (r, c) => ({ s: sh[(pa[0] * r + pa[1] * c) % 3], c: cc[(pc[0] * r + pc[1] * c) % 3], z: sizeBy === 'r' ? r : c });
+    const cells = []; for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) if (!(r === 2 && c === 2)) cells.push(cell(r, c));
+    return { cells, ans: cell(2, 2) };
+  });
+  const glyph = x => h('span', { style: 'color:' + CO[x.c] + ';font-size:' + sizes[x.z] + ';line-height:1' }, SH[x.s]), key = x => x.s + '-' + x.c + '-' + x.z;
+  return runQuiz(root, api, {
+    instr: 'Tres cosas cambian a la vez: forma, color y tamaño', items, render: it => h('div', { class: 'mat', style: 'grid-template-columns:repeat(3,78px)' }, ...it.cells.map(c => h('div', {}, glyph(c))), h('div', { class: 'q' }, '?')),
+    options: it => { const a = it.ans, o = new Map([[key(a), a]]); [{ ...a, s: (a.s + 1) % 4 }, { ...a, c: (a.c + 1) % 4 }, { ...a, z: (a.z + 1) % 3 }, { ...a, s: (a.s + 2) % 4 }, { ...a, z: (a.z + 2) % 3 }].forEach(x => { if (o.size < 4 && !o.has(key(x))) o.set(key(x), x); }); return shuffle([...o.values()]).map(x => ({ label: glyph(x), ok: key(x) === key(a) })); },
+    fbWrong: () => 'Mirá por separado la forma, el color y el tamaño en filas y columnas', failLabel: () => 'matriz 3×3',
+    notes: () => ['Cada atributo sigue su propia regla (por fila, por columna o diagonal). Quien resuelve atributo por atributo y descarta opciones razona de forma sistemática; quien «mira el conjunto» suele fallar.']
+  });
+}
+
+/* ---- Stroop con cambio de consigna ---- */
+function runStroopU(root, api) {
+  const items = Array.from({ length: 16 }, () => { const w = rnd(4); let ink; do { ink = rnd(4); } while (ink === w); return { w, ink, rule: Math.random() < .5 ? 'tinta' : 'palabra' }; });
+  return runQuiz(root, api, {
+    instr: 'La consigna CAMBIA: leé qué te piden en cada intento', items, cat: it => 'consigna «' + it.rule + '»',
+    render: it => h('div', {}, h('h2', { class: 'big', style: 'font-size:1.6rem;color:var(--brand)' }, it.rule === 'tinta' ? 'Tocá el COLOR DE LA TINTA' : 'Tocá lo que DICE la palabra'), h('div', { class: 'stroop', style: 'color:' + CO[it.ink] }, CN[it.w][0].toUpperCase())),
+    options: it => [0, 1, 2, 3].map(c => ({ label: h('span', {}, h('span', { class: 'dot', style: 'background:' + CO[c] }), CN[c][0]), ok: c === (it.rule === 'tinta' ? it.ink : it.w) })),
+    fbWrong: it => it.rule === 'tinta' ? 'La tinta era ' + CN[it.ink][0] : 'La palabra decía «' + CN[it.w][0] + '»', failLabel: it => 'consigna ' + it.rule,
+    notes: () => ['Combina inhibición (ignorar la dimensión irrelevante) y flexibilidad (cambiar de consigna ensayo a ensayo). Mirar en qué consigna comete más errores.']
+  });
+}
+
+/* ---- Flechas con regla alterada ---- */
+function runFlechasU(root, api) {
+  const n = 5, V = { '↑': [-1, 0], '↓': [1, 0], '←': [0, -1], '→': [0, 1] }, rules = [
+    { t: 'Las flechas ↑ y ↓ están INTERCAMBIADAS: ↑ significa abajo y ↓ significa arriba.', f: { '↑': [1, 0], '↓': [-1, 0], '←': [0, -1], '→': [0, 1] } },
+    { t: 'Las flechas ← y → están INTERCAMBIADAS: ← significa derecha y → significa izquierda.', f: { '↑': [-1, 0], '↓': [1, 0], '←': [0, 1], '→': [0, -1] } },
+    { t: 'Todas las flechas están GIRADAS un cuarto de vuelta a la derecha: ↑ significa →, → significa ↓, ↓ significa ← y ← significa ↑.', f: { '↑': [0, 1], '→': [1, 0], '↓': [0, -1], '←': [-1, 0] } }
+  ];
+  const items = Array.from({ length: 8 }, () => {
+    const rule = pick(rules), real = Object.values(V), pre = {}; Object.entries(rule.f).forEach(([s, v]) => pre[v.join(',')] = s);
+    let r, c, start, mv, end; do { r = rnd(n); c = rnd(n); start = [r, c]; mv = []; for (let i = 0; i < 6; i++) { const ok = real.filter(d => r + d[0] >= 0 && r + d[0] < n && c + d[1] >= 0 && c + d[1] < n), d = pick(ok); mv.push(d); r += d[0]; c += d[1]; } end = [r, c]; } while (end[0] === start[0] && end[1] === start[1]);
+    const E = take(['🐱', '🐶', '🐸', '🐟', '🍎', '🚗', '🌸', '🎈'], 4), endIdx = end[0] * n + end[1], cells = take([...Array(n * n).keys()].filter(i => i !== start[0] * n + start[1] && i !== endIdx), 3).concat([endIdx]);
+    return { rule, syms: mv.map(d => pre[d.join(',')]), E, cells, endIdx, start, n };
+  });
+  return runQuiz(root, api, {
+    instr: 'Empezá en ⭐ y seguí las flechas, pero ¡cuidado con la regla!', items,
+    render: it => h('div', {}, h('div', { class: 'tip', style: 'margin-bottom:8px' }, it.rule.t), h('div', { class: 'mat', style: 'grid-template-columns:repeat(' + it.n + ',52px)' }, ...Array.from({ length: it.n * it.n }, (_, i) => h('div', { style: 'width:52px;height:52px;font-size:1.5rem' }, i === it.start[0] * it.n + it.start[1] ? '⭐' : it.cells.includes(i) ? it.E[it.cells.indexOf(i)] : ''))), h('div', { class: 'seq' }, ...it.syms.map(a => h('span', {}, a)))),
+    options: it => shuffle(it.E).map(e => ({ label: e, cls: 'emo', ok: it.E.indexOf(e) === it.cells.indexOf(it.endIdx) })),
+    fbWrong: it => 'Llegabas a ' + it.E[it.cells.indexOf(it.endIdx)], failLabel: it => it.rule.t,
+    notes: () => ['Exige suprimir la asociación habitual de cada flecha y aplicar una regla nueva (control inhibitorio + memoria de trabajo + orientación espacial).']
+  });
+}
+
+/* ---- Relaciones espaciales con rotación del tablero ---- */
+function runDondeU(root, api) {
+  const ops = [['Girá el tablero un cuarto de vuelta a la DERECHA (sentido de las agujas del reloj)', ([dr, dc]) => [dc, -dr]], ['Girá el tablero un cuarto de vuelta a la IZQUIERDA', ([dr, dc]) => [-dc, dr]], ['Girá el tablero media vuelta (180°)', ([dr, dc]) => [-dr, -dc]]];
+  const items = Array.from({ length: 10 }, () => {
+    let cr, cc, fr, fc; do { cr = rnd(3); cc = rnd(3); fr = rnd(3); fc = rnd(3); } while (cr === fr && cc === fc);
+    const op = pick(ops), v = op[1]([fr - cr, fc - cc]); return { cr, cc, fr, fc, op, a: DIRN[Math.sign(v[0]) + ',' + Math.sign(v[1])] };
+  });
+  return runQuiz(root, api, {
+    instr: 'Imaginá el giro y decí dónde queda el pez', items,
+    render: it => h('div', {}, h('div', { class: 'tip', style: 'margin-bottom:8px' }, it.op[0] + '. ¿Dónde queda el 🐟 respecto del 🐱?'), h('div', { class: 'mat', style: 'grid-template-columns:repeat(3,64px)' }, ...Array.from({ length: 9 }, (_, i) => h('div', { style: 'width:64px;height:64px;font-size:2rem' }, i === it.cr * 3 + it.cc ? '🐱' : i === it.fr * 3 + it.fc ? '🐟' : '')))),
+    options: it => shuffle([it.a, ...take(Object.values(DIRN).filter(x => x !== it.a), 3)]).map(o => ({ label: o, ok: o === it.a })),
+    fbWrong: it => 'Después del giro el pez queda ' + it.a + ' del gato', failLabel: it => it.op[0] + ' → ' + it.a,
+    notes: () => ['Rotación mental de un tablero completo: exige transformar la escena mentalmente y no solo describirla.']
+  });
+}
+
+/* ---- Rotación y reflejo en dos pasos ---- */
+const M_ROT_R = [[0, -1], [1, 0]], M_ROT_L = [[0, 1], [-1, 0]], M_ROT_2 = [[-1, 0], [0, -1]], M_FLIP_H = [[-1, 0], [0, 1]], M_FLIP_V = [[1, 0], [0, -1]], M_ID = [[1, 0], [0, 1]];
+const mmul = (A, B) => [[A[0][0] * B[0][0] + A[0][1] * B[1][0], A[0][0] * B[0][1] + A[0][1] * B[1][1]], [A[1][0] * B[0][0] + A[1][1] * B[1][0], A[1][0] * B[0][1] + A[1][1] * B[1][1]]];
+const mkey = M => M[0][0] + ',' + M[0][1] + ',' + M[1][0] + ',' + M[1][1];
+const mcss = M => 'matrix(' + M[0][0] + ',' + M[1][0] + ',' + M[0][1] + ',' + M[1][1] + ',0,0)';
+const D4 = [M_ID, M_ROT_R, M_ROT_L, M_ROT_2, M_FLIP_H, M_FLIP_V, mmul(M_ROT_R, M_FLIP_H), mmul(M_ROT_L, M_FLIP_H)];
+function runRotacionU(root, api) {
+  const ops = [['reflejala como en un espejo (izquierda ↔ derecha)', M_FLIP_H], ['dala vuelta de arriba hacia abajo', M_FLIP_V], ['girala un cuarto de vuelta a la derecha', M_ROT_R], ['girala un cuarto de vuelta a la izquierda', M_ROT_L], ['girala media vuelta', M_ROT_2]];
+  const L = ['F', 'R', 'G', 'J', 'L', 'P'];
+  const items = Array.from({ length: 8 }, () => { const o1 = pick(ops); let o2; do { o2 = pick(ops); } while (o2 === o1); const M = mmul(o2[1], o1[1]); return { l: pick(L), o1, o2, M }; });
+  return runQuiz(root, api, {
+    instr: 'Hacé los dos pasos en orden, mentalmente', items,
+    render: it => h('div', {}, h('div', { class: 'letter rot' }, it.l), h('p', { class: 'lead' }, 'Primero ' + it.o1[0] + '; después ' + it.o2[0] + '.')),
+    options: it => shuffle([it.M, ...take(D4.filter(m => mkey(m) !== mkey(it.M)), 3)]).map(m => ({ ok: mkey(m) === mkey(it.M), label: h('span', { class: 'optletter rot', style: 'transform:' + mcss(m) }, it.l) })),
+    fbWrong: () => 'Probá cada paso por separado: el orden importa', failLabel: it => it.l + ': ' + it.o1[0] + ' → ' + it.o2[0],
+    notes: () => ['Transformaciones encadenadas (reflejo + giro): el orden de los pasos cambia el resultado. Es una tarea visoespacial de alta exigencia.']
+  });
+}
+
+/* ---- Reloj con aritmética del tiempo ---- */
+function runRelojU(root, api) {
+  const fmt = (hh, mm) => ((hh % 12) || 12) + ':' + String(mm).padStart(2, '0');
+  const items = Array.from({ length: 8 }, () => { const hh = R(1, 12), m = pick([0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]), fut = rnd(2) === 0, dh = R(1, 5), dm = pick([10, 15, 20, 25, 35, 40, 45, 50]), t0 = (hh % 12) * 60 + m, d = dh * 60 + dm, t1 = (((fut ? t0 + d : t0 - d) % 720) + 720) % 720; return { hh, m, fut, dh, dm, ans: fmt(Math.floor(t1 / 60), t1 % 60), noCarry: fut ? fmt(hh + dh, (m + dm) % 60) : fmt(hh - dh, (((m - dm) % 60) + 60) % 60), opposite: (() => { const t2 = (((fut ? t0 - d : t0 + d) % 720) + 720) % 720; return fmt(Math.floor(t2 / 60), t2 % 60); })() }; });
+  return runQuiz(root, api, {
+    instr: 'Calculá con horas y minutos', items, render: it => h('div', {}, h('div', { class: 'clock', html: clockSVG(it.hh, it.m) }), h('h2', { style: 'font-size:1.3rem' }, 'El reloj marca esta hora. ¿Qué hora ' + (it.fut ? 'será dentro de ' : 'era hace ') + it.dh + ' h ' + it.dm + ' min?')),
+    options: it => { const ah = parseInt(it.ans), am = parseInt(it.ans.split(':')[1]), s = [it.ans]; [it.noCarry, it.opposite, fmt(ah + 1, am), fmt(ah + 11, am), fmt(ah, (am + 5) % 60), fmt(ah, (am + 55) % 60)].forEach(x => { if (!s.includes(x) && s.length < 4) s.push(x); }); let k = 10; while (s.length < 4) { const x = fmt(ah, (am + k) % 60); if (!s.includes(x)) s.push(x); k += 5; } return shuffle(s).map(o => ({ label: o, ok: o === it.ans })); },
+    fbWrong: it => 'Eran las ' + it.ans + ' (cuidado con pasar de los 60 minutos)', failLabel: it => fmt(it.hh, it.m) + (it.fut ? ' + ' : ' − ') + it.dh + ' h ' + it.dm + ' min = ' + it.ans,
+    notes: () => ['Suma o resta de tiempo con «llevadas» en base 60 y base 12. Es la dificultad típica: sumar minutos sin pasar a la hora siguiente.']
+  });
+}
+
+/* ---- Calendario ---- */
+function runDiasU(root, api) {
+  const D7 = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'], fd = d => d.getUTCDate() + ' de ' + MESES[d.getUTCMonth()], rd = () => new Date(Date.UTC(2025, rnd(12), R(1, 28)));
+  const items = Array.from({ length: 10 }, () => {
+    const t = rnd(3);
+    if (t === 0) { const i = rnd(7), N = R(20, 100); if (N % 7 === 0) return null; return { q: 'Hoy es ' + D7[i] + '. ¿Qué día de la semana será dentro de ' + N + ' días?', a: D7[(i + N) % 7], pool: D7 }; }
+    if (t === 1) { const d1 = rd(), d2 = rd(); if (d1.getTime() === d2.getTime()) return null; return { q: 'Si el ' + fd(d1) + ' fue ' + D7[d1.getUTCDay()] + ', ¿qué día de la semana es el ' + fd(d2) + ' (mismo año, no bisiesto)?', a: D7[d2.getUTCDay()], pool: D7 }; }
+    const d1 = rd(), d2 = rd(); const a = d1 < d2 ? d1 : d2, b = d1 < d2 ? d2 : d1, n = Math.round((b - a) / 864e5); if (n < 10) return null;
+    return { q: '¿Cuántos días pasan desde el ' + fd(a) + ' hasta el ' + fd(b) + '? (mismo año, no bisiesto; no contés el primer día)', a: n, num: true };
+  }).filter(Boolean);
+  while (items.length < 10) { const i = rnd(7), N = R(20, 100) * 1; if (N % 7) items.push({ q: 'Hoy es ' + D7[i] + '. ¿Qué día de la semana será dentro de ' + N + ' días?', a: D7[(i + N) % 7], pool: D7 }); }
+  return runQuiz(root, api, {
+    instr: 'Usá el calendario con cabeza: semanas de 7 días y meses de distinto largo', items, render: it => h('h2', { style: 'font-size:1.25rem;line-height:1.4' }, it.q),
+    options: it => it.num ? optsNum(it.a, [it.a + 1, it.a - 1, it.a + 7, it.a - 7, it.a + 30, it.a - 30]) : shuffle([it.a, ...take(it.pool.filter(x => x !== it.a), 3)]).map(o => ({ label: o, ok: o === it.a })),
+    fbWrong: it => 'La respuesta era ' + it.a, failLabel: it => it.q + ' → ' + it.a,
+    notes: () => ['Resolver estas preguntas exige usar el resto de dividir por 7 (días de la semana) o contar días por mes: hay dos estrategias posibles, vale la pena preguntar cuál usó.']
+  });
+}
+
+/* ---- Analogías abstractas ---- */
+const ANA_U = [
+  ['termómetro', 'temperatura', 'reloj', 'tiempo', ['hora', 'muñeca', 'número']], ['pintor', 'cuadro', 'escultor', 'estatua', ['mármol', 'museo', 'pincel']],
+  ['semilla', 'árbol', 'huevo', 'ave', ['nido', 'cáscara', 'gallina']], ['ciego', 'bastón', 'sordo', 'audífono', ['oído', 'silencio', 'sonido']],
+  ['paraguas', 'lluvia', 'abrigo', 'frío', ['ropa', 'invierno', 'lana']], ['capitán', 'barco', 'piloto', 'avión', ['cielo', 'pista', 'torre']],
+  ['cuchillo', 'cortar', 'lápiz', 'escribir', ['papel', 'borrar', 'punta']], ['dos', 'cuatro', 'tres', 'seis', ['cinco', 'nueve', 'siete']],
+  ['bosque', 'árbol', 'biblioteca', 'libro', ['página', 'lectura', 'estante']], ['ladrillo', 'pared', 'palabra', 'oración', ['letra', 'libro', 'diccionario']],
+  ['médico', 'enfermedad', 'bombero', 'incendio', ['agua', 'casco', 'manguera']], ['silencio', 'ruido', 'oscuridad', 'luz', ['sombra', 'noche', 'vela']]
+];
+function runAnalogiasU(root, api) {
+  return runQuiz(root, api, {
+    instr: 'Encontrá la relación exacta entre el primer par y aplicala al segundo', items: take(ANA_U, 10),
+    render: it => h('div', { class: 'seq', style: 'font-size:1.5rem' }, h('span', {}, it[0]), '→', h('span', {}, it[1]), ' :: ', h('span', {}, it[2]), '→', h('span', { class: 'q' }, '?')),
+    options: it => shuffle([it[3], ...it[4]]).map(o => ({ label: o, ok: o === it[3] })),
+    fbWrong: it => it[0] + ' se relaciona con ' + it[1] + ' como ' + it[2] + ' con ' + it[3], failLabel: it => it[0] + ':' + it[1] + ' :: ' + it[2] + ':' + it[3],
+    notes: () => ['Analogías abstractas (herramienta-objeto, parte-todo, ausencia-presencia). Los distractores están relacionados con el tercer término pero no mantienen la relación del primer par.']
+  });
+}
+
+/* ---- Valor posicional con números grandes ---- */
+function runValorU(root, api) {
+  const items = Array.from({ length: 10 }, () => {
+    const t = rnd(4), n = R(10000, 999999);
+    if (t === 0) return { q: '¿Cuántas centenas completas hay en ' + fmtMiles(n) + '?', a: Math.floor(n / 100) };
+    if (t === 1) return { q: '¿Cuántas decenas completas hay en ' + fmtMiles(n) + '?', a: Math.floor(n / 10) };
+    if (t === 2) { const m = R(1, 9) * 1000, k = pick([10, 100, 1000]); return { q: 'Si a ' + fmtMiles(n) + ' le sumás ' + fmtMiles(k * 10) + ', ¿cuántas unidades de mil tiene el resultado?', a: Math.floor((n + k * 10) / 1000) }; }
+    const a = R(1, 9), b = R(1, 9), c = R(1, 9), d = R(1, 9); return { q: a + ' decenas de mil, ' + b + ' unidades de mil, ' + c + ' decenas y ' + d + ' unidades. ¿Qué número es?', a: a * 10000 + b * 1000 + c * 10 + d };
+  });
+  return runQuiz(root, api, {
+    instr: 'Pensá en grupos de 10, 100 y 1.000', items, render: it => h('h2', { style: 'font-size:1.3rem;line-height:1.4' }, it.q),
+    options: it => optsNum(it.a, [it.a + 1, it.a - 1, it.a * 10, Math.round(it.a / 10), it.a + 10, it.a - 10, it.a + 100]),
+    fbWrong: it => 'La respuesta era ' + fmtMiles(it.a), failLabel: it => it.q + ' → ' + fmtMiles(it.a),
+    notes: () => ['Las preguntas «completas» miden si entiende el valor posicional como agrupamiento (no solo el valor de cada cifra). Los distractores ×10 y ÷10 detectan errores de lugar.']
+  });
+}
+
+/* ---- Fracciones ---- */
+function runFraccU(root, api) {
+  const gcd = (a, b) => b ? gcd(b, a % b) : a;
+  const gen = [
+    () => { const d = pick([3, 4, 5, 6, 8]), n = R(1, d - 1), q = d * R(2, 9); return { q: '¿Cuánto es ' + n + '/' + d + ' de ' + q + '?', a: n * q / d, t: 'num' }; },
+    () => { let a, b, k; do { b = pick([3, 4, 5, 6, 7, 8, 9]); a = R(1, b - 1); } while (gcd(a, b) !== 1); k = R(2, 4); const ok = a + '/' + b, s = new Set([ok]); [[a + 1, b], [a, b + 1], [b - a, b], [a + k, b + k]].forEach(([x, y]) => { if (x > 0 && y > 0 && x < y && x * b !== a * y) s.add(x + '/' + y); }); return { q: '¿Qué fracción es equivalente a ' + a * k + '/' + b * k + '?', a: ok, opts: [...s].slice(0, 4), t: 'txt' }; },
+    () => { let a, b, c, d; do { b = pick([3, 4, 5, 6, 7, 8]); d = pick([3, 4, 5, 6, 7, 8]); a = R(1, b - 1); c = R(1, d - 1); } while (b === d || a * d === c * b); const x = a + '/' + b, y = c + '/' + d; return { q: '¿Cuál es MAYOR: ' + x + ' o ' + y + '?', a: a * d > c * b ? x : y, opts: [x, y], t: 'txt' }; },
+    () => { const d = pick([5, 6, 7, 8, 9, 10, 12]), a = R(1, d - 2), b = R(1, d - a - 1 + 1); const n = a + b; return { q: '¿Cuánto es ' + a + '/' + d + ' + ' + b + '/' + d + '?', a: n + '/' + d, opts: [...new Set([n + '/' + d, n + '/' + (d + d), a * b + '/' + d, (n + 1) + '/' + d])], t: 'txt' }; }
+  ];
+  const items = cyc(gen, 10).map(g => g());
+  return runQuiz(root, api, {
+    instr: 'Pensá en partes iguales y en el todo', items, render: it => h('h2', { style: 'font-size:1.4rem;line-height:1.4' }, it.q),
+    options: it => it.t === 'num' ? optsNum(it.a, [it.a + 1, it.a - 1, it.a * 2, it.a + 3]) : shuffle(it.opts).map(o => ({ label: o, ok: o === it.a })),
+    fbWrong: it => 'La respuesta era ' + it.a, failLabel: it => it.q + ' → ' + it.a,
+    notes: () => ['Fracción de una cantidad, equivalentes, comparación y suma. La comparación de fracciones con distinto denominador suele resolverse con el producto cruzado o con equivalentes.']
+  });
+}
+
+/* ---- Tablas inversas y números grandes ---- */
+function runTablasU(root, api) {
+  const gen = [
+    () => { const a = R(3, 12), b = R(3, 12); return { q: a + ' × ❓ = ' + a * b, a: b }; },
+    () => { const a = R(3, 12), b = R(3, 12); return { q: a * b + ' ÷ ' + a + ' = ❓', a: b }; },
+    () => { const n = R(11, 16); return { q: n + '² = ❓', a: n * n }; },
+    () => { const a = R(11, 19), b = R(3, 9); return { q: a + ' × ' + b + ' = ❓', a: a * b }; },
+    () => { const a = R(6, 14), b = R(6, 14); return { q: '❓ ÷ ' + a + ' = ' + b, a: a * b }; }
+  ];
+  const items = cyc(gen, 12).map(g => g());
+  return runQuiz(root, api, {
+    instr: 'Multiplicaciones y divisiones al revés: pensá la operación inversa', items, render: it => h('div', { class: 'big', style: 'font-size:2.8rem' }, it.q),
+    options: it => optsNum(it.a, [it.a + 1, it.a - 1, it.a + 10, it.a - 10, it.a * 2]),
+    fbWrong: it => 'La respuesta era ' + it.a, failLabel: it => it.q + ' → ' + it.a,
+    notes: ({ rt }) => ['Tiempo medio ' + rt.toFixed(1) + ' s. Si resuelve «❓ × 7 = 63» por prueba y error en vez de dividir, aún no usa la relación inversa entre multiplicar y dividir.']
+  });
+}
+
+/* ---- Comparar expresiones ---- */
+function runMayorU(root, api) {
+  const expr = () => { const t = rnd(4), a = R(2, 12), b = R(2, 9), c = R(2, 9); return t === 0 ? { s: a + ' × ' + b, v: a * b } : t === 1 ? { s: a + ' + ' + b + ' × ' + c, v: a + b * c } : t === 2 ? { s: '(' + a + ' + ' + b + ') × ' + c, v: (a + b) * c } : { s: a * c + ' − ' + b + ' × ' + c, v: a * c - b * c }; };
+  const items = Array.from({ length: 10 }, () => { let x, y; do { x = expr(); y = expr(); } while (x.v === y.v || x.v < 1 || y.v < 1 || Math.abs(x.v - y.v) > 25); return { x, y, big: rnd(2) === 0 }; });
+  return runQuiz(root, api, {
+    instr: 'Calculá las dos y elegí', items, render: it => h('h2', { class: 'big', style: 'font-size:2rem' }, 'Tocá la expresión ' + (it.big ? 'MAYOR' : 'MENOR')),
+    options: it => [it.x, it.y].map(e => ({ label: e.s, ok: it.big ? e.v === Math.max(it.x.v, it.y.v) : e.v === Math.min(it.x.v, it.y.v) })),
+    fbWrong: it => it.x.s + ' = ' + it.x.v + ' y ' + it.y.s + ' = ' + it.y.v, failLabel: it => it.x.s + ' vs ' + it.y.s,
+    notes: () => ['Compara resultados de operaciones sin ver los números: exige calcular ambas y retener el primer resultado mientras calcula el segundo.']
+  });
+}
+
+/* ---- Vuelto ---- */
+function runDineroU(root, api) {
+  const vals = [5, 10, 20, 50, 100, 200, 500];
+  const items = Array.from({ length: 10 }, () => { const m = Array.from({ length: R(3, 6) }, () => pick(vals)), S = m.reduce((a, b) => a + b, 0), P = R(Math.max(5, Math.floor(S * .3)), S - 1); return { m, S, P }; });
+  return runQuiz(root, api, {
+    instr: 'Sumá lo que tenés y calculá el vuelto', items,
+    render: it => h('div', {}, h('div', { class: 'row' }, it.m.map(v => h('span', { class: 'money ' + (v >= 20 ? 'bill' : 'coin') }, '$' + v))), h('h2', { style: 'font-size:1.3rem' }, 'Pagás con todo eso un producto de $' + it.P + '. ¿Cuánto vuelto te dan?')),
+    options: it => optsNum(it.S - it.P, [it.S + it.P, it.P, it.S - it.P + 10, it.S - it.P - 10]),
+    fbWrong: it => 'Tenías $' + it.S + ' y el producto costaba $' + it.P + ': vuelto $' + (it.S - it.P), failLabel: it => '$' + it.S + ' − $' + it.P + ' = $' + (it.S - it.P),
+    notes: () => ['Combina suma de varios valores y resta: son dos pasos que hay que mantener en la cabeza.']
+  });
+}
+
+/* ---- Registro ---- */
+['series', 'calc', 'prob', 'mat', 'stroop', 'flechas', 'donde', 'rot', 'reloj', 'dias', 'ana', 'valor', 'fracc', 'tablas', 'mayor', 'plata', 'saltos', 'hanoi', 'dig', 'nback', 'corsi', 'cancel', 'cancnum'].forEach(id => { const g = GAMES.find(x => x.id === id); if (g) g.ultra = true; });
+
+
 
 const AXES = ['Mem. trabajo', 'Atención', 'Fonología', 'Lectoescritura', 'Comprensión', 'Mem. visual', 'Flexibilidad', 'Razonamiento', 'Cálculo', 'Lenguaje', 'Visoespacial', 'Socioemocional'];
 const AXC = { 'Mem. trabajo': '#5b6cf0', 'Atención': '#e8851c', 'Fonología': '#2f9fe0', 'Lectoescritura': '#2e9e68', 'Comprensión': '#a8820a', 'Mem. visual': '#c4488f', 'Flexibilidad': '#3b6fe0', 'Razonamiento': '#d6473f', 'Cálculo': '#12a094', 'Lenguaje': '#e8706a', 'Visoespacial': '#9b5de5', 'Socioemocional': '#e0527a' };
@@ -1943,7 +2258,7 @@ function showHub() {
 function openGame(g, circuit) {
   ++session; playing = false; setPause(false);
   const p = cur(), sug = levelByAge(p.age), c = axc(g.ax); let lvl = sug, chosen = g.options ? g.options[0].value : null;
-  const lv = h('div', { class: 'lv', role: 'radiogroup', 'aria-label': 'Nivel' }, [1, 2, 3].map(n => h('label', { class: n === sug ? 'on' : '' }, h('input', { type: 'radio', name: 'lv', checked: n === sug, onchange: e => { lvl = n; [...e.target.closest('.lv').children].forEach((l, k) => l.classList.toggle('on', k === n - 1)); } }), LV[n] + (n === sug ? ' · sugerido' : ''))));
+  const lv = h('div', { class: 'lv', role: 'radiogroup', 'aria-label': 'Nivel' }, (g.ultra ? [1, 2, 3, 4] : [1, 2, 3]).map(n => h('label', { class: (n === sug ? 'on' : '') + (n === 4 ? ' ultra' : '') }, h('input', { type: 'radio', name: 'lv', checked: n === sug, onchange: e => { lvl = n; [...e.target.closest('.lv').children].forEach((l, k) => l.classList.toggle('on', k === n - 1)); } }), LV[n] + (n === sug ? ' · sugerido' : n === 4 ? ' · muy difícil' : ''))));
   const opts = g.options ? [h('div', { class: 'lab' }, g.optionsLabel), h('div', { class: 'lv' }, g.options.map((o, i) => h('label', { class: i === 0 ? 'on' : '' }, h('input', { type: 'radio', name: 'opt', checked: i === 0, onchange: e => { chosen = o.value; [...e.target.closest('.lv').children].forEach((l, k) => l.classList.toggle('on', k === i)); } }), o.label)))] : null;
   const body = h('div', { class: 'stage' },
     h('div', { class: 'tile', style: 'width:88px;height:88px;font-size:3rem;margin:0 auto 8px;border-radius:24px' }, g.icon), h('h2', {}, g.title), h('span', { class: 'tag' }, g.area),
@@ -1957,7 +2272,7 @@ function openGame(g, circuit) {
 
 function startGame(g, level, opt, circuit, practice) {
   const s = ++session; playing = true; setPause(false); curGame = g;
-  const api = { alive: () => s === session, level, practice: !!practice, end: r => { if (s === session) finish(g, r, level, circuit, practice); } };
+  const api = { alive: () => s === session, level: level === 4 ? 3 : level, ultra: level === 4, practice: !!practice, end: r => { if (s === session) finish(g, r, level, circuit, practice); } };
   const body = h('div', { class: 'stage' }), c = axc(g.ax);
   show(h('div', {}, h('div', { class: 'bar' },
     h('div', { class: 'gh', style: '--c:' + c }, h('div', { class: 'tile' }, g.icon), h('div', {}, h('h2', {}, g.title), h('span', { class: 'tag' }, (practice ? 'Práctica con ayuda · ' : LV[level] + ' · ') + g.area))),
@@ -1982,7 +2297,7 @@ function finish(g, r, level, circuit, practice) {
   const [semT, semC] = semOf(pct);
   let cmp = null;
   if (prev) { const d = pct - prev.pct; cmp = (d > 0 ? '▲ +' + d : d < 0 ? '▼ ' + d : '＝ igual') + ' puntos respecto de la vez anterior (' + prev.pct + '%)' + (prev.level !== level ? ' · nivel distinto' : ''); }
-  const notes = [...(r.notes || []), ...g.observe];
+  const notes = [...(level === 4 ? ['Nivel Ultra: está pensado para ser muy exigente (sin pistas y con varios pasos). Un resultado de 40 a 60 % ya es muy bueno.'] : []), ...(r.notes || []), ...g.observe];
   const obs = h('textarea', { rows: 2, id: 'obs', placeholder: 'Observaciones del profesional (opcional): conducta, estrategias, comentarios…', oninput: e => { rec.obs = e.target.value; saveR(); } });
   let nextBtns;
   if (circuit) {
@@ -2181,6 +2496,7 @@ function showTutorial(g, circuit) {
   close = modal(h('div', {},
     h('div', { class: 'gh', style: '--c:' + axc(g.ax) + ';margin-bottom:8px' }, h('div', { class: 'tile' }, g.icon), h('div', {}, h('h2', {}, 'Cómo se juega'), h('span', { class: 'tag' }, g.title))),
     h('ol', { class: 'steps' }, steps.map(x => h('li', {}, x))), tip ? h('p', { class: 'tip' }, 'Consejo: ' + tip) : null,
+    g.ultra ? h('p', { class: 'tip' }, 'Nivel Ultra: sin pistas y con ejercicios de varios pasos. Tomate todo el tiempo que necesites para pensar.') : null,
     h('p', { class: 'muted' }, '«Probar con ayuda» es una práctica corta: la respuesta correcta brilla y no se guarda nada.'),
     h('div', { class: 'row' }, h('button', { class: 'btn sun', onclick: () => { close(); setPause(false); startGame(g, 1, opt, circuit, true); } }, 'Probar con ayuda'), h('button', { class: 'btn', onclick: () => close() }, 'Entendido'))));
 }
@@ -2188,7 +2504,7 @@ function showHelp() {
   session++; playing = false; setNav('help'); rerender = showHelp;
   show(h('div', {}, h('h2', {}, 'Ayuda'),
     h('div', { class: 'panel' }, h('h3', {}, 'Cómo usarlo'),
-      h('ol', { class: 'steps' }, h('li', {}, 'Creá un alumno/a con su edad: se sugiere el nivel inicial automáticamente.'), h('li', {}, 'Elegí un juego. Tocá «Cómo se juega» para ver el tutorial y practicar con ayuda.'), h('li', {}, 'Elegí el nivel (Fácil, Medio o Difícil) y jugá. Podés pausar con P o Esc.'), h('li', {}, 'Al terminar vas a ver qué observar y podés anotar notas.'), h('li', {}, 'En Progreso: perfil por área, evolución, logros e informe imprimible.'), h('li', {}, 'Circuito arma una serie de 5 juegos de áreas distintas.')),
+      h('ol', { class: 'steps' }, h('li', {}, 'Creá un alumno/a con su edad: se sugiere el nivel inicial automáticamente.'), h('li', {}, 'Elegí un juego. Tocá «Cómo se juega» para ver el tutorial y practicar con ayuda.'), h('li', {}, 'Elegí el nivel (Fácil, Medio o Difícil; en muchos juegos hay un cuarto nivel, Ultra, para pensar a fondo) y jugá. Podés pausar con P o Esc.'), h('li', {}, 'Al terminar vas a ver qué observar y podés anotar notas.'), h('li', {}, 'En Progreso: perfil por área, evolución, logros e informe imprimible.'), h('li', {}, 'Circuito arma una serie de 5 juegos de áreas distintas.')),
       h('div', { class: 'row', style: 'justify-content:flex-start' }, h('button', { class: 'btn sm', onclick: () => tour() }, 'Ver el recorrido de la app'))),
     h('div', { class: 'panel' }, h('h3', {}, 'Tutorial de cada juego'), h('p', { class: 'muted' }, 'Tocá un juego para ver cómo se juega.'),
       AXES.map(ax => { const gs = GAMES.filter(g => g.ax === ax); return gs.length ? h('div', {}, h('div', { class: 'lab' }, ax), h('div', { class: 'chips' }, gs.map(g => h('button', { class: 'chip', style: '--c:' + axc(ax), onclick: () => showTutorial(g, null) }, g.icon + ' ' + g.title)))) : null; })),
@@ -2200,7 +2516,7 @@ function tour() {
   const slides = [
     ['1. Elegí un juego', 'En el menú hay juegos de atención, memoria, lenguaje, lectoescritura, cálculo, razonamiento y habilidades socioemocionales. Usá el buscador y los filtros por área.'],
     ['2. Mirá el tutorial', 'Cada juego tiene «Cómo se juega»: pasos simples y una práctica con ayuda (la respuesta correcta brilla) que no se guarda.'],
-    ['3. Elegí el nivel', 'Fácil, Medio y Difícil. Se sugiere uno según la edad del alumno o alumna, pero podés cambiarlo.'],
+    ['3. Elegí el nivel', 'Fácil, Medio y Difícil, y en muchos juegos también Ultra (muy difícil, sin pistas). Se sugiere uno según la edad del alumno o alumna, pero podés cambiarlo.'],
     ['4. Seguí el progreso', 'En Progreso ves el perfil por área, la evolución y los logros. Podés anotar observaciones, imprimir un informe y hacer copias de seguridad.']
   ]; let i = 0, close;
   const body = h('div'), draw = () => { body.replaceChildren(h('h2', {}, slides[i][0]), h('p', { class: 'lead' }, slides[i][1]), h('div', { class: 'muted' }, (i + 1) + ' de ' + slides.length), h('div', { class: 'row' }, i ? h('button', { class: 'btn ghost', onclick: () => { i--; draw(); } }, 'Atrás') : null, i < slides.length - 1 ? h('button', { class: 'btn', onclick: () => { i++; draw(); } }, 'Siguiente') : h('button', { class: 'btn', onclick: () => close() }, '¡A jugar!'))); };
