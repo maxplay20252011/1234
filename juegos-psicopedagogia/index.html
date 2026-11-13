@@ -1,9 +1,10 @@
 <!doctype html>
-<html lang="es-AR" data-theme="auto">
+<html lang="es-AR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#3e63dd">
+<meta name="claude:viewport-fit-sides" content="cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Juegos de Psicopedagogía</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🧠%3C/text%3E%3C/svg%3E">
@@ -14,9 +15,10 @@
   --shadow:0 2px 0 rgba(0,0,0,.06), 0 8px 24px rgba(31,36,48,.07); --fs:1;
 }
 @media (prefers-color-scheme:dark){
-  html[data-theme=auto]{--bg:#14161c;--panel:#1e222b;--ink:#eef0f5;--muted:#a2aabb;--line:#2f3542;--shadow:0 2px 0 rgba(0,0,0,.4);--brand:#6e8bf0}
+  :root:not([data-theme=light]){--bg:#14161c;--panel:#1e222b;--ink:#eef0f5;--muted:#a2aabb;--line:#2f3542;--shadow:0 2px 0 rgba(0,0,0,.4);--brand:#6e8bf0;color-scheme:dark}
+  html[data-contrast=on]:not([data-theme=light]){--bg:#000;--panel:#000;--ink:#fff;--muted:#ddd;--line:#fff;--brand:#8fb0ff;--good:#5fe3a1;--bad:#ff7b7b}
 }
-html[data-theme=dark]{--bg:#14161c;--panel:#1e222b;--ink:#eef0f5;--muted:#a2aabb;--line:#2f3542;--shadow:0 2px 0 rgba(0,0,0,.4);--brand:#6e8bf0}
+:root[data-theme=dark]{--bg:#14161c;--panel:#1e222b;--ink:#eef0f5;--muted:#a2aabb;--line:#2f3542;--shadow:0 2px 0 rgba(0,0,0,.4);--brand:#6e8bf0;color-scheme:dark}
 html[data-contrast=on]{--bg:#fff;--panel:#fff;--ink:#000;--muted:#222;--line:#000;--brand:#0027b3;--good:#006b3c;--bad:#b00020}
 html[data-theme=dark][data-contrast=on]{--bg:#000;--panel:#000;--ink:#fff;--muted:#ddd;--line:#fff;--brand:#8fb0ff;--good:#5fe3a1;--bad:#ff7b7b}
 html[data-easy=on]{--bg:#fbf5e3}
@@ -25,7 +27,7 @@ html[data-motion=reduced] *{transition:none!important;animation:none!important}
 *{box-sizing:border-box}
 html{font-size:calc(100% * var(--fs));-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:1.0625rem/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-.wrap{max-width:960px;margin:0 auto;padding:14px}
+.wrap{max-width:960px;margin:0 auto;padding-block:14px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 header.top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:8px}
 h1{font-size:1.4rem;margin:0}
 h2{font-size:1.2rem;margin:.2rem 0}
@@ -36,6 +38,7 @@ input[type=text],input[type=number],select,textarea{font:inherit;padding:8px 11p
 textarea{width:100%}
 .btn{font:inherit;font-weight:600;border:0;border-radius:14px;padding:10px 16px;background:var(--brand);color:var(--brand-ink);cursor:pointer;box-shadow:var(--shadow)}
 .btn.ghost{background:var(--panel);color:var(--ink);border:2px solid var(--line);box-shadow:none}
+a.btn{text-decoration:none;display:inline-block}
 .btn.sm{padding:6px 11px;font-size:.9rem}
 .btn.danger{background:var(--bad)}
 .btn:focus-visible,.opt:focus-visible,.pad:focus-visible,.mc:focus-visible,.card:focus-visible,.chip:focus-visible,.cell:focus-visible,.ref:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
@@ -175,8 +178,11 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 };
 function download(name, mime, text) {
-  const a = h('a', { href: URL.createObjectURL(new Blob(['﻿' + text], { type: mime + ';charset=utf-8' })), download: name });
-  document.body.append(a); a.click(); a.remove();
+  const ta = h('textarea', { rows: 8, readonly: true }, text); let close;
+  const a = h('a', { class: 'btn sm', href: URL.createObjectURL(new Blob(['\ufeff' + text], { type: mime + ';charset=utf-8' })), download: name }, '⬇ Descargar archivo');
+  const copy = () => { ta.select(); (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast('Copiado'), () => { try { document.execCommand('copy'); toast('Copiado'); } catch (e) {} }); };
+  close = modal(h('div', {}, h('h2', {}, 'Exportar: ' + name), h('p', { class: 'muted' }, 'Copiá el texto y pegalo en un archivo, o descargalo si tu navegador lo permite.'), ta,
+    h('div', { class: 'row' }, h('button', { class: 'btn sm', onclick: copy }, '📋 Copiar'), a, h('button', { class: 'btn ghost sm', onclick: () => close() }, 'Cerrar'))));
 }
 function toast(msg) { const t = h('div', { class: 'toast', role: 'status' }, msg); document.body.append(t); setTimeout(() => t.remove(), 3800); }
 function confetti() {
@@ -186,6 +192,12 @@ function confetti() {
     const c = h('div', { class: 'conf', style: 'left:' + rnd(100) + 'vw;background:' + pick(cols) + ';animation-delay:' + (rnd(600) / 1000) + 's' });
     document.body.append(c); setTimeout(() => c.remove(), 3400);
   }
+}
+function askConfirm(msg, onYes, onNo, yes = 'Sí', no = 'Cancelar') {
+  let close;
+  close = modal(h('div', {}, h('p', {}, msg), h('div', { class: 'row' },
+    h('button', { class: 'btn', onclick: () => { close(); onYes && onYes(); } }, yes),
+    h('button', { class: 'btn ghost', onclick: () => { close(); onNo && onNo(); } }, no))));
 }
 function modal(node) {
   const ov = h('div', { class: 'ov', role: 'dialog', 'aria-modal': 'true' }, h('div', { class: 'mbox' }, node));
@@ -198,9 +210,11 @@ function modal(node) {
 /* ================= ajustes ================= */
 const DEF = { theme: 'auto', fs: 1, easy: false, contrast: false, reduce: false, volume: .6, voice: false, np: false };
 let S = { ...DEF, ...store.get('pp2_settings', {}) };
+const INIT_THEME = document.documentElement.getAttribute('data-theme');
 function applySettings() {
   const r = document.documentElement;
-  r.dataset.theme = S.theme; r.style.setProperty('--fs', S.fs);
+  if (S.theme === 'auto') { if (INIT_THEME) r.setAttribute('data-theme', INIT_THEME); else r.removeAttribute('data-theme'); } else r.dataset.theme = S.theme;
+  r.style.setProperty('--fs', S.fs);
   r.dataset.easy = S.easy ? 'on' : 'off'; r.dataset.contrast = S.contrast ? 'on' : 'off'; r.dataset.motion = S.reduce ? 'reduced' : 'normal';
   document.body.classList.toggle('np', S.np);
   store.set('pp2_settings', S);
@@ -275,13 +289,13 @@ const app = $('#app');
 let session = 0, playing = false, rerender = () => showHub(), curNav = 'hub';
 const NAVS = [['hub', '🏠 Juegos'], ['circuit', '🎲 Circuito'], ['progress', '📈 Progreso'], ['settings', '⚙️ Ajustes'], ['help', '❓ Ayuda']];
 function setNav(v) { curNav = v; $('#nav').querySelectorAll('button[data-v]').forEach(b => b.classList.toggle('act', b.dataset.v === v)); }
-function guard() {
-  if (playing && !confirm('¿Salir de la partida? Se pierde el avance.')) return false;
-  session++; playing = false; setPause(false); try { speechSynthesis.cancel(); } catch (e) {}
-  return true;
+function leave() { session++; playing = false; setPause(false); try { speechSynthesis.cancel(); } catch (e) {} }
+function guard(next) {
+  if (playing) { setPause(true); askConfirm('¿Salir de la partida? Se pierde el avance.', () => { leave(); next(); }, () => setPause(false), 'Salir', 'Seguir jugando'); return; }
+  leave(); next();
 }
 const GO = { hub: () => showHub(), circuit: () => startCircuit(), progress: () => showProgress(), settings: () => showSettings(), help: () => showHelp() };
-$('#nav').append(...NAVS.map(([v, l]) => h('button', { class: 'btn ghost', 'data-v': v, onclick: () => { if (guard()) GO[v](); } }, l)),
+$('#nav').append(...NAVS.map(([v, l]) => h('button', { class: 'btn ghost', 'data-v': v, onclick: () => guard(GO[v]) }, l)),
   h('button', { class: 'btn ghost', 'aria-label': 'Pantalla completa', onclick: () => { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) {} } }, '⛶'));
 function show(node) { app.replaceChildren(node); window.scrollTo(0, 0); }
 function setPause(v) { paused = v; $('#pause').hidden = !v; }
@@ -299,9 +313,9 @@ document.addEventListener('keydown', e => {
 function paintProfiles() {
   const sel = $('#prof'); sel.replaceChildren(...profiles.map(p => h('option', { value: p.id, selected: p.id === curId }, p.name + ' (' + p.age + ')')));
 }
-$('#prof').onchange = e => { if (!guard()) { paintProfiles(); return; } curId = e.target.value; saveP(); rerender(); };
-$('#addP').onclick = () => { if (guard()) profileForm(null); };
-$('#editP').onclick = () => { if (guard()) profileForm(cur()); };
+$('#prof').onchange = e => { const id = e.target.value; if (playing) paintProfiles(); guard(() => { curId = id; saveP(); paintProfiles(); rerender(); }); };
+$('#addP').onclick = () => guard(() => profileForm(null));
+$('#editP').onclick = () => guard(() => profileForm(cur()));
 function profileForm(p) {
   const name = h('input', { type: 'text', value: p ? p.name : '', maxlength: 40, placeholder: 'Nombre' });
   const age = h('input', { type: 'number', min: 4, max: 17, value: p ? p.age : 8 });
@@ -311,12 +325,11 @@ function profileForm(p) {
     if (p) { p.name = n; p.age = a; } else { const q = { id: 'p' + uid(), name: n, age: a }; profiles.push(q); curId = q.id; }
     saveP(); paintProfiles(); close(); rerender();
   };
-  const del = () => {
-    if (!confirm('¿Eliminar a ' + p.name + ' y todos sus resultados?')) return;
+  const del = () => askConfirm('¿Eliminar a ' + p.name + ' y todos sus resultados?', () => {
     results = results.filter(r => r.pid !== p.id); delete achs[p.id]; profiles = profiles.filter(x => x.id !== p.id);
     if (!profiles.length) profiles = [{ id: 'p' + uid(), name: 'Alumno/a 1', age: 8 }];
     curId = profiles[0].id; saveR(); saveA(); saveP(); paintProfiles(); close(); rerender();
-  };
+  });
   close = modal(h('div', {}, h('h2', {}, p ? 'Editar alumno/a' : 'Nuevo alumno/a'),
     h('label', {}, 'Nombre'), name, h('label', {}, 'Edad (años)'), age,
     h('p', { class: 'muted' }, 'La edad solo se usa para sugerir el nivel de dificultad inicial.'),
@@ -801,7 +814,7 @@ function openGame(g, circuit) {
   const lv = h('div', { class: 'lv', role: 'radiogroup', 'aria-label': 'Nivel' }, [1, 2, 3].map(n => h('label', {}, h('input', { type: 'radio', name: 'lv', checked: n === sug, onchange: () => lvl = n }), LV[n] + (n === sug ? ' (sugerido)' : ''))));
   const opts = g.options ? h('fieldset', {}, h('legend', {}, g.optionsLabel), g.options.map((o, i) => h('label', {}, h('input', { type: 'radio', name: 'opt', checked: i === 0, onchange: () => chosen = o.value }), ' ' + o.label))) : null;
   body.append(h('div', { class: 'big' }, g.icon), circuit ? h('p', { class: 'muted' }, '🎲 Circuito · juego ' + (circuit.i + 1) + ' de ' + circuit.queue.length) : null, h('p', {}, g.how), h('p', { class: 'muted' }, 'Nivel:'), lv, opts,
-    h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => startGame(g, lvl, chosen, circuit) }, '▶ Empezar'), h('button', { class: 'btn ghost', onclick: () => { if (guard()) showHub(); } }, circuit ? 'Salir del circuito' : 'Volver')));
+    h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => startGame(g, lvl, chosen, circuit) }, '▶ Empezar'), h('button', { class: 'btn ghost', onclick: () => guard(showHub) }, circuit ? 'Salir del circuito' : 'Volver')));
   say(g.how);
   show(h('div', {}, h('div', { class: 'bar' }, h('h2', {}, g.title)), h('div', { class: 'panel' }, body)));
 }
@@ -832,7 +845,7 @@ function finish(g, r, level, circuit) {
     circuit.recs.push(rec); const last = circuit.i + 1 >= circuit.queue.length;
     if (last) { const u = unlock(p.id, 'circuit'); if (u) toast('🏆 Logro desbloqueado: ' + u.t); }
     nextBtns = last ? [h('button', { class: 'btn', onclick: () => circuitSummary(circuit) }, '🏁 Ver resumen del circuito')]
-      : [h('button', { class: 'btn', onclick: () => openGame(GAMES.find(x => x.id === circuit.queue[circuit.i + 1]), { ...circuit, i: circuit.i + 1 }) }, 'Siguiente juego →'), h('button', { class: 'btn ghost', onclick: () => { if (guard()) showHub(); } }, 'Terminar circuito')];
+      : [h('button', { class: 'btn', onclick: () => openGame(GAMES.find(x => x.id === circuit.queue[circuit.i + 1]), { ...circuit, i: circuit.i + 1 }) }, 'Siguiente juego →'), h('button', { class: 'btn ghost', onclick: () => guard(showHub) }, 'Terminar circuito')];
   } else nextBtns = [h('button', { class: 'btn', onclick: () => openGame(g, null) }, '🔁 Jugar de nuevo'), h('button', { class: 'btn ghost', onclick: showHub }, 'Otro juego'), h('button', { class: 'btn ghost', onclick: showProgress }, '📈 Ver progreso')];
   say(pct >= 60 ? '¡Muy bien!' : '¡Buen intento!');
   show(h('div', {}, h('div', { class: 'bar' }, h('h2', {}, g.title + ' · resultado')),
@@ -894,7 +907,7 @@ function showProgress() {
     h('div', { class: 'bar noprint' }, h('h2', {}, '📈 Progreso de ' + p.name), h('div', { class: 'tools' },
       h('button', { class: 'btn sm', onclick: () => window.print() }, '🖨 Imprimir informe'),
       h('button', { class: 'btn ghost sm', onclick: () => download('resultados-' + p.name.replace(/\W+/g, '_') + '.csv', 'text/csv', csvOf(rs)) }, '⬇ CSV'),
-      h('button', { class: 'btn ghost sm', onclick: () => { if (confirm('¿Borrar los resultados de ' + p.name + '?')) { results = results.filter(r => r.pid !== p.id); delete achs[p.id]; saveR(); saveA(); showProgress(); } } }, '🗑 Borrar datos'))),
+      h('button', { class: 'btn ghost sm', onclick: () => askConfirm('¿Borrar los resultados de ' + p.name + '?', () => { results = results.filter(r => r.pid !== p.id); delete achs[p.id]; saveR(); saveA(); showProgress(); }) }, '🗑 Borrar datos'))),
     !rs.length ? h('div', { class: 'panel' }, h('p', { class: 'muted' }, 'Todavía no hay partidas de ' + p.name + '. Jugá algo y el progreso aparece acá.')) : h('div', {},
       h('div', { class: 'stats' }, [['Partidas', rs.length], ['Días jugados', days], ['Racha (días)', streak(p.id)], ['Logros', Object.keys(got).length + '/' + ACH.length]].map(([k, v]) => h('div', { class: 'stat' }, h('b', {}, String(v)), k))),
       h('div', { class: 'two' },
@@ -905,20 +918,20 @@ function showProgress() {
 }
 
 /* ----- ajustes ----- */
+function importData(txt) {
+  try {
+    const d = JSON.parse(txt); if (!Array.isArray(d.profiles) || !Array.isArray(d.results)) throw 0;
+    const pids = new Set(profiles.map(p => p.id)), rids = new Set(results.map(r => r.id));
+    d.profiles.forEach(p => { if (p && p.id && !pids.has(p.id)) profiles.push(p); }); d.results.forEach(r => { if (r && r.id && !rids.has(r.id)) results.push(r); });
+    Object.entries(d.ach || {}).forEach(([k, v]) => achs[k] = { ...v, ...(achs[k] || {}) });
+    saveP(); saveR(); saveA(); paintProfiles(); toast('Copia importada (se combinó con lo existente)'); showSettings();
+  } catch (err) { toast('El texto no es una copia válida.'); }
+}
 function showSettings() {
   session++; playing = false; setNav('settings'); rerender = showSettings;
   const tg = (label, key, after) => h('label', { style: 'display:block;padding:4px 0' }, h('input', { type: 'checkbox', checked: !!S[key], onchange: e => { S[key] = e.target.checked; applySettings(); after && after(); } }), ' ' + label);
-  const fileIn = h('input', { type: 'file', accept: '.json,application/json', style: 'display:none', onchange: e => {
-    const f = e.target.files[0]; if (!f) return; const fr = new FileReader();
-    fr.onload = () => { try {
-      const d = JSON.parse(fr.result); if (!Array.isArray(d.profiles) || !Array.isArray(d.results)) throw 0;
-      const pids = new Set(profiles.map(p => p.id)), rids = new Set(results.map(r => r.id));
-      d.profiles.forEach(p => { if (p && p.id && !pids.has(p.id)) profiles.push(p); }); d.results.forEach(r => { if (r && r.id && !rids.has(r.id)) results.push(r); });
-      Object.entries(d.ach || {}).forEach(([k, v]) => achs[k] = { ...v, ...(achs[k] || {}) });
-      saveP(); saveR(); saveA(); paintProfiles(); toast('Copia importada (se combinó con lo existente)'); showSettings();
-    } catch (err) { alert('El archivo no es una copia válida.'); } };
-    fr.readAsText(f);
-  } });
+  const fileIn = h('input', { type: 'file', accept: '.json,application/json', style: 'display:none', onchange: e => { const f = e.target.files[0]; if (!f) return; const fr = new FileReader(); fr.onload = () => importData(fr.result); fr.readAsText(f); } });
+  const imp = h('textarea', { rows: 3, placeholder: '…o pegá acá el contenido de una copia JSON' });
   show(h('div', {}, h('h2', {}, '⚙️ Ajustes'), h('div', { class: 'two' },
     h('div', { class: 'panel' }, h('h3', {}, 'Accesibilidad y apariencia'),
       h('label', {}, 'Tema ', h('select', { onchange: e => { S.theme = e.target.value; applySettings(); } }, [['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Oscuro']].map(([v, l]) => h('option', { value: v, selected: S.theme === v }, l)))),
@@ -931,9 +944,9 @@ function showSettings() {
       h('div', { class: 'row', style: 'justify-content:flex-start' },
         h('button', { class: 'btn sm', onclick: () => download('copia-psicopedagogia.json', 'application/json', JSON.stringify({ v: 2, profiles, results, ach: achs })) }, '💾 Exportar copia (JSON)'),
         h('button', { class: 'btn ghost sm', onclick: () => fileIn.click() }, '📂 Importar copia'),
-        h('button', { class: 'btn ghost sm', onclick: () => download('resultados-todos.csv', 'text/csv', csvOf(results)) }, '⬇ CSV de todos')), fileIn,
+        h('button', { class: 'btn ghost sm', onclick: () => download('resultados-todos.csv', 'text/csv', csvOf(results)) }, '⬇ CSV de todos')), fileIn, imp, h('button', { class: 'btn ghost sm', onclick: () => importData(imp.value) }, 'Importar texto pegado'),
       h('h3', {}, 'Alumnos/as'), h('ul', {}, profiles.map(p => h('li', {}, p.name + ' (' + p.age + ') — ' + resOf(p.id).length + ' partidas '))),
-      h('button', { class: 'btn danger sm', onclick: () => { if (confirm('¿Borrar TODOS los datos (alumnos, resultados, ajustes)?')) { ['pp2_profiles', 'pp2_cur', 'pp2_results', 'pp2_ach', 'pp2_settings', 'pp2_seen'].forEach(k => localStorage.removeItem(k)); location.reload(); } } }, '🗑 Borrar todo')))));
+      h('button', { class: 'btn danger sm', onclick: () => askConfirm('¿Borrar TODOS los datos (alumnos, resultados, ajustes)?', () => { ['pp2_profiles', 'pp2_cur', 'pp2_results', 'pp2_ach', 'pp2_settings', 'pp2_seen'].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} }); location.reload(); }) }, '🗑 Borrar todo')))));
 }
 
 function showHelp() {
