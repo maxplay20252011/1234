@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Juegos de Psicopedagogía</title>
+<style>
+:root{
+  --bg:#f6f4ee; --panel:#ffffff; --ink:#1f2430; --muted:#5b6475; --line:#e3dfd3;
+  --brand:#3e63dd; --brand-ink:#fff; --good:#1f9d62; --bad:#d6403f; --warn:#c98a00;
+  --shadow:0 2px 0 rgba(0,0,0,.06), 0 8px 24px rgba(31,36,48,.07);
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#14161c; --panel:#1e222b; --ink:#eef0f5; --muted:#a2aabb; --line:#2f3542; --shadow:0 2px 0 rgba(0,0,0,.4);}
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:16px}
+header.top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
+h1{font-size:1.5rem;margin:0}
+h2{font-size:1.25rem;margin:.2rem 0}
+.muted{color:var(--muted)}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input[type=text]{font:inherit;padding:9px 12px;border:2px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);min-width:0}
+.btn{font:inherit;font-weight:600;border:0;border-radius:14px;padding:11px 18px;background:var(--brand);color:var(--brand-ink);cursor:pointer;box-shadow:var(--shadow)}
+.btn.ghost{background:var(--panel);color:var(--ink);border:2px solid var(--line);box-shadow:none}
+.btn:focus-visible,.opt:focus-visible,.pad:focus-visible,.mc:focus-visible,.card:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
+.btn:active{transform:translateY(1px)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.card{background:var(--panel);border:2px solid var(--line);border-radius:18px;padding:16px;text-align:left;font:inherit;color:inherit;cursor:pointer;box-shadow:var(--shadow);transition:transform .12s}
+.card:hover{transform:translateY(-3px)}
+.card .ic{font-size:2.2rem}
+.card .tag{display:inline-block;font-size:.78rem;font-weight:700;padding:2px 9px;border-radius:99px;background:color-mix(in srgb,var(--brand) 16%,transparent);color:var(--brand);margin:4px 0}
+.panel{background:var(--panel);border:2px solid var(--line);border-radius:20px;padding:18px;box-shadow:var(--shadow)}
+.bar{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap}
+.prog{height:10px;background:var(--line);border-radius:9px;overflow:hidden;flex:1;min-width:120px}
+.prog>i{display:block;height:100%;background:var(--brand);width:0;transition:width .25s}
+.stage{text-align:center}
+.status{min-height:2em;font-size:1.15rem;font-weight:600;margin:8px 0}
+.big{font-size:5rem;line-height:1.1;margin:6px 0}
+.row{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:10px 0}
+.opt{font:inherit;font-size:1.4rem;font-weight:700;min-width:64px;min-height:64px;padding:8px 18px;border-radius:16px;border:3px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.opt:hover:not(:disabled){border-color:var(--brand)}
+.opt.right{background:var(--good);border-color:var(--good);color:#fff}
+.opt.wrong{background:var(--bad);border-color:var(--bad);color:#fff}
+.pads{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:380px;margin:12px auto}
+.pad{min-height:110px;border-radius:22px;border:0;font:inherit;font-weight:800;color:#111;background:var(--c);opacity:.55;cursor:pointer;font-size:1.1rem}
+.pad.on{opacity:1;transform:scale(1.04);box-shadow:0 0 0 6px color-mix(in srgb,var(--c) 40%,transparent)}
+.pad:disabled{cursor:default}
+.lives{letter-spacing:4px}
+.go-btn{width:min(100%,420px);min-height:100px;font-size:1.6rem}
+.stim{height:140px;display:flex;align-items:center;justify-content:center;font-size:6rem}
+.mem{display:grid;gap:10px;margin:12px auto;max-width:520px}
+.mc{aspect-ratio:1;border-radius:16px;border:3px solid var(--line);background:var(--brand);color:#fff;font-size:2.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.mc.up{background:var(--panel);color:var(--ink)}
+.mc.done{background:color-mix(in srgb,var(--good) 25%,var(--panel));border-color:var(--good)}
+.shape{font-size:3.4rem;line-height:1}
+.ref{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:96px;padding:12px 10px;border-radius:16px;border:3px solid var(--line);background:var(--panel);cursor:pointer;font:inherit;color:var(--ink)}
+.ref:hover{border-color:var(--brand)}
+.stimcard{display:inline-flex;flex-direction:column;align-items:center;padding:14px 26px;border-radius:18px;border:3px dashed var(--muted);margin:8px 0;background:var(--panel)}
+.seq{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;font-size:2.2rem;font-weight:800;margin:14px 0}
+.seq span{min-width:52px;padding:6px 8px;border-radius:12px;background:color-mix(in srgb,var(--brand) 10%,var(--panel))}
+.seq .q{background:var(--warn);color:#fff}
+.fb{min-height:1.8em;font-weight:700;font-size:1.1rem}
+.fb.good{color:var(--good)} .fb.bad{color:var(--bad)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0;text-align:center}
+.stat{background:color-mix(in srgb,var(--brand) 8%,var(--panel));border-radius:14px;padding:10px}
+.stat b{display:block;font-size:1.5rem}
+ul.notes{text-align:left;padding-left:20px}
+fieldset{border:2px solid var(--line);border-radius:14px;margin:12px auto;max-width:420px;text-align:left}
+fieldset label{display:block;padding:4px 0;cursor:pointer}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.scroll{overflow-x:auto}
+footer{margin:22px 0 8px;font-size:.85rem;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>🧠 Juegos de Psicopedagogía</h1>
+    <div class="tools">
+      <input type="text" id="student" placeholder="Nombre del alumno/a" aria-label="Nombre del alumno o alumna" maxlength="40">
+      <button class="btn ghost" id="snd" aria-pressed="true">🔊 Sonido</button>
+      <button class="btn ghost" id="resBtn">📊 Resultados</button>
+    </div>
+  </header>
+  <main id="app"></main>
+  <footer>Material lúdico de apoyo: no es un test estandarizado ni reemplaza una evaluación psicopedagógica. Los resultados se guardan solo en este navegador.</footer>
+</div>
+
+<script>
+/* ---------- utilidades ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const rnd = n => Math.floor(Math.random() * n);
+const shuffle = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+const sd = a => { if (a.length < 2) return 0; const m = mean(a); return Math.sqrt(mean(a.map(x => (x - m) ** 2))); };
+function h(tag, props = {}, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(props || {})) {
+    if (k === 'class') el.className = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (k === 'html') el.innerHTML = v;
+    else if (v !== false && v != null) el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const k of kids.flat()) { if (k == null || k === false) continue; el.append(k.nodeType ? k : document.createTextNode(k)); }
+  return el;
+}
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+
+/* ---------- sonido y voz ---------- */
+let audioCtx = null, soundOn = store.get('pp_sound', true);
+function beep(freq = 440, dur = .15, type = 'sine', vol = .08) {
+  if (!soundOn) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain(), t = audioCtx.currentTime;
+    o.type = type; o.frequency.value = freq; o.connect(g); g.connect(audioCtx.destination);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.start(t); o.stop(t + dur);
+  } catch (e) {}
+}
+const sOk = () => { beep(660, .12); setTimeout(() => beep(880, .15), 110); };
+const sBad = () => beep(190, .25, 'sawtooth', .05);
+function speak(t) { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = 'es-AR'; u.rate = .8; speechSynthesis.speak(u); } catch (e) {} }
+
+/* ---------- navegación ---------- */
+const app = $('#app');
+let session = 0;
+const studentEl = $('#student');
+studentEl.value = store.get('pp_student', '');
+studentEl.addEventListener('input', () => store.set('pp_student', studentEl.value.trim()));
+const sndBtn = $('#snd');
+const paintSnd = () => { sndBtn.textContent = soundOn ? '🔊 Sonido' : '🔇 Sin sonido'; sndBtn.setAttribute('aria-pressed', soundOn); };
+paintSnd();
+sndBtn.onclick = () => { soundOn = !soundOn; store.set('pp_sound', soundOn); paintSnd(); };
+$('#resBtn').onclick = () => { session++; showResults(); };
+function show(node) { app.replaceChildren(node); window.scrollTo(0, 0); }
+function menuBtn() { return h('button', { class: 'btn ghost', onclick: () => { session++; try { speechSynthesis.cancel(); } catch (e) {} showHub(); } }, '← Menú'); }
+
+function showHub() {
+  session++;
+  const grid = h('div', { class: 'grid' }, GAMES.map(g =>
+    h('button', { class: 'card', onclick: () => openGame(g) },
+      h('div', { class: 'ic' }, g.icon), h('h2', {}, g.title), h('span', { class: 'tag' }, g.area), h('p', { class: 'muted' }, g.desc))));
+  show(h('div', {}, h('p', { class: 'muted' }, 'Elegí un juego. Cada uno trabaja un área distinta y, al terminar, muestra qué observar. Escribí el nombre del alumno/a arriba para guardar los resultados.'), grid));
+}
+
+function openGame(g) {
+  const s = ++session;
+  const api = { alive: () => s === session, end: r => { if (s === session) finish(g, r); } };
+  let chosen = g.options ? g.options[0].value : null;
+  const body = h('div', { class: 'stage' });
+  const opts = g.options ? h('fieldset', {}, h('legend', {}, g.optionsLabel || 'Nivel'),
+    g.options.map((o, i) => h('label', {}, h('input', { type: 'radio', name: 'opt', value: o.value, checked: i === 0, onchange: () => chosen = o.value }), ' ' + o.label))) : null;
+  body.append(h('div', { class: 'big' }, g.icon), h('p', {}, g.how), opts,
+    h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { body.replaceChildren(); g.run(body, api, chosen); } }, '▶ Empezar')));
+  show(h('div', {}, h('div', { class: 'bar' }, menuBtn(), h('h2', {}, g.title)), h('div', { class: 'panel' }, body)));
+}
+
+function progress(root) {
+  const bar = h('div', { class: 'prog' }, h('i'));
+  const lbl = h('span', { class: 'muted' }, '');
+  root.append(h('div', { class: 'bar' }, bar, lbl));
+  return (i, n) => { bar.firstChild.style.width = (100 * i / n) + '%'; lbl.textContent = i + ' / ' + n; };
+}
+
+function finish(g, r) {
+  const rec = { ts: new Date().toISOString(), student: studentEl.value.trim() || '(sin nombre)', game: g.title, score: r.score, max: r.max, lines: r.lines };
+  const all = store.get('pp_results', []); all.push(rec); store.set('pp_results', all);
+  const pct = r.max ? Math.round(100 * r.score / r.max) : 0;
+  const stars = pct >= 85 ? '🌟🌟🌟' : pct >= 60 ? '🌟🌟' : '🌟';
+  const notes = [...(r.notes || []), ...g.observe];
+  show(h('div', {}, h('div', { class: 'bar' }, menuBtn(), h('h2', {}, g.title + ' · resultado')),
+    h('div', { class: 'panel stage' },
+      h('div', { class: 'big' }, stars),
+      h('h2', {}, r.score + ' de ' + r.max + (r.max ? ' (' + pct + '%)' : '')),
+      h('div', { class: 'stats' }, r.lines.map(([k, v]) => h('div', { class: 'stat' }, h('b', {}, String(v)), k))),
+      h('h3', {}, 'Qué observar'), h('ul', { class: 'notes' }, notes.map(n => h('li', {}, n))),
+      h('div', { class: 'row' },
+        h('button', { class: 'btn', onclick: () => openGame(g) }, '🔁 Jugar de nuevo'),
+        h('button', { class: 'btn ghost', onclick: showHub }, 'Otro juego')))));
+}
+
+/* ---------- 1. MEMORIA DE TRABAJO: secuencia de colores ---------- */
+async function runSimon(root, api, mode) {
+  const cols = [{ n: 'Rojo', c: '#e5484d', f: 261 }, { n: 'Azul', c: '#6e8bf0', f: 329 }, { n: 'Verde', c: '#46c28a', f: 392 }, { n: 'Amarillo', c: '#f5c518', f: 523 }];
+  let len = 2, lives = 3, best = 0, ok = 0, fail = 0, accepting = false, pending = null;
+  const status = h('div', { class: 'status' });
+  const livesEl = h('div', { class: 'lives' });
+  const paintLives = () => livesEl.textContent = '❤️'.repeat(lives) + '🖤'.repeat(3 - lives);
+  const btns = cols.map((c, i) => h('button', { class: 'pad', style: '--c:' + c.c, disabled: true, onclick: () => tap(i) }, c.n));
+  root.append(livesEl, status, h('div', { class: 'pads' }, btns));
+  paintLives();
+  const flash = async (i, d = 500) => { btns[i].classList.add('on'); beep(cols[i].f, d / 1000, 'triangle', .1); await sleep(d); btns[i].classList.remove('on'); };
+  function tap(i) {
+    if (!accepting || !pending) return;
+    flash(i, 220);
+    const p = pending; p.arr.push(i);
+    if (p.arr[p.arr.length - 1] !== p.exp[p.arr.length - 1]) { accepting = false; pending = null; p.res(false); }
+    else if (p.arr.length === p.exp.length) { accepting = false; pending = null; p.res(true); }
+  }
+  const waitTaps = exp => new Promise(res => { pending = { exp, arr: [], res }; accepting = true; });
+  while (lives > 0 && len <= 9) {
+    const seq = Array.from({ length: len }, () => rnd(4));
+    status.textContent = 'Mirá con atención 👀'; btns.forEach(b => b.disabled = true);
+    await sleep(800); if (!api.alive()) return;
+    for (const i of seq) { await flash(i); if (!api.alive()) return; await sleep(250); }
+    const exp = mode === 'inverso' ? [...seq].reverse() : seq;
+    status.textContent = mode === 'inverso' ? 'Ahora repetí AL REVÉS 🔁' : '¡Tu turno! 👆';
+    btns.forEach(b => b.disabled = false);
+    const res = await waitTaps(exp);
+    if (!api.alive()) return;
+    btns.forEach(b => b.disabled = true);
+    if (res) { best = Math.max(best, len); ok++; len++; status.textContent = '¡Bien! 🎉'; sOk(); }
+    else { fail++; lives--; paintLives(); status.textContent = 'Casi… probemos de nuevo'; sBad(); }
+    await sleep(1100);
+  }
+  api.end({
+    score: best, max: 9, lines: [['Span máximo', best], ['Aciertos', ok], ['Errores', fail], ['Modo', mode]],
+    notes: [mode === 'inverso' ? 'Modo inverso: exige retener Y manipular la información (memoria de trabajo).' : 'Modo directo: mide principalmente retención inmediata (span).']
+  });
+}
+
+/* ---------- 2. ATENCIÓN / INHIBICIÓN: Go / No-Go ---------- */
+async function runGoNoGo(root, api) {
+  const trials = shuffle([...Array(30).fill('go'), ...Array(10).fill('nogo')]);
+  const N = trials.length;
+  const setP = progress(root);
+  const stim = h('div', { class: 'stim', 'aria-live': 'polite' });
+  const status = h('div', { class: 'status' }, 'Tocá SOLO con la estrella ⭐. Con la bomba 💣 ¡no toques!');
+  const btn = h('button', { class: 'btn go-btn', onpointerdown: e => { e.preventDefault(); respond(); } }, '¡TOCAR!');
+  root.append(status, stim, h('div', { class: 'row' }, btn));
+  const key = e => { if (e.code === 'Space' && !e.repeat) { e.preventDefault(); respond(); } };
+  document.addEventListener('keydown', key);
+  let cur = null, hits = 0, omis = 0, comm = 0, rej = 0, antic = 0; const rts = [];
+  function respond() {
+    if (!cur) { antic++; return; }
+    if (cur.responded) return;
+    cur.responded = true;
+    if (cur.type === 'go') { hits++; rts.push(performance.now() - cur.t0); sOk(); stim.style.opacity = .4; }
+    else { comm++; sBad(); status.textContent = '¡Esa era la bomba! 💥'; }
+  }
+  await sleep(1200);
+  for (let i = 0; i < N; i++) {
+    if (!api.alive()) { document.removeEventListener('keydown', key); return; }
+    setP(i, N);
+    status.textContent = ' ';
+    cur = { type: trials[i], t0: performance.now(), responded: false };
+    stim.style.opacity = 1; stim.textContent = trials[i] === 'go' ? '⭐' : '💣';
+    await sleep(900);
+    if (!cur.responded) { if (cur.type === 'go') omis++; else rej++; }
+    cur = null; stim.textContent = '';
+    await sleep(450 + rnd(400));
+  }
+  document.removeEventListener('keydown', key);
+  if (!api.alive()) return;
+  const rt = Math.round(mean(rts)), v = Math.round(sd(rts));
+  const notes = [];
+  if (omis >= 5) notes.push('Muchas omisiones (' + omis + '): posible dificultad para sostener la atención.');
+  if (comm >= 4) notes.push('Muchos toques ante la bomba (' + comm + '): posible dificultad en control inhibitorio / impulsividad.');
+  if (antic >= 5) notes.push('Respuestas anticipadas frecuentes (' + antic + '): respuesta impulsiva fuera del estímulo.');
+  if (!notes.length) notes.push('Desempeño sin señales marcadas de desatención o impulsividad en esta muestra breve.');
+  api.end({
+    score: hits + rej, max: N,
+    lines: [['Aciertos ⭐', hits + '/30'], ['Omisiones', omis], ['Errores 💣', comm + '/10'], ['TR medio (ms)', rt || '-'], ['Variabilidad TR (ms)', v || '-'], ['Anticipaciones', antic]],
+    notes
+  });
+}
+
+/* ---------- 3. CONCIENCIA FONOLÓGICA: contar sílabas ---------- */
+async function runSyllables(root, api) {
+  const bank = [
+    [['☀️', 'sol'], ['🐟', 'pez'], ['🚂', 'tren'], ['🌸', 'flor']],
+    [['🐱', 'ga-to'], ['🏠', 'ca-sa'], ['🌙', 'lu-na'], ['🎈', 'glo-bo'], ['📖', 'li-bro'], ['🐙', 'pul-po']],
+    [['🍌', 'ba-na-na'], ['🐢', 'tor-tu-ga'], ['🦒', 'ji-ra-fa'], ['🕷️', 'a-ra-ña'], ['🍅', 'to-ma-te']],
+    [['🐘', 'e-le-fan-te'], ['🦋', 'ma-ri-po-sa'], ['🚲', 'bi-ci-cle-ta'], ['🥕', 'za-na-ho-ria'], ['🍪', 'ga-lle-ti-ta']],
+    [['🚁', 'he-li-cóp-te-ro'], ['🦛', 'hi-po-pó-ta-mo']]
+  ];
+  const take = [2, 3, 2, 2, 1];
+  const items = bank.flatMap((g, i) => shuffle(g).slice(0, take[i]));
+  const N = items.length, setP = progress(root);
+  const emo = h('div', { class: 'big' }), word = h('h2', {}), fb = h('div', { class: 'fb' });
+  const speakBtn = h('button', { class: 'btn ghost', onclick: () => speak(cur[1].replace(/-/g, '')) }, '🔊 Escuchar');
+  const choices = h('div', { class: 'row' });
+  root.append(h('div', { class: 'status' }, '¿Cuántas sílabas (golpes) tiene la palabra?'), emo, word, speakBtn, choices, fb);
+  let cur, correct = 0; const errs = [];
+  for (let i = 0; i < N; i++) {
+    if (!api.alive()) return;
+    setP(i, N); cur = items[i]; fb.textContent = ''; fb.className = 'fb';
+    const real = cur[1].split('-').length, plain = cur[1].replace(/-/g, '');
+    emo.textContent = cur[0]; word.textContent = plain; speak(plain);
+    const pick = await new Promise(res => {
+      choices.replaceChildren(...[1, 2, 3, 4, 5].map(n => h('button', { class: 'opt', onclick: e => res({ n, el: e.currentTarget }) }, String(n))));
+    });
+    if (!api.alive()) return;
+    [...choices.children].forEach(b => b.disabled = true);
+    if (pick.n === real) { correct++; pick.el.classList.add('right'); fb.textContent = '¡Correcto! ' + cur[1]; fb.className = 'fb good'; sOk(); }
+    else { pick.el.classList.add('wrong'); errs.push(plain + ' (' + real + ')'); fb.textContent = 'Eran ' + real + ' → ' + cur[1]; fb.className = 'fb bad'; sBad(); }
+    await sleep(1500);
+  }
+  api.end({
+    score: correct, max: N, lines: [['Aciertos', correct], ['Errores', N - correct]],
+    notes: errs.length ? ['Palabras falladas (sílabas reales): ' + errs.join(', ') + '.'] : []
+  });
+}
+
+/* ---------- 4. LECTOESCRITURA: ortografía arbitraria ---------- */
+async function runSpelling(root, api) {
+  const bank = [
+    ['🐄', 'vaca', '', 'v', 'aca', ['b', 'v'], 'b/v'], ['🐴', 'caballo', 'ca', 'b', 'allo', ['b', 'v'], 'b/v'],
+    ['🪟', 'ventana', '', 'v', 'entana', ['b', 'v'], 'b/v'], ['👜', 'bolsa', '', 'b', 'olsa', ['b', 'v'], 'b/v'],
+    ['🌧️', 'lluvia', '', 'll', 'uvia', ['ll', 'y'], 'll/y'], ['🤡', 'payaso', 'pa', 'y', 'aso', ['ll', 'y'], 'll/y'],
+    ['🍼', 'botella', 'bote', 'll', 'a', ['ll', 'y'], 'll/y'], ['🦒', 'jirafa', '', 'j', 'irafa', ['g', 'j'], 'g/j'],
+    ['🌻', 'girasol', '', 'g', 'irasol', ['g', 'j'], 'g/j'], ['🧳', 'viaje', 'via', 'j', 'e', ['g', 'j'], 'g/j'],
+    ['👟', 'zapato', '', 'z', 'apato', ['s', 'z', 'c'], 'c/s/z'], ['🦓', 'cebra', '', 'c', 'ebra', ['s', 'z', 'c'], 'c/s/z'],
+    ['🐸', 'sapo', '', 's', 'apo', ['s', 'z', 'c'], 'c/s/z'], ['🥄', 'cuchara', '', 'c', 'uchara', ['q', 'c', 'k'], 'q/c/k'],
+    ['🧀', 'queso', '', 'q', 'ueso', ['q', 'c', 'k'], 'q/c/k'], ['🐜', 'hormiga', '', 'h', 'ormiga', ['h', '∅'], 'h'],
+    ['🦴', 'hueso', '', 'h', 'ueso', ['h', '∅'], 'h'], ['🥚', 'huevo', '', 'h', 'uevo', ['h', '∅'], 'h'],
+    ['🍎', 'manzana', 'man', 'z', 'ana', ['s', 'z', 'c'], 'c/s/z'], ['👃', 'nariz', 'nari', 'z', '', ['s', 'z', 'c'], 'c/s/z']
+  ];
+  const items = shuffle(bank).slice(0, 12), N = items.length, setP = progress(root);
+  const emo = h('div', { class: 'big' }), wd = h('div', { class: 'big', style: 'font-size:3rem;letter-spacing:2px' }), fb = h('div', { class: 'fb' });
+  const choices = h('div', { class: 'row' });
+  let cur;
+  root.append(h('div', { class: 'status' }, 'Completá la palabra con la letra correcta'), emo, wd,
+    h('button', { class: 'btn ghost', onclick: () => speak(cur[1]) }, '🔊 Escuchar'), choices, fb);
+  let correct = 0; const bad = {};
+  for (let i = 0; i < N; i++) {
+    if (!api.alive()) return;
+    setP(i, N); cur = items[i]; fb.textContent = ''; fb.className = 'fb';
+    const [e, w, pre, gap, post, opts, cat] = cur;
+    emo.textContent = e; wd.textContent = pre + '＿' + post; speak(w);
+    const label = o => o === '∅' ? 'sin h' : o;
+    const pick = await new Promise(res => {
+      choices.replaceChildren(...shuffle(opts).map(o => h('button', { class: 'opt', onclick: ev => res({ o, el: ev.currentTarget }) }, label(o))));
+    });
+    if (!api.alive()) return;
+    [...choices.children].forEach(b => b.disabled = true);
+    const right = (pick.o === (gap === 'h' ? 'h' : gap));
+    wd.textContent = w;
+    if (right) { correct++; pick.el.classList.add('right'); fb.textContent = '¡Muy bien!'; fb.className = 'fb good'; sOk(); }
+    else { pick.el.classList.add('wrong'); bad[cat] = (bad[cat] || 0) + 1; fb.textContent = 'Se escribe «' + w + '»'; fb.className = 'fb bad'; sBad(); }
+    await sleep(1500);
+  }
+  const cats = Object.entries(bad).map(([k, v]) => k + ' (' + v + ')');
+  api.end({
+    score: correct, max: N, lines: [['Aciertos', correct], ['Errores', N - correct]],
+    notes: cats.length ? ['Errores por tipo de grafema: ' + cats.join(', ') + '. Útil para planificar el trabajo sobre ortografía arbitraria.'] : ['Sin errores ortográficos en esta muestra.']
+  });
+}
+
+/* ---------- 5. MEMORIA VISUAL: memotest ---------- */
+async function runMemotest(root, api, level) {
+  const pairs = +level, pool = shuffle(['🐶', '🐱', '🐸', '🦊', '🐼', '🐵', '🦁', '🐯', '🐷', '🐰', '🐨', '🐙']).slice(0, pairs);
+  const cards = shuffle([...pool, ...pool]);
+  const cols = pairs <= 4 ? 4 : pairs <= 6 ? 4 : 4;
+  const grid = h('div', { class: 'mem', style: 'grid-template-columns:repeat(' + cols + ',1fr)' });
+  const status = h('div', { class: 'status' }, 'Encontrá las parejas');
+  root.append(status, grid);
+  let first = null, lock = false, moves = 0, found = 0, misses = 0; const t0 = performance.now();
+  const els = cards.map((c, i) => h('button', { class: 'mc', 'aria-label': 'Carta ' + (i + 1), onclick: () => flip(i) }, '❓'));
+  els.forEach(e => grid.append(e));
+  async function flip(i) {
+    if (lock || els[i].classList.contains('up') || els[i].classList.contains('done')) return;
+    els[i].classList.add('up'); els[i].textContent = cards[i]; beep(500, .08);
+    if (first === null) { first = i; return; }
+    moves++; const a = first; first = null; lock = true;
+    if (cards[a] === cards[i]) {
+      found++; els[a].className = els[i].className = 'mc done'; sOk(); lock = false;
+      status.textContent = 'Parejas: ' + found + ' / ' + pairs;
+      if (found === pairs && api.alive()) {
+        await sleep(700);
+        const secs = Math.round((performance.now() - t0) / 1000);
+        api.end({
+          score: pairs, max: pairs, lines: [['Parejas', pairs], ['Intentos', moves], ['Intentos fallidos', misses], ['Tiempo (s)', secs]],
+          notes: ['Intentos óptimos ≈ ' + pairs + '–' + pairs * 2 + '. Muchos fallos repetidos sobre la misma carta sugieren dificultad para retener la ubicación (memoria visoespacial).']
+        });
+      }
+    } else {
+      misses++; sBad(); await sleep(1000); if (!api.alive()) return;
+      [a, i].forEach(k => { els[k].classList.remove('up'); els[k].textContent = '❓'; }); lock = false;
+    }
+  }
+}
+
+/* ---------- 6. FLEXIBILIDAD COGNITIVA: clasificar cartas (tipo WCST) ---------- */
+async function runSort(root, api) {
+  const shapes = ['●', '■', '▲', '★'], names = ['Círculo', 'Cuadrado', 'Triángulo', 'Estrella'];
+  const colors = ['#e5484d', '#3e63dd', '#30a46c', '#e0a800'], cnames = ['rojo', 'azul', 'verde', 'amarillo'];
+  const N = 48, setP = progress(root);
+  const status = h('div', { class: 'status' }, 'Poné la carta de arriba debajo de la que crea que va. Te voy a decir si acertaste: ¡descubrí la regla!');
+  const stimBox = h('div'), fb = h('div', { class: 'fb' });
+  const refs = h('div', { class: 'row' });
+  const mk = (si, ci, cls) => h('div', { class: cls }, h('span', { class: 'shape', style: 'color:' + colors[ci] }, shapes[si]), h('small', { class: 'muted' }, names[si] + ' ' + cnames[ci]));
+  [0, 1, 2, 3].forEach(i => refs.append(h('button', { class: 'ref', 'data-i': i, onclick: () => choose(i), 'aria-label': names[i] + ' ' + cnames[i] }, mk(i, i, 'x').childNodes)));
+  root.append(status, stimBox, refs, fb);
+  let rule = rnd(2) ? 'color' : 'forma', consec = 0, cats = 0, errors = 0, persev = 0, switches = 0, since = 0, prevRule = null, resolve = null, sw = [];
+  const choose = i => resolve && resolve(i);
+  for (let t = 0; t < N; t++) {
+    if (!api.alive()) return;
+    setP(t, N);
+    let si = rnd(4), ci; do { ci = rnd(4); } while (ci === si);
+    stimBox.replaceChildren(mk(si, ci, 'stimcard'));
+    const target = rule === 'color' ? ci : si;
+    const pick = await new Promise(r => resolve = r); resolve = null;
+    if (!api.alive()) return;
+    since++;
+    if (pick === target) {
+      consec++; fb.textContent = '✔ Correcto'; fb.className = 'fb good'; sOk();
+      if (consec === 6) { cats++; consec = 0; prevRule = rule; rule = rule === 'color' ? 'forma' : 'color'; switches++; since = 0; }
+    } else {
+      errors++; consec = 0; fb.textContent = '✖ Incorrecto'; fb.className = 'fb bad'; sBad();
+      if (prevRule) { const old = prevRule === 'color' ? ci : si; if (pick === old) persev++; }
+    }
+    await sleep(700);
+  }
+  api.end({
+    score: N - errors, max: N,
+    lines: [['Categorías completadas', cats], ['Errores totales', errors], ['Errores perseverativos', persev]],
+    notes: [persev >= 4 ? 'Varios errores perseverativos (' + persev + '): dificultad para abandonar la regla anterior (rigidez / flexibilidad cognitiva).' : 'Pocos errores perseverativos: buena adaptación al cambio de regla.',
+      cats === 0 ? 'No logró completar ninguna categoría: revisar comprensión de la consigna y uso del feedback.' : 'Categorías completadas: ' + cats + ' (cada una = 6 aciertos seguidos).']
+  });
+}
+
+/* ---------- 7. RAZONAMIENTO LÓGICO: series ---------- */
+const EMO = ['🔴', '🔵', '🟢', '🟡', '⭐', '🌙', '🍎', '🐱', '🐶', '🚗', '🌸', '⚽'];
+const SERIES = [
+  () => { const [a, b] = shuffle(EMO); return { seq: [a, b, a, b, a], ans: b, pool: EMO }; },
+  () => { const [a, b] = shuffle(EMO); return { seq: [a, a, b, a, a], ans: b, pool: EMO }; },
+  () => { const [a, b, c] = shuffle(EMO); return { seq: [a, b, c, a, b], ans: c, pool: EMO }; },
+  () => { const k = 1 + rnd(3), s = 1 + rnd(5), q = Array.from({ length: 5 }, (_, i) => s + i * k); return { seq: q, ans: s + 5 * k, num: true }; },
+  () => { const k = 2 + rnd(3), s = 25 + rnd(6), q = Array.from({ length: 5 }, (_, i) => s - i * k); return { seq: q, ans: s - 5 * k, num: true }; },
+  () => { const [a, b, c] = shuffle(EMO); return { seq: [a, b, b, c, a, b, b], ans: c, pool: EMO }; },
+  () => { const s = 1 + rnd(3), q = [s, s * 2, s * 4, s * 8]; return { seq: q, ans: s * 16, num: true }; },
+  () => { const a = 2 + rnd(3), b = 1 + rnd(3), s = 1 + rnd(4), q = [s]; for (let i = 0; i < 5; i++) q.push(q[i] + (i % 2 ? b : a)); return { seq: q.slice(0, 5), ans: q[5], num: true }; },
+  () => { const s = 1 + rnd(3), q = [s]; for (let i = 1; i < 6; i++) q.push(q[i - 1] + i); return { seq: q.slice(0, 5), ans: q[5], num: true }; },
+  () => { const a = 1 + rnd(3), b = 5 * (1 + rnd(3)), q = [a, b, a * 2, b * 2, a * 3, b * 3]; return { seq: q.slice(0, 5), ans: q[5], num: true }; }
+];
+async function runSeries(root, api) {
+  const N = SERIES.length, setP = progress(root);
+  const seqEl = h('div', { class: 'seq', 'aria-live': 'polite' }), choices = h('div', { class: 'row' }), fb = h('div', { class: 'fb' });
+  root.append(h('div', { class: 'status' }, '¿Qué sigue en la serie?'), seqEl, choices, fb);
+  let correct = 0; const failed = [];
+  for (let i = 0; i < N; i++) {
+    if (!api.alive()) return;
+    setP(i, N); fb.textContent = ''; fb.className = 'fb';
+    const it = SERIES[i]();
+    seqEl.replaceChildren(...it.seq.map(x => h('span', {}, String(x))), h('span', { class: 'q' }, '?'));
+    let opts;
+    if (it.num) {
+      const set = new Set([it.ans]);
+      for (const d of shuffle([1, -1, 2, -2, 3, it.seq[it.seq.length - 1] - it.ans < 0 ? 0 : 4])) { const v = it.ans + d; if (v > 0) set.add(v); if (set.size === 4) break; }
+      for (let z = 1; set.size < 4; z++) set.add(it.ans + 10 + z);
+      opts = shuffle([...set]);
+    } else {
+      const pool = shuffle([...new Set([...it.seq, ...it.pool])].filter(x => x !== it.ans));
+      opts = shuffle([it.ans, ...pool.slice(0, 3)]);
+    }
+    const pick = await new Promise(res => choices.replaceChildren(...opts.map(o => h('button', { class: 'opt', onclick: e => res({ o, el: e.currentTarget }) }, String(o)))));
+    if (!api.alive()) return;
+    [...choices.children].forEach(b => b.disabled = true);
+    if (pick.o === it.ans) { correct++; pick.el.classList.add('right'); fb.textContent = '¡Correcto!'; fb.className = 'fb good'; sOk(); }
+    else { pick.el.classList.add('wrong'); failed.push(i + 1); fb.textContent = 'La respuesta era ' + it.ans; fb.className = 'fb bad'; sBad(); }
+    await sleep(1400);
+  }
+  api.end({
+    score: correct, max: N, lines: [['Aciertos', correct], ['Errores', N - correct]],
+    notes: [failed.length ? 'Ítems fallados: ' + failed.join(', ') + ' (1–3 series de figuras simples, 4–5 números con suma/resta, 6–10 mayor complejidad).' : 'Sin errores en las 10 series.']
+  });
+}
+
+/* ---------- catálogo ---------- */
+const GAMES = [
+  { id: 'simon', icon: '🎵', title: 'Secuencia de colores', area: 'Memoria de trabajo', desc: 'Repetir secuencias cada vez más largas, en orden directo o inverso.',
+    how: 'Mirá cómo se iluminan los botones y repetí la secuencia. Tenés 3 vidas.', options: [{ label: 'Directo (repetir igual)', value: 'directo' }, { label: 'Inverso (repetir al revés)', value: 'inverso' }], optionsLabel: 'Modo', run: runSimon,
+    observe: ['Span típico en primaria: 4–6 elementos en directo; el inverso suele ser 1–2 menos.', 'Anotar si los errores son de orden (confunde posición) o de omisión (olvida elementos).'] },
+  { id: 'gonogo', icon: '🎯', title: 'Estrella y bomba', area: 'Atención e inhibición', desc: 'Tocar la estrella, aguantarse con la bomba (Go/No-Go).',
+    how: 'Van a aparecer estrellas ⭐ y bombas 💣. Tocá el botón (o barra espaciadora) solo con la estrella. Dura aproximadamente 1 minuto.', run: runGoNoGo,
+    observe: ['Es una muestra breve y orientativa: no reemplaza pruebas de atención estandarizadas.', 'Observar también conducta durante la tarea: movimiento, mirada, consignas repetidas.'] },
+  { id: 'syl', icon: '👏', title: 'Contá las sílabas', area: 'Conciencia fonológica', desc: 'Segmentar palabras en sílabas, de 1 a 5 golpes de voz.',
+    how: 'Mirá el dibujo, escuchá la palabra y elegí cuántas sílabas tiene. Podés aplaudir mientras la decís.', run: runSyllables,
+    observe: ['La conciencia silábica es predictora de la adquisición lectora: ideal para 4.º nivel inicial a 2.º grado.', 'Si falla en palabras cortas, explorar discriminación auditiva.'] },
+  { id: 'spell', icon: '✏️', title: 'Completá la palabra', area: 'Lectoescritura', desc: 'Ortografía arbitraria: b/v, ll/y, g/j, c/s/z, h, q/c.',
+    how: 'Mirá el dibujo, escuchá la palabra y elegí la letra que falta.', run: runSpelling,
+    observe: ['Distinguir errores de ortografía arbitraria (b/v, h) de errores fonológicos.', 'Ojo con c/s/z: en el habla rioplatense hay seseo, por lo que la pronunciación no ayuda.'] },
+  { id: 'memo', icon: '🃏', title: 'Memotest', area: 'Memoria visoespacial', desc: 'Encontrar parejas de cartas recordando su ubicación.',
+    how: 'Da vuelta dos cartas por vez. Si son iguales, quedan a la vista.', options: [{ label: '4 parejas (fácil)', value: 4 }, { label: '6 parejas (medio)', value: 6 }, { label: '8 parejas (difícil)', value: 8 }], run: runMemotest,
+    observe: ['Observar si usa una estrategia (recorrer en orden) o si elige al azar.', 'Registrar tiempo y cantidad de intentos fallidos.'] },
+  { id: 'sort', icon: '🔀', title: 'Descubrí la regla', area: 'Flexibilidad cognitiva', desc: 'Clasificar cartas por una regla oculta que cambia sin aviso.',
+    how: 'Elegí debajo de qué carta va la de arriba. Solo te digo si acertaste o no. La regla puede cambiar sin avisar: ¡estate atento/a!', run: runSort,
+    observe: ['Basado en la lógica del test de clasificación de cartas de Wisconsin (versión lúdica simplificada, no equivalente).', 'Los errores perseverativos reflejan dificultad para soltar la regla anterior.'] },
+  { id: 'series', icon: '🧩', title: 'Series lógicas', area: 'Razonamiento', desc: 'Completar series de figuras y números de dificultad creciente.',
+    how: 'Mirá la serie, descubrí la regla y elegí qué viene después.', run: runSeries,
+    observe: ['Preguntarle cómo lo pensó: la verbalización de la estrategia aporta tanto como el acierto.', 'Si resuelve figuras pero no números, explorar el área de cálculo.'] }
+];
+
+/* ---------- resultados ---------- */
+function showResults() {
+  const all = store.get('pp_results', []);
+  const rows = all.slice().reverse().map(r => h('tr', {},
+    h('td', {}, new Date(r.ts).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })),
+    h('td', {}, r.student), h('td', {}, r.game),
+    h('td', {}, r.score + '/' + r.max), h('td', {}, (r.lines || []).map(l => l.join(': ')).join(' · '))));
+  const csv = () => {
+    const q = s => '"' + String(s).replace(/"/g, '""') + '"';
+    const t = ['fecha,alumno,juego,puntaje,maximo,detalle', ...all.map(r => [r.ts, r.student, r.game, r.score, r.max, (r.lines || []).map(l => l.join(': ')).join(' | ')].map(q).join(','))].join('\n');
+    const a = h('a', { href: URL.createObjectURL(new Blob(['﻿' + t], { type: 'text/csv;charset=utf-8' })), download: 'resultados-psicopedagogia.csv' });
+    document.body.append(a); a.click(); a.remove();
+  };
+  show(h('div', {}, h('div', { class: 'bar' }, menuBtn(), h('h2', {}, 'Resultados guardados')),
+    h('div', { class: 'panel' },
+      all.length ? [h('div', { class: 'row', style: 'justify-content:flex-start' },
+        h('button', { class: 'btn', onclick: csv }, '⬇ Descargar CSV'),
+        h('button', { class: 'btn ghost', onclick: () => { if (confirm('¿Borrar todos los resultados de este navegador?')) { store.set('pp_results', []); showResults(); } } }, '🗑 Borrar todo')),
+        h('div', { class: 'scroll' }, h('table', {}, h('thead', {}, h('tr', {}, ['Fecha', 'Alumno/a', 'Juego', 'Puntaje', 'Detalle'].map(x => h('th', {}, x)))), h('tbody', {}, rows)))]
+        : h('p', { class: 'muted' }, 'Todavía no hay resultados. Jugá una partida y aparece acá.'))));
+}
+
+showHub();
+</script>
+</body>
+</html>
