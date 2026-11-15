@@ -120,14 +120,14 @@ a.btn{text-decoration:none;display:inline-block}
 .big{font-size:4.5rem;line-height:1.1;margin:4px 0}
 .row{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:10px 0}
 .opt,.tok{font:inherit;font-size:1.3rem;font-weight:700;min-width:64px;min-height:62px;max-width:100%;padding:8px 18px;border-radius:16px;border:2px solid var(--line);border-bottom-width:5px;background:var(--panel);color:var(--ink);cursor:pointer;transition:transform .08s}
-.opt:hover:not(:disabled),.tok:hover:not(:disabled){border-color:var(--brand)}
+.opt:hover:not(:disabled),.tok:hover:not(:disabled){border-color:var(--muted)}
 .opt:active:not(:disabled),.tok:active:not(:disabled){transform:translateY(3px);border-bottom-width:2px}
 .opt.right{background:var(--good);border-color:var(--good);color:#fff}
 .opt.wrong{background:var(--bad);border-color:var(--bad);color:#fff}
 .opt.emo{font-size:2.4rem}
 .row.nowrap{flex-wrap:nowrap;gap:5px}
 .opt.emo.sm{font-size:1.7rem;min-width:0;min-height:52px;padding:6px 2px;flex:1 1 0}
-.tok{background:color-mix(in srgb,var(--brand) 10%,var(--panel))}
+.tok{background:var(--panel)}
 .tok.emo{font-size:2rem}
 .slots{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;min-height:70px;padding:10px;border:3px dashed var(--line);border-radius:var(--r);margin:10px 0;background:var(--soft)}
 .slot{width:54px;height:54px;border-radius:12px;background:var(--panel);border:2px solid var(--line)}
@@ -147,7 +147,7 @@ a.btn{text-decoration:none;display:inline-block}
 .mc.done{background:color-mix(in srgb,var(--good) 25%,var(--panel));border-color:var(--good)}
 .shape{font-size:3.2rem;line-height:1}
 .ref{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:92px;padding:10px;border-radius:16px;border:2px solid var(--line);border-bottom-width:5px;background:var(--panel);cursor:pointer;font:inherit;color:var(--ink)}
-.ref:hover{border-color:var(--brand)}
+.ref:hover{border-color:var(--muted)}
 .stimcard{display:inline-flex;flex-direction:column;align-items:center;padding:12px 24px;border-radius:18px;border:3px dashed var(--muted);margin:8px 0;background:var(--panel)}
 .seq{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;font-size:2.1rem;font-weight:800;margin:12px 0;font-family:var(--font-d)}
 .seq span{min-width:50px;padding:6px 8px;border-radius:12px;background:var(--soft)}
@@ -265,6 +265,8 @@ button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
   .mc.done{background:var(--soft)} body{background-image:none}
   .pad.on,.blk.on,.peg.sel{box-shadow:0 0 0 6px rgba(255,194,51,.5)}
 }
+.peg.goal{border-style:dashed;border-color:var(--good)}
+.bank{font-size:.9rem;color:var(--muted);margin:.2rem 0}
 </style>
 </head>
 <body>
@@ -346,7 +348,7 @@ function modal(node) {
 }
 
 /* ================= ajustes ================= */
-const DEF = { theme: 'auto', fs: 1, easy: false, contrast: false, reduce: false, volume: .6, voice: false, np: false, tutAuto: true };
+const DEF = { theme: 'auto', fs: 1, easy: false, contrast: false, reduce: false, volume: .6, voice: false, np: false, tutAuto: true, noRepeat: true };
 let S = { ...DEF, ...store.get('pp2_settings', {}) };
 const INIT_THEME = document.documentElement.getAttribute('data-theme');
 function applySettings() {
@@ -493,7 +495,7 @@ const numOpts = a => {
 };
 /* Motor genérico de preguntas de elección: tiempo de respuesta, pistas, repaso de errores */
 async function runQuiz(root, api, cfg) {
-  const items = api.practice ? cfg.items.slice(0, 3) : cfg.items, N = items.length, setP = progress(root);
+  const items = api.practice ? cfg.items.slice(0, 3) : cfg.items, N = items.length, setP = api.noProgress ? () => {} : progress(root);
   const stageEl = h('div'), choices = h('div', { class: 'row' + (cfg.choiceClass ? ' ' + cfg.choiceClass : '') }), fb = h('div', { class: 'fb', 'aria-live': 'polite' }), tools = h('div', { class: 'row' });
   let cur = null, correct = 0, hints = 0; const rts = [], fails = [], cats = {};
   const listenBtn = cfg.speak ? h('button', { class: 'btn ghost sm', onclick: () => speak(cfg.speak(cur.it)) }, '🔊 Escuchar') : null;
@@ -537,7 +539,8 @@ async function runQuiz(root, api, cfg) {
 /* ================= JUEGOS ================= */
 /* 1. Secuencia de colores: memoria de trabajo */
 async function runSimon(root, api, mode) {
-  const cols = [{ n: 'Rojo', s: '▲', c: '#e5484d', f: 261 }, { n: 'Azul', s: '●', c: '#6e8bf0', f: 329 }, { n: 'Verde', s: '■', c: '#46c28a', f: 392 }, { n: 'Amarillo', s: '★', c: '#f5c518', f: 523 }];
+  const cols = pick(SIMON_SETS);
+
   let len = [0, 2, 3, 4][api.level], lives = 3, best = 0, ok = 0, fail = 0, accepting = false, pending = null;
   const status = h('div', { class: 'status', 'aria-live': 'polite' }), livesEl = h('div', { class: 'lives' });
   const paintLives = () => livesEl.textContent = '❤️'.repeat(lives) + '🖤'.repeat(3 - lives);
@@ -573,7 +576,7 @@ async function runSimon(root, api, mode) {
 async function runGoNoGo(root, api) {
   const dur = [0, 1100, 900, 700][api.level], isi = [0, 600, 450, 350][api.level];
   const stim = h('div', { class: 'stim', 'aria-live': 'polite' });
-  const status = h('div', { class: 'status' }, 'Tocá SOLO con la estrella ⭐. Con la bomba 💣 ¡no toques!');
+  const PR = pick(GO_PAIRS), status = h('div', { class: 'status' }, 'Tocá SOLO con ' + PR[2] + ' ' + PR[0] + '. Con ' + PR[3] + ' ' + PR[1] + ' ¡no toques!');
   const btn = h('button', { class: 'btn go-btn', onpointerdown: e => { e.preventDefault(); respond(); } }, '¡TOCAR!');
   const setP = progress(root); root.append(status, stim, h('div', { class: 'row' }, btn));
   const key = e => { if (e.code === 'Space' && !e.repeat && playing && !paused) { e.preventDefault(); respond(); } };
@@ -585,13 +588,13 @@ async function runGoNoGo(root, api) {
     cur.responded = true; cur.rt = performance.now() - cur.t0;
     if (cur.type === 'go') { if (counting) { hits++; rts.push(cur.rt); } sOk(); stim.style.opacity = .4; } else { if (counting) comm++; sBad(); }
   }
-  const trial = async type => { cur = { type, t0: performance.now(), responded: false, rt: 0 }; stim.style.opacity = 1; stim.textContent = type === 'go' ? '⭐' : '💣'; await sleep(dur); const c = cur; cur = null; stim.textContent = ''; return c; };
+  const trial = async type => { cur = { type, t0: performance.now(), responded: false, rt: 0 }; stim.style.opacity = 1; stim.textContent = type === 'go' ? PR[0] : PR[1]; await sleep(dur); const c = cur; cur = null; stim.textContent = ''; return c; };
   const bye = () => document.removeEventListener('keydown', key);
   status.textContent = 'Práctica: 4 intentos de prueba (no cuentan)'; await sleep(1800);
   for (const t of shuffle(['go', 'go', 'nogo', 'nogo'])) {
     if (!api.alive()) return bye();
     const c = await trial(t);
-    status.textContent = t === 'go' ? (c.responded ? '¡Bien!' : 'Tenías que tocar la estrella') : (c.responded ? 'Esa era la bomba 💥' : '¡Bien, te aguantaste!');
+    status.textContent = t === 'go' ? (c.responded ? '¡Bien!' : 'Tenías que tocar ' + PR[2]) : (c.responded ? 'Ese era ' + PR[3] + ': ¡no se toca!' : '¡Bien, te aguantaste!');
     await sleep(1000);
   }
   if (api.practice) { bye(); api.end({ score: 1, max: 1, lines: [], notes: [] }); return; }
@@ -607,11 +610,11 @@ async function runGoNoGo(root, api) {
   bye(); if (!api.alive()) return;
   const rt = Math.round(mean(rts)), v = Math.round(sd(rts)), notes = [];
   if (omis >= 5) notes.push('Muchas omisiones (' + omis + '): posible dificultad para sostener la atención.');
-  if (comm >= 4) notes.push('Muchos toques ante la bomba (' + comm + '): posible dificultad de control inhibitorio / impulsividad.');
+  if (comm >= 4) notes.push('Muchos toques ante ' + PR[3] + ' (' + comm + '): posible dificultad de control inhibitorio / impulsividad.');
   if (antic >= 5) notes.push('Respuestas anticipadas frecuentes (' + antic + ').');
   if (v > 220) notes.push('Alta variabilidad del tiempo de reacción (' + v + ' ms): suele asociarse a fluctuaciones de atención.');
   if (!notes.length) notes.push('Sin señales marcadas de desatención o impulsividad en esta muestra breve.');
-  api.end({ score: hits + rej, max: N, lines: [['Aciertos ⭐', hits + '/30'], ['Omisiones', omis], ['Errores 💣', comm + '/10'], ['TR medio (ms)', rt || '-'], ['Variabilidad TR (ms)', v || '-'], ['Anticipaciones', antic]], notes, rt: rt ? Math.round(rt / 100) / 10 : null });
+  api.end({ score: hits + rej, max: N, lines: [['Aciertos ' + PR[0], hits + '/30'], ['Omisiones', omis], ['Errores ' + PR[1], comm + '/10'], ['TR medio (ms)', rt || '-'], ['Variabilidad TR (ms)', v || '-'], ['Anticipaciones', antic]], notes, rt: rt ? Math.round(rt / 100) / 10 : null });
 }
 
 /* 3. Contá las sílabas */
@@ -810,7 +813,7 @@ function runEspejo(root, api) {
 
 /* 11. Cancelación de letras: atención visual */
 async function runCancel(root, api, _opt, cfgs) {
-  const cfg = (cfgs || [null, { n: 5, m: 6, t: ['A'], d: ['O', 'T', 'L', 'E', 'F'], time: 60 }, { n: 6, m: 6, t: ['b'], d: ['d', 'p', 'q'], time: 50 }, { n: 7, m: 8, t: ['b', 'd'], d: ['p', 'q', 'h'], time: 40 }, { n: 9, m: 9, t: ['b', 'd', 'p'], d: ['q', 'h', 'a', 'o', 'l'], time: 45 }])[api.ultra ? 4 : api.level];
+  const cfg = varyCancel((cfgs || [null, { n: 5, m: 6, t: ['A'], d: ['O', 'T', 'L', 'E', 'F'], time: 60 }, { n: 6, m: 6, t: ['b'], d: ['d', 'p', 'q'], time: 50 }, { n: 7, m: 8, t: ['b', 'd'], d: ['p', 'q', 'h'], time: 40 }, { n: 9, m: 9, t: ['b', 'd', 'p'], d: ['q', 'h', 'a', 'o', 'l'], time: 45 }])[api.ultra ? 4 : api.level], api, !!cfgs);
   const total = cfg.n * cfg.m, k = Math.round(total * .3), limit = S.np ? Infinity : cfg.time;
   const cells = shuffle([...Array.from({ length: k }, () => pick(cfg.t)), ...Array.from({ length: total - k }, () => pick(cfg.d))]);
   const status = h('div', { class: 'status' }, 'Tocá todas las ' + (cfg.what || 'letras') + ' «' + cfg.t.join('» y «') + '»'), tm = h('div', { class: 'timer muted' }, '');
@@ -930,7 +933,7 @@ const cyc = (a, n) => { let o = []; while (o.length < n) o = o.concat(shuffle(a)
 
 /* Motor de armado: tocar piezas para ordenarlas (oraciones, sílabas, letras, historias) */
 async function runBuilder(root, api, cfg) {
-  const items = api.practice ? cfg.items.slice(0, 3) : cfg.items, N = items.length, setP = progress(root);
+  const items = api.practice ? cfg.items.slice(0, 3) : cfg.items, N = items.length, setP = api.noProgress ? () => {} : progress(root);
   const promptEl = h('div'), slots = h('div', { class: 'slots' }), bank = h('div', { class: 'row' }), fb = h('div', { class: 'fb', 'aria-live': 'polite' });
   const clear = h('button', { class: 'btn ghost sm' }, 'Borrar todo');
   root.append(h('div', { class: 'status' }, (api.practice ? 'Práctica · ' : '') + cfg.instr), promptEl, slots, bank, h('div', { class: 'row' }, clear), fb);
@@ -1363,7 +1366,7 @@ async function runReaccion(root, api) {
     notes: [early >= 3 ? 'Varias anticipaciones (' + early + '): tendencia a responder antes de la señal (impulsividad).' : 'Pocas anticipaciones: buen control de la respuesta.', 'Una alta variabilidad entre intentos suele asociarse a fluctuaciones de atención. No hay baremos: comparar con las propias partidas del alumno.'] });
 }
 async function runNback(root, api) {
-  const n = api.ultra ? 3 : api.level === 3 ? 2 : 1, ms = api.ultra ? 2100 : [0, 2000, 1500, 1900][api.level], T = api.practice ? 10 : api.ultra ? 30 : 24, E = ['🔴', '🔵', '🟢', '🟡', '🟣', '🟠'], seq = [];
+  const n = api.ultra ? 3 : api.level === 3 ? 2 : 1, ms = api.ultra ? 2100 : [0, 2000, 1500, 1900][api.level], T = api.practice ? 10 : api.ultra ? 30 : 24, E = pick(NBACK_SETS), seq = [];
   for (let i = 0; i < T; i++) { if (i >= n && rnd(100) < 30) seq.push(seq[i - n]); else { let e; do { e = pick(E); } while (i >= n && e === seq[i - n]); seq.push(e); } }
   const setP = progress(root), stim = h('div', { class: 'stim', 'aria-live': 'polite' }), fb = h('div', { class: 'fb' });
   const btn = h('button', { class: 'btn go-btn', onpointerdown: e => { e.preventDefault(); press(); } }, n === 1 ? '¡Igual que el anterior!' : '¡Igual que el de hace ' + n + '!');
@@ -1387,21 +1390,22 @@ async function runNback(root, api) {
 /* ---- Funciones ejecutivas y secuenciación ---- */
 async function runHanoi(root, api) {
   const n = api.practice ? 2 : api.ultra ? 6 : [0, 3, 4, 5][api.level], DC = ['#e5484d', '#f08a24', '#e0b000', '#38a169', '#3b6fe0', '#9b5de5'];
+  const std = api.practice || (api.level === 1 && !api.ultra), goal = std ? 2 : rnd(3), start0 = std ? [Array.from({ length: n }, (_, i) => n - i), [], []] : (() => { let q; do { q = hanoiRandom(n); } while (q[goal].length === n); return q; })(), BEST = hanoiBest(start0, goal, n);
   let pegs, sel = null, moves = 0, resets = 0, finish_ = null; const t0 = performance.now();
-  const reset = () => { pegs = [Array.from({ length: n }, (_, i) => n - i), [], []]; sel = null; draw(); };
-  const status = h('div', { class: 'status', 'aria-live': 'polite' }, 'Pasá todos los discos a la tercera torre. Un disco grande nunca va sobre uno más chico.'), area = h('div', { class: 'hanoi' }), cnt = h('div', { class: 'muted' });
+  const reset = () => { pegs = start0.map(q => q.slice()); sel = null; draw(); };
+  const status = h('div', { class: 'status', 'aria-live': 'polite' }, 'Pasá todos los discos a la torre ' + (goal + 1) + ' (la marcada). Un disco grande nunca va sobre uno más chico.'), area = h('div', { class: 'hanoi' }), cnt = h('div', { class: 'muted' });
   root.append(status, area, cnt, h('div', { class: 'row' }, h('button', { class: 'btn ghost sm', onclick: () => { resets++; reset(); } }, 'Empezar de nuevo')));
   function draw() {
-    cnt.textContent = 'Movimientos: ' + moves + ' (mínimo posible: ' + (2 ** n - 1) + ')';
-    area.replaceChildren(...pegs.map((p, i) => h('button', { class: 'peg' + (sel === i ? ' sel' : ''), 'aria-label': 'Torre ' + (i + 1) + ', ' + p.length + ' discos', onclick: () => tapPeg(i) }, h('div', { class: 'rod' }), ...[...p].reverse().map(d => h('div', { class: 'disc', style: 'width:' + (26 + d * 15) + 'px;background:' + DC[d - 1] })))));
+    cnt.textContent = 'Movimientos: ' + moves + ' (mínimo posible: ' + BEST + ')';
+    area.replaceChildren(...pegs.map((p, i) => h('button', { class: 'peg' + (sel === i ? ' sel' : '') + (i === goal ? ' goal' : ''), 'aria-label': 'Torre ' + (i + 1) + (i === goal ? ' (destino)' : '') + ', ' + p.length + ' discos', onclick: () => tapPeg(i) }, h('div', { class: 'rod' }), ...[...p].reverse().map(d => h('div', { class: 'disc', style: 'width:' + (26 + d * 15) + 'px;background:' + DC[d - 1] })))));
   }
   function tapPeg(i) {
     if (sel === null) { if (pegs[i].length) sel = i; } else if (i === sel) sel = null;
-    else { const d = pegs[sel][pegs[sel].length - 1], top = pegs[i][pegs[i].length - 1]; if (top && top < d) { status.textContent = 'Un disco grande no puede ir sobre uno más chico'; sBad(); } else { pegs[i].push(pegs[sel].pop()); moves++; beep(440, .08); status.textContent = ' '; if (pegs[2].length === n && finish_) finish_(); } sel = null; }
+    else { const d = pegs[sel][pegs[sel].length - 1], top = pegs[i][pegs[i].length - 1]; if (top && top < d) { status.textContent = 'Un disco grande no puede ir sobre uno más chico'; sBad(); } else { pegs[i].push(pegs[sel].pop()); moves++; beep(440, .08); status.textContent = ' '; if (pegs[goal].length === n && finish_) finish_(); } sel = null; }
     draw();
   }
   reset(); await new Promise(res => finish_ = res); if (!api.alive()) return;
-  const best = 2 ** n - 1, pct = Math.round(100 * best / moves), secs = Math.round((performance.now() - t0) / 1000);
+  const best = BEST, pct = Math.min(100, Math.round(100 * best / moves)), secs = Math.round((performance.now() - t0) / 1000);
   api.end({ score: pct, max: 100, pct, headline: moves + ' movimientos (mínimo ' + best + ')', lines: [['Movimientos', moves], ['Mínimo', best], ['Reinicios', resets], ['Tiempo (s)', secs]],
     notes: ['La Torre de Hanoi evalúa planificación y control de impulsos. Muchos movimientos extra o reinicios sugieren ensayo-y-error en lugar de planificar con anticipación.', 'Observar si verbaliza un plan («primero muevo el chico a…»).'] });
 }
@@ -1487,7 +1491,7 @@ function numPal(n) {
 
 /* Motor para juegos con adulto: el adulto marca Bien / Error */
 async function runAdult(root, api, cfg) {
-  const items = api.practice ? cfg.items.slice(0, 2) : cfg.items, N = items.length, setP = progress(root);
+  const items = api.practice ? cfg.items.slice(0, 2) : cfg.items, N = items.length, setP = api.noProgress ? () => {} : progress(root);
   const stageEl = h('div'), tools = h('div', { class: 'row' }), marks = h('div', { class: 'row' });
   let cur = null, okN = 0, revealed = true; const times = [], cats = {};
   const draw = () => stageEl.replaceChildren(cfg.render(cur.it, revealed));
@@ -1729,7 +1733,7 @@ const GOW = [null,
   { name: 'seres vivos', yes: ['árbol', 'flor', 'perro', 'pez', 'pasto', 'mariposa', 'hongo', 'gato', 'abeja', 'rosa', 'pájaro', 'yuyo'], no: ['piedra', 'sol', 'río', 'mesa', 'nube', 'arena', 'lápiz', 'montaña', 'luna', 'agua', 'viento', 'auto'] }
 ];
 async function runAnimal(root, api) {
-  const cfg = GOW[api.level], dur = [0, 2200, 1800, 1500][api.level], T = api.practice ? 4 : 28;
+  const cfg = goCfg(api.level), dur = [0, 2200, 1800, 1500][api.level], T = api.practice ? 4 : 28;
   const trials = api.practice ? shuffle(['go', 'go', 'nogo', 'nogo']) : shuffle([...Array(17).fill('go'), ...Array(11).fill('nogo')]);
   const setP = progress(root), stim = h('div', { class: 'stim', style: 'font-size:3.2rem;font-family:var(--font-d)', 'aria-live': 'polite' }), status = h('div', { class: 'status' }, (api.practice ? 'Práctica · ' : '') + 'Tocá el botón SOLO si la palabra es de «' + cfg.name + '»');
   const btn = h('button', { class: 'btn go-btn', onpointerdown: e => { e.preventDefault(); respond(); } }, '¡Es de ' + cfg.name + '!'); root.append(status, stim, h('div', { class: 'row' }, btn));
@@ -1772,7 +1776,7 @@ function runCambioRegla(root, api) {
 
 /* ---- Lenguaje, lectura y escritura con adulto ---- */
 async function runFluidez(root, api) {
-  const cats = [null, [['animales', 'sem'], ['frutas y verduras', 'sem']], [['animales', 'sem'], ['cosas de la escuela', 'sem'], ['palabras que empiezan con M', 'fon']], [['animales', 'sem'], ['cosas para comer', 'sem'], ['palabras que empiezan con P', 'fon'], ['palabras que empiezan con S', 'fon']]][api.level];
+  const cats = fluCats(api.level);
   const rounds = api.practice ? [cats[0]] : cats, secs = api.practice ? 10 : 60, target = [0, 8, 11, 14][api.level];
   const status = h('div', { class: 'status', 'aria-live': 'polite' }), cat = h('h2', { class: 'big', style: 'font-size:2rem;line-height:1.2' }), tmr = h('div', { class: 'digits timer', style: 'font-size:2.4rem' }), cnt = h('div', { class: 'digits' }, '0');
   const start = h('button', { class: 'btn' }, 'Empezar (el adulto está listo)'), plus = h('button', { class: 'btn', style: 'font-size:1.6rem;padding:16px 28px' }, '+1 palabra'), minus = h('button', { class: 'btn ghost' }, '−1 (corregir)'), stop = h('button', { class: 'btn ghost' }, 'Terminar ronda');
@@ -1859,14 +1863,14 @@ function runOrdinales(root, api) {
   });
 }
 async function runMemoPalabra(root, api) {
-  const pairs = api.practice ? 3 : [0, 4, 6, 8][api.level], pool = take(SONI, pairs), cards = shuffle(pool.flatMap((p, i) => [{ id: i, t: p[0], w: false }, { id: i, t: p[1], w: true }]));
-  const grid = h('div', { class: 'mem', style: 'grid-template-columns:repeat(4,1fr)' }), status = h('div', { class: 'status' }, 'Uní cada dibujo con su palabra'), tm = h('div', { class: 'timer muted' }, '⏱ 0 s');
+  const pairs = api.practice ? 3 : [0, 4, 6, 8][api.level], pool = memoPairs(pairs), cards = shuffle(pool.flatMap((p, i) => [{ id: i, t: p[0], w: false }, { id: i, t: p[1], w: true }]));
+  const grid = h('div', { class: 'mem', style: 'grid-template-columns:repeat(4,1fr)' }), status = h('div', { class: 'status' }, memoTxt), tm = h('div', { class: 'timer muted' }, '⏱ 0 s');
   root.append(status, tm, grid); let first = null, lock = false, moves = 0, found = 0, misses = 0, elapsed = 0;
   const iv = setInterval(() => { if (!api.alive()) return clearInterval(iv); if (!paused) { elapsed++; tm.textContent = '⏱ ' + elapsed + ' s'; } }, 1000);
   const els = cards.map((c, i) => h('button', { class: 'mc', 'aria-label': 'Carta ' + (i + 1), onclick: () => flip(i) }, '❓')); els.forEach(e => grid.append(e));
   async function flip(i) {
     if (lock || els[i].classList.contains('up') || els[i].classList.contains('done')) return;
-    els[i].classList.add('up'); els[i].textContent = cards[i].t; if (cards[i].w) els[i].classList.add('w'); beep(500, .08);
+    els[i].classList.add('up'); els[i].textContent = cards[i].t; if (!EMOJI_RE.test(cards[i].t)) els[i].classList.add('w'); beep(500, .08);
     if (first === null) { first = i; return; }
     moves++; const a = first; first = null; lock = true;
     if (cards[a].id === cards[i].id && cards[a].w !== cards[i].w) {
@@ -2210,11 +2214,883 @@ function runDineroU(root, api) {
 
 /* ---- Registro ---- */
 ['series', 'calc', 'prob', 'mat', 'stroop', 'flechas', 'donde', 'rot', 'reloj', 'dias', 'ana', 'valor', 'fracc', 'tablas', 'mayor', 'plata', 'saltos', 'hanoi', 'dig', 'nback', 'corsi', 'cancel', 'cancnum'].forEach(id => { const g = GAMES.find(x => x.id === id); if (g) g.ultra = true; });
+/* ================= LÉXICO Y MOTORES DE CONTENIDO (v6) ================= */
+/* Etiquetas: /m /f género cuando no se deduce de -o/-a · * femenino con «el» (agua) · # solo plural */
+const LEXSRC = {
+  animales: ['Un animal', 'perro gato caballo vaca oveja cerdo cabra conejo burro zorro lobo oso león/m tigre/m jirafa elefante/m mono ciervo jaguar/m puma/m ratón/m rata ardilla hipopótamo rinoceronte/m cebra camello canguro koala/m panda/m tortuga lagarto serpiente/f rana sapo yegua toro ternero cordero murciélago erizo cocodrilo gorila/m chimpancé/m hiena castor/m mapache/m ñandú/m guanaco vizcacha carpincho yaguareté/m zorrino alpaca'],
+  aves: ['Un ave', 'paloma gorrión/m águila/f* búho lechuza loro cotorra canario gallina gallo pato ganso cisne/m pavo avestruz/m pingüino flamenco colibrí/m halcón/m cóndor/m tero hornero benteveo zorzal/m pelícano tucán/m pájaro gaviota golondrina cigüeña cuervo jilguero'],
+  bichos: ['Un bichito', 'hormiga abeja mosca mosquito mariposa mariquita libélula grillo cucaracha avispa escarabajo saltamontes/m polilla luciérnaga oruga araña caracol/m lombriz/f pulga piojo cigarra chinche/f'],
+  marinos: ['Un animal del mar', 'pez/m tiburón/m ballena delfín/m pulpo calamar/m medusa cangrejo langosta foca morsa orca raya anguila almeja ostra camarón/m salmón/m atún/m sardina merluza trucha pejerrey/m surubí/m'],
+  frutas: ['Una fruta', 'manzana pera banana naranja mandarina limón/m pomelo durazno ciruela uva frutilla cereza sandía melón/m ananá/m kiwi/m mango papaya higo damasco granada membrillo arándano frambuesa coco mora lima níspero guayaba maracuyá/m'],
+  verduras: ['Una verdura', 'zanahoria papa cebolla lechuga zapallo calabaza choclo brócoli/m coliflor/f espinaca acelga remolacha repollo pepino berenjena zapallito ajo puerro apio arveja rabanito batata pimiento chaucha alcaucil/m'],
+  comidas: ['Algo para comer', 'pan/m queso huevo arroz/m fideos/m# carne/f pollo pescado manteca yogur/m galletita torta helado chocolate/m caramelo sopa ensalada empanada milanesa pizza asado polenta miel/f azúcar/m sal/f harina tostada budín/m alfajor/m medialuna mermelada puré/m flan/m tarta hamburguesa salchicha jamón/m tortilla guiso postre/m cereal/m'],
+  bebidas: ['Algo para beber', 'agua/f* jugo gaseosa té/m café/m mate/m licuado limonada chocolatada leche/f soda'],
+  ropa: ['Una prenda', 'remera camisa pantalón/m pollera vestido campera abrigo buzo medias# zapatos# zapatillas# sandalias# botas# gorro gorra sombrero bufanda guantes/m# pijama/m bermuda camiseta delantal/m cinturón/m corbata pañuelo calzas#'],
+  muebles: ['Un mueble', 'mesa silla sillón/m sofá/m cama cuna ropero estante/m escritorio cómoda mesita repisa perchero banqueta placard/m armario colchón/m almohadón/m'],
+  utensilios: ['Algo de la cocina', 'cuchara tenedor/m cuchillo plato vaso taza olla sartén/f jarra cacerola cucharón/m colador/m tabla rallador/m pava bandeja fuente/f servilleta mantel/m heladera horno pileta mortero espumadera tetera termo licuadora tostadora'],
+  herramientas: ['Una herramienta', 'martillo serrucho destornillador/m pinza llave/f taladro pala pico rastrillo hacha/f* clavo tornillo sierra alicate/m tenaza nivel/m cincel/m rodillo'],
+  escolares: ['Un útil escolar', 'lápiz/m goma regla tijera mochila cuaderno carpeta birome/f marcador/m crayón/m pegamento sacapuntas/m compás/m transportador/m escuadra hoja pizarrón/m tiza borrador/m libro mapa/m plasticola témpera cartuchera agenda diccionario calculadora pupitre/m fibra acuarela'],
+  instrumentos: ['Un instrumento musical', 'guitarra piano violín/m flauta tambor/m trompeta batería bombo acordeón/m bandoneón/m arpa/f* saxofón/m clarinete/m maracas# xilofón/m charango quena ocarina pandereta órgano violonchelo contrabajo armónica trombón/m tuba platillos#'],
+  transportes: ['Un transporte', 'auto colectivo camión/m bicicleta moto/f tren/m subte/m avión/m barco helicóptero taxi/m tractor/m patineta monopatín/m ambulancia lancha globo cohete/m velero tranvía/m camioneta furgón/m trineo submarino carreta'],
+  profesiones: ['Una profesión', 'médico maestro bombero cocinero panadero carnicero verdulero carpintero pintor/m albañil/m mecánico piloto marinero pescador/m granjero jardinero cartero peluquero actor/m músico escritor/m veterinario enfermero profesor/m vendedor/m chofer/m arquitecto ingeniero soldado bibliotecario zapatero herrero pastelero astrónomo científico cajero abogado secretario conductor/m payaso mago bailarín/m camarero'],
+  cuerpo: ['Una parte del cuerpo', 'cabeza cara ojo nariz/f boca oreja diente/m lengua cuello hombro brazo codo mano/f dedo uña pecho espalda panza cintura pierna rodilla tobillo pie/m talón/m pelo ceja pestaña mejilla labio corazón/m pulmón/m hueso músculo piel/f garganta frente/f barbilla pulgar/m nuca'],
+  naturaleza: ['Algo de la naturaleza', 'árbol/m pasto rama raíz/f semilla montaña río lago mar/m playa isla bosque/m selva desierto valle/m cerro laguna arroyo cascada volcán/m piedra arena tierra nube/f lluvia nieve/f viento tormenta rayo trueno arcoíris/m sol/m luna estrella cielo planeta/m fuego hielo niebla rocío/m llanura pampa glaciar/m costa cueva'],
+  lugares: ['Un lugar de la ciudad', 'escuela hospital/m plaza parque/m iglesia banco farmacia panadería carnicería verdulería kiosco supermercado/m biblioteca museo cine/m teatro estadio estación/f aeropuerto puerto/m puente/m calle/f vereda esquina semáforo municipalidad/f comisaría cuartel/m peluquería librería juguetería heladería restaurante/m hotel/m mercado fábrica granja campo ferretería zoológico/m'],
+  casa: ['Una parte de la casa', 'puerta ventana techo pared/f piso escalera baño dormitorio comedor/m patio jardín/m garaje/m balcón/m terraza pasillo chimenea timbre/m ascensor/m portón/m reja cerco altillo sótano tejado'],
+  objetos: ['Un objeto de la casa', 'reloj/m teléfono televisor/m computadora lavarropas/m ventilador/m estufa plancha aspiradora microondas/m cámara linterna paraguas/m cartera billetera anteojos/m# llavero peine/m toalla jabón/m almohada sábana manta frazada espejo escoba balde/m bolsa caja botella frasco tapa cuerda moneda billete/m'],
+  juguetes: ['Un juguete', 'pelota muñeca robot/m rompecabezas/m barrilete/m trompo bolitas# figuritas# dado naipes/m# patines/m# triciclo peluche/m bloques/m# títere/m tablero ficha tobogán/m hamaca calesita subibaja/m trampolín/m soga yoyó/m autito sonajero osito'],
+  deportes: ['Un deporte', 'fútbol/m básquet/m tenis/m natación/f vóley/m atletismo ciclismo gimnasia judo/m karate/m esquí/m béisbol/m boxeo remo'],
+  colores: ['Un color', 'rojo azul/m verde/m amarillo anaranjado violeta/m celeste/m marrón/m gris/m negro blanco dorado plateado turquesa/m beige/m bordó/m rosado'],
+  formas: ['Una figura', 'círculo cuadrado triángulo rectángulo rombo óvalo pentágono hexágono octágono cubo esfera cilindro cono pirámide/f prisma/m'],
+  familia: ['Un familiar', 'mamá/f papá/m abuelo abuela hermano hermana tío tía primo prima hijo hija nieto nieta sobrino sobrina padre/m madre/f bebé/m amigo amiga vecino vecina esposo esposa'],
+  sentimientos: ['Un sentimiento', 'alegría tristeza enojo miedo sorpresa vergüenza cariño amor/m paz/f calma orgullo envidia celos/m# esperanza preocupación/f aburrimiento soledad/f valentía curiosidad/f ansiedad/f felicidad/f pena confianza'],
+  flores: ['Una flor', 'rosa margarita girasol/m clavel/m jazmín/m tulipán/m orquídea lirio']
+};
+
+/* ---- silabeador del español (reglas) ---- */
+const SIL_CL = ['pr', 'br', 'tr', 'dr', 'cr', 'gr', 'fr', 'pl', 'bl', 'cl', 'gl', 'fl', 'kr', 'kl'];
+function syllabify(word) {
+  const w = word.toLowerCase(), VOW = 'aeiouáéíóúü', toks = [];
+  for (let i = 0; i < w.length; i++) {
+    const c = w[i], n = w[i + 1];
+    if (c === 'c' && n === 'h') { toks.push({ t: 'C', s: 'ch' }); i++; }
+    else if (c === 'l' && n === 'l') { toks.push({ t: 'C', s: 'll' }); i++; }
+    else if (c === 'r' && n === 'r') { toks.push({ t: 'C', s: 'rr' }); i++; }
+    else if (c === 'q' && n === 'u') { toks.push({ t: 'C', s: 'qu' }); i++; }
+    else if (c === 'g' && n === 'u' && 'eiéí'.includes(w[i + 2] || '#')) { toks.push({ t: 'C', s: 'gu' }); i++; }
+    else if (c === 'y' && i === w.length - 1 && i > 0 && VOW.includes(w[i - 1])) toks.push({ t: 'V', s: 'y', k: 'w' });
+    else if (VOW.includes(c)) toks.push({ t: 'V', s: c, k: 'aeoáéó'.includes(c) ? 's' : 'íú'.includes(c) ? 'a' : 'w' });
+    else toks.push({ t: 'C', s: c });
+  }
+  // núcleos: grupos de vocales consecutivas, separando hiatos
+  const nuc = []; let i = 0;
+  while (i < toks.length) {
+    if (toks[i].t !== 'V') { i++; continue; }
+    let cur = [i]; i++;
+    while (i < toks.length && toks[i].t === 'V') {
+      const a = toks[cur[cur.length - 1]], b = toks[i];
+      if ((a.k === 's' && b.k === 's') || a.k === 'a' || b.k === 'a') { nuc.push(cur); cur = [i]; } else cur.push(i);
+      i++;
+    }
+    nuc.push(cur);
+  }
+  if (!nuc.length) return [word];
+  const cuts = [0];
+  for (let k = 1; k < nuc.length; k++) {
+    const from = nuc[k - 1][nuc[k - 1].length - 1] + 1, to = nuc[k][0], cs = toks.slice(from, to).map(t => t.s), n = cs.length;
+    let cut;
+    if (n === 0) cut = to;
+    else if (n === 1) cut = from;
+    else if (n === 2) cut = SIL_CL.includes(cs[0] + cs[1]) ? from : from + 1;
+    else if (SIL_CL.includes(cs[n - 2] + cs[n - 1])) cut = to - 2; else cut = to - 1;
+    cuts.push(cut);
+  }
+  cuts.push(toks.length);
+  const out = []; for (let k = 0; k < cuts.length - 1; k++) out.push(toks.slice(cuts[k], cuts[k + 1]).map(t => t.s).join(''));
+  return out;
+}
+
+/* ---- léxico enriquecido ---- */
+const LEX = [], LEXCAT = {};
+Object.entries(LEXSRC).forEach(([cat, [label, list]]) => {
+  LEXCAT[cat] = { label, words: [] };
+  list.split(/\s+/).filter(Boolean).forEach(tok => {
+    let w = tok, g = null, plural = false, star = false;
+    if (w.endsWith('#')) { plural = true; w = w.slice(0, -1); }
+    if (w.endsWith('*')) { star = true; w = w.slice(0, -1); }
+    const m = w.match(/\/(m|f)$/); if (m) { g = m[1]; w = w.slice(0, -2); }
+    if (!g) g = plural ? (w.endsWith('as') ? 'f' : w.endsWith('os') ? 'm' : null) : (w.endsWith('a') ? 'f' : w.endsWith('o') ? 'm' : null);
+    const sy = syllabify(w), len = w.length, lv = sy.length <= 2 && len <= 5 ? 1 : sy.length <= 3 && len <= 8 ? 2 : 3;
+    const e = { w, g, c: cat, plural, star, sy, n: sy.length, len, lv };
+    LEX.push(e); LEXCAT[cat].words.push(e);
+  });
+});
+const LEXSET = new Set(LEX.map(x => x.w));
+const byLv = (L, arr = LEX) => arr.filter(x => x.lv === L || (L > 1 && x.lv === L - 1 && rnd(3) === 0));
+
+/* ---- artículos y plural ---- */
+const DET = { m: ['el', 'los', 'un', 'unos'], f: ['la', 'las', 'una', 'unas'] };
+function pluralOf(w) {
+  const base = w.normalize('NFD').replace(/[́]/g, c => c).normalize('NFC');
+  const last = w[w.length - 1], sy = syllabify(w);
+  if (/[aeo]$/.test(w) || /[áéó]$/.test(w)) return w + 's';
+  if (/z$/.test(w)) return w.slice(0, -1) + 'ces';
+  if (/(ión|ón|án|én|ín|ún)$/.test(w) && sy.length >= 1) { const t = { 'ión': 'iones', 'ón': 'ones', 'án': 'anes', 'én': 'enes', 'ín': 'ines', 'ún': 'unes' }; for (const k in t) if (w.endsWith(k)) return w.slice(0, -k.length) + t[k]; }
+  if (/[ldrj]$/.test(w) || /y$/.test(w)) return w + 'es';
+  if (/s$/.test(w) && sy.length === 1) return w + 'es';
+  if (/n$/.test(w) && sy.length === 1) return w + 'es';
+  return null;
+}
+const unaccent = s => s.replace(/[áéíóú]/g, m => ({ 'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u' }[m]));
+
+/* ---- sílabas y fonética para ejercicios ---- */
+const ALLSYL2 = [...new Set(LEX.flatMap(x => x.sy))];
+const GRAPH = [ // [grafema correcto, alternativas, patrón de detección, categoría]
+  ['b', ['b', 'v'], /b(?=[aeiouáéíóú])/, 'b/v'], ['v', ['b', 'v'], /v(?=[aeiouáéíóú])/, 'b/v'],
+  ['h', ['h', '∅'], /(^|[aeiouáéíóú])h(?=[aeiouáéíóú])/, 'h'],
+  ['ll', ['ll', 'y'], /ll/, 'll/y'], ['y', ['ll', 'y'], /[aeiouáéíóú]y[aeiouáéíóú]/, 'll/y'],
+  ['g', ['g', 'j'], /g(?=[eiéí])/, 'g/j'], ['j', ['g', 'j'], /j(?=[eiéí])/, 'g/j'],
+  ['z', ['s', 'z', 'c'], /z(?=[aoáó])/, 'c/s/z'], ['c', ['s', 'z', 'c'], /c(?=[eiéí])/, 'c/s/z'],
+  ['rr', ['r', 'rr'], /[aeiouáéíóú]rr[aeiouáéíóú]/, 'r/rr']
+];
+
+/* ---- oraciones por gramática ---- */
+const NOMBRES = 'Sofía Mateo Valentina Lucas Camila Tomás Martina Benjamín Emma Joaquín Lucía Santiago Julieta Nicolás Abril Franco Olivia Thiago Delfina Bruno Renata Lautaro Mía Facundo Paz Ramiro Alma Gael Zoe Ian'.split(' ');
+const ANIM_CLASES = [
+  { det: 'el', n: 'perro gato conejo'.split(' ').map(x => ({ w: x, g: 'm' })).concat([{ w: 'tortuga', g: 'f' }]), v: ['corre', 'duerme', 'juega', 'come', 'salta'], vp: ['corren', 'duermen', 'juegan', 'comen', 'saltan'], lug: ['en el patio', 'en la casa', 'en el jardín', 'en el parque', 'en la plaza'] },
+  { n: [{ w: 'caballo', g: 'm' }, { w: 'vaca', g: 'f' }, { w: 'oveja', g: 'f' }, { w: 'cerdo', g: 'm' }, { w: 'cabra', g: 'f' }, { w: 'burro', g: 'm' }], v: ['camina', 'come', 'duerme', 'descansa', 'corre'], vp: ['caminan', 'comen', 'duermen', 'descansan', 'corren'], lug: ['en el campo', 'en la granja', 'en el corral', 'por el camino', 'en el establo'] },
+  { n: [{ w: 'pájaro', g: 'm' }, { w: 'paloma', g: 'f' }, { w: 'loro', g: 'm' }, { w: 'gorrión', g: 'm' }, { w: 'golondrina', g: 'f' }, { w: 'cotorra', g: 'f' }], v: ['vuela', 'canta', 'descansa', 'duerme', 'come'], vp: ['vuelan', 'cantan', 'descansan', 'duermen', 'comen'], lug: ['en el árbol', 'en el jardín', 'sobre el techo', 'en el cielo', 'en el nido'] },
+  { n: [{ w: 'tiburón', g: 'm' }, { w: 'delfín', g: 'm' }, { w: 'ballena', g: 'f' }, { w: 'foca', g: 'f' }], v: ['nada', 'juega', 'come', 'descansa'], vp: ['nadan', 'juegan', 'comen', 'descansan'], lug: ['en el mar', 'en el agua', 'en el océano'] },
+  { n: [{ w: 'pez', g: 'm' }, { w: 'trucha', g: 'f' }, { w: 'sardina', g: 'f' }], v: ['nada', 'come', 'descansa'], vp: ['nadan', 'comen', 'descansan'], lug: ['en el río', 'en el lago', 'en el agua', 'en el arroyo'] }
+];
+const NINOS_V = ['lee un libro', 'dibuja un paisaje', 'come una manzana', 'toma la leche', 'juega a la pelota', 'escribe una carta', 'canta una canción', 'arma un rompecabezas', 'pinta un cuadro', 'riega las plantas', 'cuenta un cuento', 'prepara la merienda', 'ordena su cuarto', 'mira la televisión', 'hace la tarea', 'escucha música', 'baila con su mamá', 'ayuda a su papá'];
+const NINOS_L = ['en la escuela', 'en la plaza', 'en casa', 'en el patio', 'en el jardín', 'en la biblioteca', 'en el parque', 'en la cocina', 'en el club'];
+const TIEMPO = ['Hoy', 'Ahora', 'Todos los días', 'Por la tarde', 'Los domingos', 'Por la mañana', 'Después de la escuela', 'A la noche'];
+const OBJ_PORT = [['libro', 'm'], ['cuaderno', 'm'], ['lápiz', 'm'], ['pelota', 'f'], ['llave', 'f'], ['mochila', 'f'], ['taza', 'f'], ['gorra', 'f'], ['reloj', 'm'], ['juguete', 'm'], ['zapato', 'm'], ['bufanda', 'f'], ['campera', 'f'], ['sombrero', 'm'], ['regla', 'f'], ['tijera', 'f'], ['plato', 'm'], ['vaso', 'm'], ['cuchara', 'f'], ['muñeca', 'f']];
+const OBJ_SOP = [['mesa', 'f'], ['silla', 'f'], ['cama', 'f'], ['sillón', 'm'], ['estante', 'm'], ['escritorio', 'm'], ['heladera', 'f'], ['puerta', 'f'], ['ventana', 'f'], ['banco', 'm']];
+const OBJ_PREP = ['sobre', 'debajo de', 'al lado de', 'detrás de', 'cerca de'];
+const PROF_ORA = [['El panadero', 'hace pan en la panadería'], ['La maestra', 'enseña a los alumnos en la escuela'], ['El bombero', 'apaga el fuego con una manguera'], ['El médico', 'cura a los enfermos en el hospital'], ['El cartero', 'reparte las cartas por el barrio'], ['La cocinera', 'prepara la comida en la cocina'], ['El carpintero', 'arregla la mesa con un martillo'], ['El jardinero', 'cuida las plantas del jardín'], ['El pintor', 'pinta la pared de blanco'], ['La veterinaria', 'cuida a los animales enfermos'], ['El piloto', 'maneja el avión por el cielo'], ['El pescador', 'sale al mar en su barco'], ['La peluquera', 'corta el pelo con una tijera'], ['El mecánico', 'arregla el auto en el taller'], ['La bibliotecaria', 'presta libros a los chicos'], ['El granjero', 'da de comer a las gallinas'], ['El panadero', 'vende pan caliente a la mañana'], ['La enfermera', 'ayuda al médico en el hospital'], ['El chofer', 'lleva a los pasajeros en el colectivo'], ['La escritora', 'escribe cuentos para los chicos']];
+const CLIMA = ['Hoy hace mucho calor.', 'Hoy hace mucho frío.', 'Hoy llueve sin parar.', 'Hoy hay mucho viento.', 'Hoy el cielo está nublado.', 'Hoy el sol brilla en el cielo.', 'Anoche vimos muchas estrellas.', 'Mañana vamos a la plaza con mis primos.', 'Ayer fuimos al río con la familia.', 'En invierno usamos abrigo y bufanda.', 'En verano vamos a la pileta.', 'En otoño caen las hojas de los árboles.', 'En primavera florecen los jardines.', 'Mi abuela cocina tortas muy ricas.', 'Mi papá maneja el auto con cuidado.', 'Mi mamá trabaja en el hospital.', 'Mi hermano juega al fútbol en el club.', 'Mi hermana toca el piano todas las tardes.', 'Nosotros vamos juntos a la escuela.', 'Los chicos juegan en el patio de la escuela.'];
+const ADJ = [['chico', 'chica'], ['lindo', 'linda'], ['nuevo', 'nueva'], ['viejo', 'vieja'], ['roto', 'rota'], ['limpio', 'limpia'], ['sucio', 'sucia'], ['grande', 'grande']];
+const FAM = ['mamá', 'papá', 'abuela', 'abuelo', 'hermana', 'hermano', 'tía', 'tío', 'prima', 'primo'];
+const NINOS_P = [['lee un libro', 'en la biblioteca'], ['dibuja un paisaje', 'en la escuela'], ['come una manzana', 'en la cocina'], ['juega a la pelota', 'en el patio'], ['riega las plantas', 'en el jardín'], ['arma un rompecabezas', 'en casa'], ['mira el partido', 'en el club'], ['pinta un cuadro', 'en la escuela'], ['prepara la merienda', 'en la cocina'], ['hace la tarea', 'en el escritorio'], ['juega con sus amigos', 'en la plaza'], ['anda en bicicleta', 'en el parque'], ['canta una canción', 'en el acto'], ['escribe una carta', 'en su cuarto'], ['cuenta un cuento', 'en la sala'], ['toma la leche', 'en la mesa'], ['aprende a nadar', 'en la pileta'], ['mira los peces', 'en el acuario']];
+const detOf = (w, g, pl) => (g === 'm' ? (pl ? 'los' : 'el') : (pl ? 'las' : 'la')) + ' ' + w;
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const lowFirst = s => s.charAt(0).toLowerCase() + s.slice(1);
+const contr = s => s.replace(/ de el /g, ' del ');
+function sentenceGen(L) {
+  const animalSg = () => { const c = pick(ANIM_CLASES), a = pick(c.n); return [cap(detOf(a.w, a.g)), pick(c.v), pick(c.lug)]; };
+  const nino = () => { const [v, l] = pick(NINOS_P); return [pick(NOMBRES), v, l]; };
+  const f1 = [
+    () => { const [a, v] = animalSg(); return a + ' ' + v + '.'; },
+    () => pick(NOMBRES) + ' ' + pick(['canta', 'baila', 'corre', 'salta', 'juega', 'dibuja', 'lee', 'escribe', 'come']) + '.',
+    () => { const [w, g] = pick(OBJ_PORT); return cap(detOf(w, g)) + ' es ' + pick(ADJ)[g === 'm' ? 0 : 1] + '.'; },
+    () => 'Mi ' + pick(FAM) + ' ' + pick(['canta', 'cocina', 'trabaja', 'lee', 'baila', 'camina']) + '.'
+  ];
+  const f2 = [
+    () => { const [a, v, l] = animalSg(); return a + ' ' + v + ' ' + l + '.'; },
+    () => { const c = pick(ANIM_CLASES), a = pick(c.n); return cap(detOf(pluralOf(a.w), a.g, true)) + ' ' + pick(c.vp) + ' ' + pick(c.lug) + '.'; },
+    () => { const [n, v, l] = nino(); return n + ' ' + v + ' ' + l + '.'; },
+    () => { const [w, g] = pick(OBJ_PORT), [s, g2] = pick(OBJ_SOP), pr = pick(OBJ_PREP); return contr(cap(detOf(w, g)) + ' está ' + pr + ' ' + (pr === 'sobre' ? '' : '') + detOf(s, g2) + '.'); },
+    () => { const [a, b] = pick(PROF_ORA); return a + ' ' + b + '.'; }
+  ];
+  const f3 = [
+    () => { const [n, v, l] = nino(); return pick(TIEMPO) + ' ' + n + ' ' + v + ' ' + l + '.'; },
+    () => pick(CLIMA),
+    () => { const [n1, v1, l1] = nino(); let n2, v2, l2; do { [n2, v2, l2] = nino(); } while (n2 === n1); return n1 + ' ' + v1 + ' ' + l1 + ' y ' + n2 + ' ' + v2 + ' ' + l2 + '.'; },
+    () => { const [a, b] = pick(PROF_ORA); return pick(TIEMPO) + ' ' + lowFirst(a) + ' ' + b + '.'; },
+    () => { const [a, v, l] = animalSg(); return pick(TIEMPO) + ' ' + lowFirst(a) + ' ' + v + ' ' + l + '.'; }
+  ];
+  return pick(L === 1 ? f1 : L === 2 ? f2 : f3)();
+}
+
+/* ================= DATOS 2: pares, rimas, relaciones, verbos, situaciones ================= */
+const split2 = str => str.split(/\s+/).filter(Boolean).map(x => x.split(':'));
+const ANT2 = split2('grande:chico alto:bajo largo:corto ancho:angosto grueso:delgado gordo:flaco pesado:liviano fuerte:débil duro:blando lleno:vacío abierto:cerrado limpio:sucio nuevo:viejo rápido:lento caliente:frío húmedo:seco claro:oscuro día:noche dulce:amargo rico:pobre barato:caro fácil:difícil cerca:lejos arriba:abajo adentro:afuera delante:detrás izquierda:derecha encima:debajo antes:después temprano:tarde siempre:nunca todo:nada mucho:poco más:menos entrar:salir subir:bajar abrir:cerrar empezar:terminar ganar:perder comprar:vender dar:recibir llegar:partir sacar:meter prender:apagar llenar:vaciar ensuciar:limpiar reír:llorar amar:odiar aceptar:rechazar preguntar:responder recordar:olvidar atar:desatar dormir:despertar nacer:morir amigo:enemigo verdad:mentira paz:guerra alegría:tristeza valiente:cobarde generoso:egoísta simpático:antipático amable:grosero ordenado:desordenado presente:ausente éxito:fracaso permitido:prohibido posible:imposible par:impar positivo:negativo máximo:mínimo norte:sur este:oeste verano:invierno principio:final entrada:salida ida:vuelta victoria:derrota bondad:maldad lindo:feo bueno:malo mejor:peor mayor:menor primero:último seguro:peligroso silencio:ruido gigante:enano recto:curvo profundo:superficial despierto:dormido sano:enfermo vivo:muerto unir:separar mojar:secar esconder:mostrar construir:destruir joven:anciano liso:rugoso tranquilo:nervioso lluvia:sequía subida:bajada flotar:hundirse acercar:alejar atrás:adelante común:extraño dentro:fuera avanzar:retroceder');
+const SIN2 = split2('casa:hogar bonito:lindo hermoso:bello grande:enorme pequeño:diminuto chico:pequeño rápido:veloz lento:pausado hablar:conversar charlar:conversar mirar:observar comenzar:empezar terminar:acabar contento:alegre triste:apenado enojado:furioso cansado:agotado fuerte:robusto valiente:bravo valiente:audaz miedoso:temeroso regalo:obsequio cuidar:proteger ayudar:colaborar comprar:adquirir empleo:trabajo camino:sendero niño:chico mamá:madre papá:padre pelea:riña caminar:andar saltar:brincar llorar:sollozar tirar:arrojar escoger:elegir ocultar:esconder mentira:falsedad difícil:complicado fácil:sencillo vacío:hueco enorme:gigantesco antiguo:viejo idioma:lengua pared:muro cerca:próximo lejos:distante tranquilo:sereno brillante:reluciente costoso:caro barato:económico bondadoso:amable tarea:deber delgado:flaco oscuro:sombrío inicio:comienzo maestro:profesor avisar:informar entender:comprender encontrar:hallar arreglar:reparar romper:quebrar esperar:aguardar respuesta:contestación tormenta:temporal bote:barca zapatilla:championes? mascota:animalito alegría:felicidad enfado:enojo fin:final tema:asunto sabio:inteligente pregunta:interrogante trabajador:laborioso hogar:domicilio charla:conversación alumno:estudiante docente:maestro'.replace('zapatilla:championes?','pobre:humilde'));
+const RIMAS2 = 'gato pato plato zapato rato retrato|manzana banana ventana rana campana hermana mañana semana|cocina sardina cortina esquina vitrina bocina golosina|bola cola ola sola amapola pistola|castillo cuchillo anillo cepillo ladrillo amarillo pasillo bolsillo tobillo|patito gatito pajarito librito caballito perrito|helado cuidado pescado dado soldado lado mercado costado|sombrero cartero guerrero dinero cordero tintero zapatero tablero|cantando saltando jugando bailando mirando caminando|corriendo comiendo viviendo bebiendo escribiendo|cantar saltar jugar bailar mirar caminar soñar|comer beber correr aprender vender barrer|vivir escribir subir partir dormir abrir|camión avión ratón balcón limón corazón botón pulmón|canción lección estación acción emoción región|flor color dolor calor amor temor motor sudor|animal canal metal mineral hospital capital total|mar lugar hogar collar azar|alegría tía día poesía fantasía policía|tristeza belleza riqueza pobreza realeza fortaleza|dulzura locura altura ternura cultura figura aventura|gente mente ausente presente valiente|oso perezoso hermoso sabroso famoso nervioso cariñoso|rosa mariposa hermosa cosa sabrosa mimosa|queso beso peso hueso preso|piso liso aviso paraíso improviso|boca roca foca loca toca|llave nave suave grave ave|mesa fresa princesa sorpresa promesa|fila mochila pila vigila tranquila|hilo estilo tranquilo cocodrilo|lista pista artista pianista|nada mirada helada ensalada jornada empanada|pelota gota bota nota rota derrota|vestido perdido ruido sonido olvido|comida bebida vida salida subida|pico rico chico abanico|chica rica pica|hormiga amiga espiga abriga|hijo dijo prolijo cortijo|oveja abeja queja teja ceja reja|caja paja baja raja ventaja|escuela abuela suela vuela|mano hermano verano gusano manzano|camino vino pino molino vecino|mundo profundo segundo|tierra guerra sierra encierra|zorro gorro morro ahorro|carro barro jarro cigarro|lucha ducha mucha escucha|techo pecho hecho derecho|noche coche broche reproche|conejo espejo viejo consejo|claro caro faro raro|maleta bicicleta galleta cometa planeta|verde pierde recuerde|crecer parecer amanecer|canto manto tanto|sol farol caracol arrebol|pan plan volcán|cielo pelo hielo vuelo abuelo|dedo miedo cedo|nieve breve leve|pez vez tez|taza plaza raza caza|casa masa pasa brasa|lobo globo robo|sapo trapo guapo|mono tono cono trono|cuna luna fortuna aceituna|rey ley buey'.split('|').map(x => x.split(' '));
+const REL = {
+  sonido: { l: 'Sonido', pairs: split2('perro:ladra gato:maúlla vaca:muge caballo:relincha oveja:bala cerdo:gruñe pato:grazna gallo:canta rana:croa león:ruge abeja:zumba burro:rebuzna serpiente:sisea lobo:aúlla paloma:arrulla') },
+  cria: { l: 'Cría', pairs: split2('vaca:ternero caballo:potrillo oveja:cordero gallina:pollito cabra:cabrito cerdo:lechón perro:cachorro gato:gatito pato:patito rana:renacuajo ciervo:cervatillo ballena:ballenato') },
+  hogar: { l: 'Hogar', pairs: split2('abeja:colmena hormiga:hormiguero pájaro:nido perro:perrera caballo:establo gallina:gallinero conejo:conejera cerdo:chiquero oso:cueva araña:telaraña pez:pecera') },
+  trabajo: { l: 'Lugar de trabajo', pairs: split2('médico:hospital maestro:escuela panadero:panadería carnicero:carnicería bibliotecario:biblioteca bombero:cuartel actor:teatro cocinero:cocina jardinero:jardín pescador:mar peluquero:peluquería verdulero:verdulería zapatero:zapatería pastelero:pastelería granjero:granja') },
+  herramienta: { l: 'Herramienta', pairs: split2('carpintero:martillo pintor:pincel médico:estetoscopio peluquero:tijera jardinero:pala cocinero:cuchillo escritor:lápiz pescador:caña mecánico:llave bombero:manguera costurera:aguja astrónomo:telescopio') },
+  accion: { l: 'Acción', pairs: split2('martillo:golpear tijera:cortar lápiz:escribir escoba:barrer llave:abrir aguja:coser pincel:pintar regla:medir peine:peinar teléfono:llamar libro:leer cama:dormir silla:sentarse jabón:lavar goma:borrar') },
+  parte: { l: 'Parte de', pairs: split2('rueda:auto rama:árbol página:libro pétalo:flor dedo:mano tecla:teclado ala:pájaro ladrillo:pared letra:palabra cuerda:guitarra pantalla:televisor escama:pez botón:camisa aguja:reloj') },
+  categoria: { l: 'Categoría', pairs: split2('perro:animal manzana:fruta zanahoria:verdura rojo:color guitarra:instrumento martillo:herramienta lunes:día enero:mes pino:árbol rosa:flor camión:vehículo sopa:comida fútbol:deporte cuadrado:figura') }
+};
+/* verbos regulares: [infinitivo, complemento] */
+const VERBOS = [['cantar', 'una canción'], ['bailar', 'en la fiesta'], ['saltar', 'en el patio'], ['caminar', 'por el parque'], ['mirar', 'la televisión'], ['dibujar', 'un paisaje'], ['pintar', 'una pared'], ['cocinar', 'la cena'], ['lavar', 'los platos'], ['limpiar', 'la casa'], ['ayudar', 'a su familia'], ['estudiar', 'para la prueba'], ['trabajar', 'en la escuela'], ['escuchar', 'música'], ['comprar', 'frutas'], ['llevar', 'la mochila'], ['cuidar', 'a su perro'], ['preguntar', 'la hora'], ['esperar', 'el colectivo'], ['nadar', 'en la pileta'], ['patinar', 'en la plaza'], ['regalar', 'un libro'], ['pasear', 'por la plaza'], ['ordenar', 'el cuarto'], ['visitar', 'a la abuela'], ['tomar', 'la leche'], ['usar', 'la computadora'], ['necesitar', 'ayuda'], ['preparar', 'la merienda'], ['comer', 'una manzana'], ['beber', 'agua fresca'], ['correr', 'en el parque'], ['aprender', 'a leer'], ['vender', 'frutas en la feria'], ['barrer', 'el patio'], ['meter', 'los libros en la mochila'], ['prometer', 'portarse bien'], ['responder', 'la pregunta'], ['esconder', 'un tesoro'], ['vivir', 'en una casa grande'], ['escribir', 'una carta'], ['subir', 'la escalera'], ['abrir', 'la puerta'], ['decidir', 'qué hacer'], ['partir', 'el pan'], ['recibir', 'un regalo'], ['compartir', 'sus juguetes'], ['dividir', 'la torta'], ['cumplir', 'la promesa'], ['describir', 'un animal'], ['aplaudir', 'al final'], ['mirar', 'el mar'], ['lavar', 'la ropa'], ['cuidar', 'las plantas'], ['pintar', 'con acuarelas'], ['cantar', 'en el coro'], ['aprender', 'una poesía'], ['subir', 'al colectivo']];
+const FORMAS = { ar: { pres: ['o', 'ás', 'a', 'amos', 'an'], pret: ['é', 'aste', 'ó', 'amos', 'aron'] }, er: { pres: ['o', 'és', 'e', 'emos', 'en'], pret: ['í', 'iste', 'ió', 'imos', 'ieron'] }, ir: { pres: ['o', 'ís', 'e', 'imos', 'en'], pret: ['í', 'iste', 'ió', 'imos', 'ieron'] } };
+const FUT = ['é', 'ás', 'á', 'emos', 'án'];
+const SUJ = [['Yo'], ['Vos'], ['Mi hermana', 'Él', 'Ella', 'Tomás', 'Mi abuelo'], ['Nosotros', 'Mi familia y yo'], ['Ellos', 'Los chicos', 'Mis primos', 'Las maestras']];
+const TENSE = { pres: ['Hoy', 'Siempre', 'Todos los días'], pret: ['Ayer', 'Anoche', 'La semana pasada'], fut: ['Mañana', 'El año que viene', 'Pronto'] };
+function conjugar(inf, tense, p) {
+  const t = inf.slice(-2), stem = inf.slice(0, -2);
+  if (tense === 'fut') return inf + FUT[p];
+  const f = FORMAS[t][tense][p]; return stem + f;
+}
+/* emociones por situación */
+const EMOS = ['alegría', 'tristeza', 'enojo', 'miedo', 'sorpresa', 'vergüenza', 'orgullo', 'aburrimiento', 'preocupación', 'cariño', 'celos', 'asco'];
+const EMO_SIT = {
+  alegría: ['Es tu cumpleaños y llegan tus amigos con regalos.', 'Tu equipo ganó el partido.', 'Te avisan que mañana no hay clases.', 'Después de mucho tiempo te encontrás con tu mejor amigo.', 'Tu mamá te prepara tu comida favorita.', 'Encontraste el juguete que habías perdido.', 'Vas a pasear a la playa con tu familia.'],
+  tristeza: ['Se murió tu mascota.', 'Tu mejor amigo se mudó a otra ciudad.', 'Se te rompió tu juguete favorito.', 'Nadie quiso jugar con vos en el recreo.', 'Tu abuela se fue de viaje y la vas a extrañar mucho.', 'Se terminaron las vacaciones.'],
+  enojo: ['Otro chico te rompió el dibujo a propósito.', 'Tu hermano agarró tus cosas sin pedirte permiso.', 'Alguien te empujó en la fila.', 'Te acusaron de algo que no hiciste.', 'Te hicieron trampa en el juego.', 'Te dijeron algo feo delante de todos.'],
+  miedo: ['Escuchás un trueno muy fuerte de noche.', 'Te quedás solo en un lugar muy oscuro.', 'Ves un perro enorme que ladra fuerte.', 'Tenés que cruzar una calle con muchos autos.', 'Se corta la luz y no ves nada.', 'Te perdiste en el supermercado.'],
+  sorpresa: ['Abrís la puerta y todos gritan «¡sorpresa!».', 'Encontrás un regalo que no esperabas.', 'De repente aparece tu tío que vive lejos.', 'Ves un arcoíris doble en el cielo.', 'Te enterás de que vas a tener un hermanito.'],
+  vergüenza: ['Te caés delante de toda la clase.', 'Te equivocás al cantar frente a todos.', 'Te olvidás la letra en el acto de la escuela.', 'Te dicen delante de tus compañeros que tenés la remera dada vuelta.', 'Sin querer, le decís «mamá» a tu maestra.'],
+  orgullo: ['Te sacaste un diez en una prueba difícil.', 'Aprendiste a andar en bicicleta sin ruedas.', 'Tu dibujo fue elegido para la cartelera.', 'Ayudaste a un compañero y la maestra te felicitó.', 'Terminaste un rompecabezas de mil piezas.'],
+  aburrimiento: ['Es un día de lluvia y no tenés nada para hacer.', 'Hace una hora que esperás en la sala de espera.', 'Tenés que escuchar un discurso larguísimo.', 'Ya jugaste a todo y no se te ocurre nada nuevo.', 'Viajás muchas horas en auto sin nada para mirar.'],
+  preocupación: ['Mañana tenés una prueba y no estudiaste.', 'Tu mamá no vuelve a la hora que dijo.', 'Tu amigo está enfermo y no sabés cómo está.', 'Perdiste las llaves de tu casa.', 'Tu perro no vuelve a casa.'],
+  cariño: ['Tu abuela te da un abrazo muy fuerte.', 'Tu mamá te arropa antes de dormir.', 'Cuidás a un pajarito que se lastimó.', 'Tu mejor amigo te presta su juguete favorito.', 'Acariciás a tu gato mientras ronronea.'],
+  celos: ['Tu mejor amiga juega todo el recreo con otra chica.', 'Tu hermanito recibe hoy más atención que vos.', 'Tu amigo hizo un amigo nuevo y ya no te invita a jugar.'],
+  asco: ['Abrís la heladera y huele a comida podrida.', 'Pisás un chicle pegado con el pie descalzo.', 'Encontrás un bicho muerto en tu plato.']
+};
+const SOC2 = [
+  ['Tu amigo se olvidó la merienda.', 'Le ofrezco compartir la mía', ['Me río porque se la olvidó', 'Me la como sin decirle nada']],
+  ['Estás jugando y otro chico quiere sumarse.', 'Lo invito a jugar con nosotros', ['Le digo que no hay lugar para él', 'Me enojo y dejo de jugar']],
+  ['Te toca limpiar el aula con un compañero.', 'Hacemos la tarea entre los dos', ['Me voy y que limpie solo', 'Le dejo todo el trabajo a él']],
+  ['Una compañera está llorando en el patio.', 'Me acerco y le pregunto qué le pasa', ['Me alejo para no meterme', 'Me burlo de ella']],
+  ['Tu hermano duerme y vos querés poner música.', 'Uso auriculares o espero a que despierte', ['Pongo la música fuerte igual', 'Lo despierto de un grito']],
+  ['La seño pide silencio y vos querés contar algo.', 'Levanto la mano y espero mi turno', ['Hablo igual en voz baja con todos', 'Grito para que me escuchen']],
+  ['Encontrás una billetera en la calle.', 'La llevo a un adulto para encontrar a su dueño', ['Me quedo con la plata', 'La dejo tirada']],
+  ['Te prestan un libro y se te mancha.', 'Le cuento a quien me lo prestó y le pido perdón', ['Lo devuelvo sin decir nada', 'Le echo la culpa a mi hermano']],
+  ['Tu equipo pierde un partido.', 'Saludo al otro equipo y pienso cómo mejorar', ['Digo que el árbitro hizo trampa', 'Me voy sin saludar']],
+  ['Un compañero habla un idioma distinto al tuyo.', 'Trato de comunicarme con gestos y paciencia', ['Me burlo de cómo habla', 'Lo ignoro']],
+  ['Querés ir primero en la fila pero otro llegó antes.', 'Espero mi turno', ['Me cuelo adelante', 'Lo empujo']],
+  ['Tu amigo te pide ayuda con la tarea.', 'Le explico cómo se hace sin darle la respuesta', ['Le paso todo copiado', 'Le digo que se arregle solo']],
+  ['Prometiste devolver un juguete y lo perdiste.', 'Le digo la verdad y busco cómo repararlo', ['Digo que nunca me lo prestó', 'Me escondo hasta que se olvide']],
+  ['Alguien te dice que no sos bueno dibujando.', 'Le digo que me gusta practicar y sigo', ['Rompo mi dibujo', 'Le digo algo feo a él']],
+  ['Estás enojado y querés pegarle a un compañero.', 'Respiro hondo y me alejo un momento', ['Le pego igual', 'Le grito insultos']],
+  ['Llega un compañero nuevo y no conoce la escuela.', 'Le muestro dónde están el baño y el patio', ['Lo dejo que se pierda', 'Le digo que se vaya']],
+  ['Tu amiga contó un secreto tuyo a otros.', 'Hablo con ella y le explico cómo me sentí', ['Cuento un secreto suyo para vengarme', 'Dejo de hablarle para siempre']],
+  ['Ves que alguien tira basura al piso.', 'La levanto y la tiro en el cesto', ['Tiro yo también', 'Hago como que no vi']],
+  ['Sube al colectivo una persona mayor y no hay asientos.', 'Le ofrezco mi asiento', ['Me hago el distraído', 'Me pongo los auriculares']],
+  ['Rompés un vaso en la casa de un amigo.', 'Aviso enseguida y pido perdón', ['Lo escondo', 'Le echo la culpa a la mascota']],
+  ['Te invitan a una fiesta pero no podés ir.', 'Agradezco y explico por qué no puedo', ['No contesto', 'Digo que la fiesta es aburrida']],
+  ['Tu compañero ganó el premio que vos querías.', 'Lo felicito aunque me dé un poco de envidia', ['Le digo que hizo trampa', 'No le hablo más']],
+  ['Te dieron de más en el vuelto del kiosco.', 'Aviso y lo devuelvo', ['Me lo quedo', 'Me voy rápido']],
+  ['Todos hablan a la vez en tu grupo de trabajo.', 'Propongo escuchar por turnos', ['Grito más fuerte', 'Me voy del grupo']],
+  ['Un compañero se burla de otro por cómo habla.', 'Le digo que pare y acompaño al compañero', ['Me río para encajar', 'Miro para otro lado']],
+  ['Tu amigo está triste porque no lo eligieron para el equipo.', 'Le digo que lo voy a esperar y juego algo con él', ['Le digo que no importa y me voy', 'Le cuento a todos que lo dejaron afuera']],
+  ['Alguien te pide que cambies de lugar en el aula.', 'Le pregunto el motivo y lo hablamos', ['Me quedo y no le contesto', 'Lo agarro del brazo']],
+  ['En un juego en equipo nadie escucha tu idea.', 'Les pido un momento para explicarla bien', ['Me enojo y dejo de jugar', 'Hago lo contrario a propósito']],
+  ['Tu primo te pide jugar con tus cosas nuevas.', 'Le explico qué puede usar y cómo cuidarlo', ['Le digo que no con mala cara', 'Se las doy sin cuidado']],
+  ['La maestra se equivocó en la corrección.', 'Levanto la mano y se lo digo con respeto', ['Me burlo de ella entre los compañeros', 'Me quedo callado y me enojo']],
+  ['Te dicen que no podés jugar porque «sos muy chico».', 'Pido que me dejen intentarlo una vez', ['Me pongo a llorar y me voy', 'Les rompo el juego']],
+  ['Se te cae la comida en el comedor.', 'La levanto y aviso para limpiar', ['La dejo ahí y me voy', 'Culpo al de al lado']],
+  ['Un chico no sabe jugar a un juego que a vos te encanta.', 'Le explico las reglas con paciencia', ['Le digo que es muy torpe', 'Juego sin él']],
+  ['Tu hermana quiere ver otro programa.', 'Propongo que cada uno elija una vez', ['Me quedo con el control remoto', 'La empujo del sillón']],
+  ['Te enteraste de que van a retar a un amigo por algo que hiciste vos.', 'Digo la verdad y asumo lo que hice', ['No digo nada y dejo que lo reten', 'Le echo la culpa a otro']],
+  ['Un compañero te cuenta que tiene miedo de exponer.', 'Le digo que lo podés ayudar a practicar', ['Le digo que es ridículo', 'Le cuento a todos su miedo']],
+  ['Ves a un chico solo en el recreo.', 'Lo invito a jugar con mis amigos', ['Paso de largo', 'Le digo que busque otros amigos']],
+  ['Te toca compartir la pelota con otros.', 'Pasamos la pelota entre todos', ['Me la quedo yo solo', 'La tiro lejos']],
+  ['Perdiste una apuesta tonta con un amigo.', 'Cumplo lo que dije sin hacer drama', ['Me enojo y no pago', 'Cambio las reglas']]
+];
+/* secuencias de pasos para ordenar */
+const SEQ2 = [
+  ['Lavarse los dientes', ['Poner pasta en el cepillo', 'Cepillarse los dientes', 'Enjuagarse la boca', 'Guardar el cepillo']],
+  ['Preparar un sándwich', ['Cortar el pan', 'Poner jamón y queso', 'Tapar con la otra rebanada', 'Comerlo']],
+  ['Plantar una semilla', ['Hacer un pozo en la tierra', 'Poner la semilla', 'Taparla con tierra', 'Regarla']],
+  ['Cruzar la calle', ['Parar en la esquina', 'Mirar a los dos lados', 'Esperar que no vengan autos', 'Cruzar caminando']],
+  ['Ir a la escuela', ['Despertarse', 'Desayunar', 'Preparar la mochila', 'Caminar hasta la escuela']],
+  ['Hacer una torta', ['Mezclar los ingredientes', 'Poner la mezcla en el molde', 'Hornear', 'Esperar que se enfríe', 'Comer la torta']],
+  ['Lavarse las manos', ['Abrir la canilla', 'Ponerse jabón', 'Frotarse las manos', 'Enjuagarse', 'Secarse']],
+  ['Bañarse', ['Abrir la ducha', 'Mojarse', 'Enjabonarse', 'Enjuagarse', 'Secarse con la toalla']],
+  ['Vestirse', ['Sacarse el pijama', 'Ponerse la ropa interior', 'Ponerse el pantalón y la remera', 'Ponerse las medias y los zapatos']],
+  ['Armar un rompecabezas', ['Dar vuelta las piezas', 'Buscar los bordes', 'Armar el marco', 'Completar el centro']],
+  ['El ciclo del agua', ['El sol calienta el mar', 'El agua sube como vapor', 'Se forman las nubes', 'Llueve']],
+  ['Crecer', ['Nace el bebé', 'Aprende a caminar', 'Va a la escuela', 'Se vuelve adulto']],
+  ['Mandar una carta', ['Escribir la carta', 'Ponerla en un sobre', 'Pegar la estampilla', 'Dejarla en el buzón']],
+  ['Hacer la tarea', ['Sacar el cuaderno', 'Leer la consigna', 'Resolver los ejercicios', 'Guardar el cuaderno']],
+  ['Ir a la plaza', ['Ponerse las zapatillas', 'Salir de casa', 'Jugar en el tobogán', 'Volver a casa']],
+  ['Hacer té', ['Calentar el agua', 'Poner la bolsita en la taza', 'Echar el agua caliente', 'Esperar y tomarlo']],
+  ['Hacer un dibujo', ['Tomar una hoja', 'Dibujar con lápiz', 'Pintar con colores', 'Poner el nombre']],
+  ['Preparar jugo de naranja', ['Cortar las naranjas', 'Exprimirlas', 'Colar el jugo', 'Servirlo en un vaso']],
+  ['Dormirse', ['Ponerse el pijama', 'Lavarse los dientes', 'Acostarse en la cama', 'Cerrar los ojos']],
+  ['Cuidar al perro', ['Llenar el plato de comida', 'Llenar el bebedero de agua', 'Pasearlo por la plaza', 'Cepillarle el pelo']],
+  ['Cocinar fideos', ['Hervir agua', 'Echar los fideos', 'Esperar unos minutos', 'Colarlos y servir']],
+  ['Pescar', ['Preparar la caña', 'Poner la carnada', 'Esperar que pique', 'Sacar el pez']],
+  ['Un cumpleaños', ['Invitar a los amigos', 'Armar la mesa', 'Soplar las velitas', 'Repartir la torta']],
+  ['Viajar en colectivo', ['Esperar en la parada', 'Subir al colectivo', 'Pagar el boleto', 'Bajar en la parada']],
+  ['Lavar la ropa', ['Juntar la ropa sucia', 'Ponerla en el lavarropas', 'Colgarla para que se seque', 'Doblarla y guardarla']],
+  ['Cocinar con una receta', ['Lavarse las manos', 'Reunir los ingredientes', 'Cocinar', 'Servir la comida']],
+  ['Nace una mariposa', ['Pone el huevo', 'Nace la oruga', 'La oruga hace un capullo', 'Sale la mariposa']],
+  ['Crece una planta', ['Se siembra la semilla', 'Sale un brote', 'Crecen las hojas', 'Aparece la flor']],
+  ['Sacar la basura', ['Atar la bolsa', 'Sacarla a la vereda', 'Poner una bolsa nueva', 'Lavarse las manos']],
+  ['Ir al médico', ['Pedir turno', 'Esperar en la sala', 'Pasar al consultorio', 'Recibir la receta']],
+  ['Una tormenta', ['Se nublan las nubes', 'Se escucha un trueno', 'Cae la lluvia', 'Sale el arcoíris']],
+  ['Salir de casa', ['Apagar las luces', 'Cerrar las ventanas', 'Cerrar la puerta con llave', 'Guardar la llave']],
+  ['Pintar una pared', ['Tapar el piso con diarios', 'Mezclar la pintura', 'Pintar con el rodillo', 'Dejar secar']],
+  ['Una mudanza', ['Poner las cosas en cajas', 'Cargar el camión', 'Viajar a la casa nueva', 'Desarmar las cajas']],
+  ['Un partido de fútbol', ['Salir a la cancha', 'Suena el silbato', 'Jugar los dos tiempos', 'Saludar al final']],
+  ['Preparar una ensalada', ['Lavar las verduras', 'Cortarlas en trozos', 'Mezclarlas en una fuente', 'Agregar aceite y sal']],
+  ['Armar un barrilete', ['Cortar el papel', 'Pegar las varillas', 'Atar el hilo', 'Salir a volarlo']],
+  ['Ir a la biblioteca', ['Elegir un libro', 'Pedirlo en el mostrador', 'Leerlo en casa', 'Devolverlo a tiempo']],
+  ['Hacer un helado casero', ['Mezclar leche y azúcar', 'Poner la mezcla en un recipiente', 'Llevarla al freezer', 'Servir cuando esté duro']]
+];
+/* historias con huecos (comprensión y memoria) */
+const H_LUG = [['al parque', 'el parque'], ['a la plaza', 'la plaza'], ['a la playa', 'la playa'], ['al zoológico', 'el zoológico'], ['a la biblioteca', 'la biblioteca'], ['al museo', 'el museo'], ['al río', 'el río'], ['a la granja', 'la granja'], ['al club', 'el club'], ['a la casa de su abuela', 'la casa de su abuela'], ['al circo', 'el circo'], ['a la montaña', 'la montaña']];
+const H_COMP = ['su perro', 'su hermano', 'su abuela', 'su mejor amigo', 'su mamá', 'su papá', 'sus primos', 'su tía', 'su maestra', 'su vecino'];
+const H_HALL = [['una pelota roja', 'roja'], ['una moneda dorada', 'dorada'], ['un gatito perdido', 'perdido'], ['una llave oxidada', 'oxidada'], ['una piedra brillante', 'brillante'], ['un libro viejo', 'viejo'], ['una mariposa azul', 'azul'], ['un sombrero grande', 'grande'], ['una carta misteriosa', 'misteriosa'], ['una bufanda verde', 'verde'], ['un barco de juguete', 'de juguete'], ['una caja de madera', 'de madera']];
+const H_TIEMPO = ['por la mañana', 'por la tarde', 'a la noche', 'el sábado', 'el domingo', 'después de la escuela'];
+const H_MASC = [['un perro', 'perro'], ['un gato', 'gato'], ['un conejo', 'conejo'], ['una tortuga', 'tortuga'], ['un loro', 'loro'], ['un pez', 'pez']];
+const H_PET = ['Toto', 'Nube', 'Pelusa', 'Manchita', 'Luna', 'Copito', 'Bruno', 'Mora', 'Canela', 'Max', 'Coco', 'Lola'];
+const H_ACT = ['juegan en el patio', 'salen a pasear', 'duermen la siesta juntos', 'comen a la misma hora', 'miran por la ventana', 'corren por el jardín'];
+const H_COMIDA = [['una ensalada', ['lechuga', 'tomate', 'zanahoria', 'cebolla', 'pepino', 'choclo']], ['una torta', ['harina', 'huevos', 'azúcar', 'manteca', 'leche', 'vainilla']], ['una sopa', ['zapallo', 'papa', 'cebolla', 'zanahoria', 'fideos', 'apio']], ['un licuado', ['banana', 'leche', 'frutillas', 'miel', 'durazno', 'hielo']], ['un sándwich', ['pan', 'jamón', 'queso', 'tomate', 'lechuga', 'manteca']], ['una pizza', ['masa', 'salsa', 'queso', 'aceitunas', 'orégano', 'cebolla']]];
+const H_CLIMA = [['llovía mucho', ['un piloto', 'unas botas'], 'Porque llovía mucho', ['Porque hacía mucho calor', 'Porque nevaba']], ['hacía mucho frío', ['una campera', 'una bufanda'], 'Porque hacía mucho frío', ['Porque llovía', 'Porque hacía calor']], ['hacía mucho calor', ['una remera', 'una gorra'], 'Porque hacía mucho calor', ['Porque nevaba', 'Porque hacía frío']], ['había mucho viento', ['una campera', 'un gorro'], 'Porque había mucho viento', ['Porque estaba soleado', 'Porque hacía calor']]];
+const H_OBJ2 = [['manzanas', 'peras'], ['lápices', 'gomas'], ['figuritas', 'bolitas'], ['caramelos', 'chocolates'], ['libros', 'cuadernos'], ['globos', 'velas'], ['pelotas', 'conos'], ['flores', 'hojas']];
+const H_CAUSA = [
+  ['{N} se olvidó el paraguas y llovió mucho. Cuando llegó a la escuela estaba toda mojada.', '¿Por qué estaba mojada {N}?', 'Porque llovió y no tenía paraguas', ['Porque se cayó en una pileta', 'Porque lavó los platos']],
+  ['{N} no estudió para la prueba. Cuando recibió la nota se puso muy triste.', '¿Por qué se puso triste {N}?', 'Porque le fue mal en la prueba', ['Porque perdió su mochila', 'Porque no había clases']],
+  ['{N} corrió todo el recreo. Al volver al aula tenía mucha sed.', '¿Por qué tenía sed {N}?', 'Porque había corrido mucho', ['Porque había comido sopa', 'Porque estaba dormido']],
+  ['Se cortó la luz y {N} encendió una linterna.', '¿Por qué encendió la linterna {N}?', 'Porque estaba oscuro', ['Porque tenía frío', 'Porque quería dormir']],
+  ['{N} se levantó tarde y llegó corriendo a la escuela. Había sonado el timbre.', '¿Por qué llegó corriendo {N}?', 'Porque se había levantado tarde', ['Porque quería hacer ejercicio', 'Porque tenía hambre']],
+  ['A {N} se le cayó el helado al piso. Se puso a llorar.', '¿Por qué lloraba {N}?', 'Porque se le cayó el helado', ['Porque tenía sueño', 'Porque perdió un diente']],
+  ['{N} regó las plantas todas las mañanas. En primavera el jardín se llenó de flores.', '¿Por qué se llenó de flores el jardín?', 'Porque {N} lo cuidó y lo regó', ['Porque llovió nieve', 'Porque lo pintaron']],
+  ['{N} dejó la leche afuera de la heladera todo el día. A la noche estaba agria.', '¿Por qué estaba agria la leche?', 'Porque estuvo afuera de la heladera', ['Porque estaba muy fría', 'Porque era de chocolate']],
+  ['{N} apretó el botón del timbre y el perro empezó a ladrar.', '¿Por qué ladró el perro?', 'Porque sonó el timbre', ['Porque tenía hambre de postre', 'Porque era de noche']],
+  ['{N} ayudó a una señora a cruzar la calle. La señora le sonrió y le dio las gracias.', '¿Por qué le dio las gracias la señora?', 'Porque {N} la ayudó', ['Porque le regaló un libro', 'Porque era su cumpleaños']],
+  ['El colectivo no llegaba y {N} esperó mucho. Llegó tarde al club.', '¿Por qué llegó tarde {N}?', 'Porque el colectivo tardó', ['Porque se quedó dormido en el club', 'Porque fue a la playa']],
+  ['{N} guardó sus juguetes antes de cenar. Su mamá lo felicitó.', '¿Por qué felicitó a {N} su mamá?', 'Porque ordenó sus juguetes', ['Porque rompió un juguete', 'Porque comió helado']],
+  ['{N} tomó mucho sol en la playa sin protector. A la noche tenía la espalda roja.', '¿Por qué tenía roja la espalda {N}?', 'Porque tomó mucho sol sin protector', ['Porque se bañó en el río', 'Porque estaba enojado']],
+  ['{N} dejó la ventana abierta toda la noche en invierno. Por la mañana hacía mucho frío en el cuarto.', '¿Por qué hacía frío en el cuarto?', 'Porque la ventana estaba abierta', ['Porque era verano', 'Porque había cerrado todo']],
+  ['{N} se quedó mirando la tele hasta muy tarde. Al otro día tenía mucho sueño en la escuela.', '¿Por qué tenía sueño {N}?', 'Porque se durmió muy tarde', ['Porque desayunó mucho', 'Porque había faltado']]
+];
+
+/* ================= BANCOS DE EJERCICIOS (v6) ================= */
+/* memoria: evita repetir ejercicios ya vistos por el/la alumno/a (por juego) */
+const SEEN2 = store.get('pp2_seen2', {});
+const seenKey = gid => (cur() ? cur().id : 'p') + ':' + gid;
+function freshPick(gid, arr, n, kf) {
+  kf = kf || (x => x.w || (typeof x === 'string' ? x : JSON.stringify(x)));
+  if (S.noRepeat === false) return take(arr, n);
+  const k = seenKey(gid), seen = new Set(SEEN2[k] || []);
+  let pool = arr.filter(x => !seen.has(kf(x)));
+  if (pool.length < n) { SEEN2[k] = []; pool = arr; }
+  const out = take(pool, n);
+  SEEN2[k] = (SEEN2[k] || []).concat(out.map(kf)).slice(-900); store.set('pp2_seen2', SEEN2);
+  return out;
+}
+function freshGen(gid, gen, n, kf, tries = 60) {
+  const k = seenKey(gid), seen = new Set(S.noRepeat === false ? [] : (SEEN2[k] || [])), out = [], mine = new Set();
+  for (let g = 0; g < n * tries && out.length < n; g++) { const it = gen(), key = kf(it); if (mine.has(key) || seen.has(key)) continue; mine.add(key); out.push(it); }
+  while (out.length < n) out.push(gen());   // si el espacio es chico, se repite en vez de colgarse
+  if (S.noRepeat !== false) { SEEN2[k] = (SEEN2[k] || []).concat(out.map(kf)).slice(-900); store.set('pp2_seen2', SEEN2); }
+  return out;
+}
+const lvPool = (pool, L) => pool.filter(x => L === 1 ? x.lv === 1 : L === 2 ? (x.lv === 2 || (x.lv === 1 && rnd(4) === 0)) : (x.lv === 3 || (x.lv === 2 && rnd(3) === 0)));
+const catLabel = c => c && LEXCAT[c] ? LEXCAT[c].label : '';
+const GRUPO = { animales: 'animales', aves: 'aves', bichos: 'bichitos', marinos: 'animales del mar', frutas: 'frutas', verduras: 'verduras', comidas: 'comidas', bebidas: 'bebidas', ropa: 'ropa', muebles: 'muebles', utensilios: 'cosas de la cocina', herramientas: 'herramientas', escolares: 'útiles escolares', instrumentos: 'instrumentos musicales', transportes: 'transportes', profesiones: 'profesiones', cuerpo: 'partes del cuerpo', naturaleza: 'cosas de la naturaleza', lugares: 'lugares de la ciudad', casa: 'partes de la casa', objetos: 'objetos de la casa', juguetes: 'juguetes', deportes: 'deportes', colores: 'colores', formas: 'figuras', familia: 'familiares', sentimientos: 'sentimientos', flores: 'flores' };
+const REAL_EXTRA = new Set('baca bota bote vota vote vino bino tubo tuvo vello bello cabo cavo cazar casar cocer coser cima sima sierra cierra tasa taza vez ves hay ahí asta hasta ola hola ora hora echo hecho haya halla aya callo cayo pollo poyo rayar rallar rayo rallo gala jala gira jira ceja seja cena sena sien cien serrar cerrar sábana abría habría ato hato bacilo vacilo barrer arrear arco harco oso hoso uva huva ojo hojo ola hala era hera ido hido'.split(' '));
+
+/* sílabas y palabras para los juegos de fonología */
+const SYLP = (() => {
+  const m = new Map();
+  LEX.forEach(x => { if (x.n <= 6) m.set(x.w, { w: x.w, sy: x.sy, n: x.n, lv: x.lv, c: x.c }); });
+  SYL.flat().forEach(([e, s]) => { const sy = s.split('-'), w = sy.join(''); m.set(w, { w, sy, n: sy.length, lv: sy.length <= 2 ? 1 : sy.length <= 3 ? 2 : 3, e, c: (m.get(w) || {}).c }); });
+  return [...m.values()];
+})();
+function runSyllables2(root, api) {
+  const items = freshPick('syl', lvPool(SYLP, api.level), 10), mx = Math.max(5, ...items.map(i => i.n));
+  return runQuiz(root, api, {
+    instr: '¿Cuántas sílabas (golpes) tiene la palabra?', items, speak: it => it.w,
+    render: it => h('div', {}, h('div', { class: 'big' }, it.e || '🔤'), h('h2', {}, it.w), it.c ? h('div', { class: 'muted' }, catLabel(it.c)) : null),
+    options: it => Array.from({ length: mx }, (_, i) => ({ label: String(i + 1), ok: i + 1 === it.n })),
+    fbRight: it => '¡Correcto! ' + it.sy.join('-'), fbWrong: it => 'Eran ' + it.n + ' → ' + it.sy.join('-'), failLabel: it => it.w + ' → ' + it.n + ' sílabas (' + it.sy.join('-') + ')',
+    notes: () => ['La conciencia silábica es predictora de la adquisición lectora. Si falla en palabras cortas, explorar discriminación auditiva.']
+  });
+}
+function silGame2(root, api, mode) {
+  const pool = lvPool(SYLP.filter(x => x.n >= 2 && (mode !== 'mid' || x.n >= 3 || api.level === 1)), api.level), no = api.level === 1 ? 2 : 3;
+  const items = freshPick('sil' + mode, pool, 10).map(x => { const k = mode === 'end' ? x.n - 1 : mode === 'ini' ? 0 : (x.n >= 3 ? 1 + rnd(x.n - 2) : rnd(x.n)); return { ...x, k, s: x.sy[k] }; });
+  const ttl = { ini: '¿Con qué sílaba empieza?', end: '¿Con qué sílaba termina?', mid: '¿Qué sílaba falta?' }[mode];
+  return runQuiz(root, api, {
+    instr: ttl, items, speak: it => it.w, cat: it => 'palabras de ' + it.n + ' sílabas',
+    render: it => h('div', {}, h('div', { class: 'big' }, it.e || '🔤'), mode === 'mid' ? h('h2', {}, it.sy.map((x, i) => i === it.k ? '＿＿' : x).join(' · ')) : h('h2', {}, it.w), it.c ? h('div', { class: 'muted' }, catLabel(it.c)) : null),
+    options: it => shuffle([it.s, ...take(ALLSYL2.filter(x => x !== it.s), no)]).map(o => ({ label: o, ok: o === it.s })),
+    fbWrong: it => 'Era «' + it.s + '»: ' + it.sy.join('-'), failLabel: it => it.sy.join('-') + ' → ' + it.s,
+    notes: () => ['Tareas de manipulación silábica: antecedentes directos de la conciencia fonémica y de la decodificación.']
+  });
+}
+const runSilabaInicial2 = (r, a) => silGame2(r, a, 'ini'), runSilFin2 = (r, a) => silGame2(r, a, 'end'), runSilFalta2 = (r, a) => silGame2(r, a, 'mid');
+function runQuitaSil2(root, api) {
+  const pool = lvPool(SYLP.filter(x => x.n >= (api.level === 1 ? 2 : 3)), api.level);
+  const items = freshPick('quita', pool, 10).map(x => { const k = api.level === 1 ? 0 : api.level === 2 ? (rnd(2) ? 0 : x.n - 1) : 1 + rnd(x.n - 2); return { ...x, k }; });
+  return runQuiz(root, api, {
+    instr: 'Sacá la sílaba y decí qué queda', items, speak: it => it.w,
+    render: it => h('div', {}, h('div', { class: 'big' }, '✂️'), h('h2', {}, 'Decí «' + it.w + '» sin «' + it.sy[it.k] + '»')),
+    options: it => { const ans = it.sy.filter((_, i) => i !== it.k).join(''), s = new Set([ans, it.sy[it.k], it.w, it.sy.filter((_, i) => i !== (it.k === 0 ? it.n - 1 : 0)).join('')]); return shuffle([...s].slice(0, api.level === 1 ? 3 : 4)).map(o => ({ label: o, ok: o === ans })); },
+    fbWrong: it => 'Queda «' + it.sy.filter((_, i) => i !== it.k).join('') + '»', failLabel: it => it.w + ' sin ' + it.sy[it.k],
+    notes: () => ['La supresión silábica exige manipular mentalmente los sonidos. Si lo resuelve oralmente pero no acá, puede haber un problema de lectura de las opciones.']
+  });
+}
+function runFormaPalabra2(root, api) {
+  const pool = lvPool(SYLP.filter(x => x.n >= 2 && x.n <= 5), api.level), items = freshPick('forma', pool, 8).map(x => ({ w: x.w, e: x.e, c: x.c, parts: x.sy }));
+  return runBuilder(root, api, { instr: 'Ordená las sílabas para formar la palabra', join: '', items,
+    render: it => h('div', {}, h('div', { class: 'big' }, it.e || '🧩'), it.c ? h('div', { class: 'muted' }, catLabel(it.c)) : null),
+    fbWrong: it => 'Era: ' + it.parts.join('-'), notes: ['Reconstruir palabras desde sílabas desordenadas integra segmentación, léxico y ortografía.'] });
+}
+function runOrdenLetras2(root, api) {
+  const pool = lvPool(SYLP.filter(x => x.w.length >= 3 && x.w.length <= 9 && !/[áéíóúüñ]/.test(x.w)), api.level), items = freshPick('letras', pool, 8).map(x => ({ w: x.w, e: x.e, c: x.c, parts: x.w.split('') }));
+  return runBuilder(root, api, { instr: 'Ordená las letras para formar la palabra', join: '', items,
+    render: it => h('div', {}, h('div', { class: 'big' }, it.e || '🔠'), it.c ? h('div', { class: 'muted' }, catLabel(it.c)) : null),
+    fbWrong: it => 'Era: ' + it.parts.join(''), notes: ['Si arma bien el inicio pero falla en el medio, explorar sílabas trabadas (flor, tren, globo).'] });
+}
+const ALF = 'abcdefghijlmnoprstuvz'.split('');
+function runSonidoInicial2(root, api) {
+  const pool = lvPool([...SYLP, ...SONI.map(([e, w]) => ({ w, e, lv: 1, c: null }))], api.level), no = api.level === 1 ? 2 : 3;
+  const items = freshPick('soni', pool, 10, x => x.w);
+  return runQuiz(root, api, {
+    instr: '¿Con qué letra empieza la palabra?', items, speak: it => it.w,
+    render: it => h('div', {}, h('div', { class: 'big' }, it.e || '🔤'), h('h2', {}, it.w), it.c ? h('div', { class: 'muted' }, catLabel(it.c)) : null),
+    options: it => { const f = unaccent(it.w[0]); return shuffle([f, ...take(ALF.filter(l => l !== f), no)]).map(o => ({ label: h('span', { class: 'optletter' }, o), ok: o === f })); },
+    fbWrong: it => it.w + ' empieza con «' + it.w[0] + '»', failLabel: it => it.w + ' → ' + it.w[0],
+    notes: () => ['Se pregunta por la letra (no por el sonido): ojo con b/v, c/qu, g/j y la h muda.']
+  });
+}
+
+/* ortografía: huecos por grafema, derivados de cada palabra del léxico */
+const SPELLX = (() => {
+  const out = [], V = 'aeiouáéíóú', isV = c => c && V.includes(c);
+  const rules = [['b', ['b', 'v'], (w, i) => w[i] === 'b' && isV(w[i + 1]), 'b/v'], ['v', ['b', 'v'], (w, i) => w[i] === 'v' && isV(w[i + 1]), 'b/v'],
+    ['h', ['h', '∅'], (w, i) => w[i] === 'h' && w[i - 1] !== 'c' && isV(w[i + 1]), 'h'], ['ll', ['ll', 'y'], (w, i) => w.startsWith('ll', i), 'll/y'],
+    ['y', ['ll', 'y'], (w, i) => w[i] === 'y' && isV(w[i + 1]) && (i === 0 || isV(w[i - 1])), 'll/y'], ['g', ['g', 'j'], (w, i) => w[i] === 'g' && 'eiéí'.includes(w[i + 1] || '#'), 'g/j'],
+    ['j', ['g', 'j'], (w, i) => w[i] === 'j' && 'eiéí'.includes(w[i + 1] || '#'), 'g/j'], ['z', ['s', 'z', 'c'], (w, i) => w[i] === 'z' && 'aouáóú'.includes(w[i + 1] || '#'), 'c/s/z'],
+    ['c', ['s', 'z', 'c'], (w, i) => w[i] === 'c' && 'eiéí'.includes(w[i + 1] || '#'), 'c/s/z'], ['rr', ['r', 'rr'], (w, i) => w.startsWith('rr', i) && isV(w[i - 1]) && isV(w[i + 2]), 'r/rr']];
+  LEX.forEach(x => { if (x.plural) return; const done = new Set(); for (const [g, opts, ok, cat] of rules) { if (done.has(cat)) continue; for (let i = 0; i < x.w.length; i++) if (ok(x.w, i)) { done.add(cat); out.push({ w: x.w, pre: x.w.slice(0, i), post: x.w.slice(i + g.length), gap: g, opts, cat, c: x.c, lv: x.lv }); break; } } });
+  ORT.forEach(o => out.push({ w: o[1], pre: o[2], post: o[4], gap: o[3], opts: o[5], cat: o[6], e: o[0], lv: o[5].length === 2 ? 1 : 2 }));
+  return out;
+})();
+function runSpelling2(root, api) {
+  let pool = SPELLX.filter(x => api.level === 1 ? x.opts.length === 2 && x.lv <= 2 : api.level === 2 ? x.lv <= 2 : x.lv >= 2);
+  const items = freshPick('spell', pool, [10, 12, 14][api.level - 1], x => x.w + '|' + x.cat);
+  return runQuiz(root, api, {
+    instr: 'Completá la palabra con la letra correcta', items, hint: true, speak: it => it.w, cat: it => it.cat,
+    render: it => h('div', {}, h('div', { class: 'big' }, it.e || '✏️'), it.c ? h('div', { class: 'muted' }, catLabel(it.c)) : null, h('div', { class: 'big', style: 'font-size:2.8rem;letter-spacing:2px', 'data-w': 1 }, it.pre + '＿' + it.post)),
+    options: it => shuffle(it.opts).map(o => ({ label: o === '∅' ? 'sin h' : o, ok: o === (it.gap === 'h' ? 'h' : it.gap) })),
+    onAnswer: (it, ok, st) => { st.querySelector('[data-w]').textContent = it.w; },
+    fbWrong: it => 'Se escribe «' + it.w + '»', failLabel: it => it.w + ' (' + it.cat + ')',
+    notes: () => ['Distinguir errores de ortografía arbitraria (b/v, h) de errores fonológicos. Ojo con c/s/z: en el habla rioplatense hay seseo y la pronunciación no ayuda.']
+  });
+}
+/* ¿cuál está bien escrita? Variantes con errores típicos, verificadas contra el léxico */
+const MUT = [w => w.replace(/b(?=[aeiouáéíóú])/, 'v'), w => w.replace(/v(?=[aeiouáéíóú])/, 'b'), w => w.replace(/^h(?=[aeiou])/, ''), w => w.replace(/([aeiouáéíóú])h(?=[aeiouáéíóú])/, '$1'), w => /^[aeiouáéíóú]/.test(w) ? 'h' + w : null,
+  w => w.replace('ll', 'y'), w => w.replace(/([aeiouáéíóú])y(?=[aeiouáéíóú])/, '$1ll'), w => w.replace(/g(?=[eiéí])/, 'j'), w => w.replace(/j(?=[eiéí])/, 'g'), w => w.replace(/z(?=[aouáóú])/, 's'), w => w.replace(/c(?=[eiéí])/, 's'),
+  w => w.replace(/c(?=[eiéí])/, 'z'), w => w.replace('rr', 'r'), w => w.replace(/qu(?=[eiéí])/, 'k'), w => w.replace(/gu(?=[eiéí])/, 'g'), w => w.replace(/ñ/, 'n'), w => w.replace(/s(?=[aouáóú])/, 'z')];
+const BIENX = LEX.filter(x => !x.plural).map(x => { const ws = [...new Set(MUT.map(f => f(x.w)).filter(v => v && v !== x.w && !LEXSET.has(v) && !REAL_EXTRA.has(v)))]; return ws.length >= 2 ? { w: x.w, wrongs: ws, c: x.c, lv: x.lv } : null; }).filter(Boolean);
+function runBienEscrita2(root, api) {
+  const items = freshPick('bien', lvPool(BIENX, api.level), 10).map(x => ({ w: x.w, c: x.c, wrongs: x.wrongs }));
+  return runQuiz(root, api, {
+    instr: '¿Cuál está bien escrita?', items, hint: true, speak: it => it.w,
+    render: it => h('div', {}, h('div', { class: 'big' }, '🧐'), h('div', { class: 'muted' }, catLabel(it.c))),
+    options: it => shuffle([it.w, ...take(it.wrongs, api.level === 1 ? 1 : 2)]).map(o => ({ label: o, ok: o === it.w })),
+    fbWrong: it => 'Se escribe «' + it.w + '»', failLabel: it => it.w,
+    notes: () => ['Reconocer visualmente la forma correcta (léxico ortográfico) es más fácil que escribirla: si falla acá, probablemente falle más al escribir.']
+  });
+}
+/* tilde */
+const strongIdx = s => { const v = [...s].map((c, i) => 'aeiouáéíóúü'.includes(c) ? i : -1).filter(i => i >= 0); const st = v.find(i => 'aeoáéó'.includes(s[i])); return st !== undefined ? st : v.length > 1 ? v[v.length - 1] : v[0]; };
+const withTilde = (sy, k) => sy.map((s, i) => { if (i !== k) return s; const j = strongIdx(s); return j === undefined ? s : s.slice(0, j) + ({ a: 'á', e: 'é', i: 'í', o: 'ó', u: 'ú' }[s[j]] || s[j]) + s.slice(j + 1); }).join('');
+const TILDEX = (() => {
+  const out = [];
+  LEX.forEach(x => {
+    if (x.plural || x.n < 2 && !/[áéíóú]/.test(x.w)) return;
+    const acc = x.sy.findIndex(s => /[áéíóú]/.test(s)), bad = new Set();
+    if (acc >= 0) { bad.add(unaccent(x.w)); for (let k = 0; k < x.n; k++) if (k !== acc) { const base = x.sy.map(s => unaccent(s)); bad.add(withTilde(base, k)); } }
+    else { const stress = /[aeiouns]$/.test(x.w) ? x.n - 2 : x.n - 1; if (stress < 0) return; bad.add(withTilde(x.sy, stress)); const other = stress === x.n - 1 ? x.n - 2 : x.n - 1; if (other >= 0) bad.add(withTilde(x.sy, other)); }
+    const wrongs = [...bad].filter(v => v !== x.w && !LEXSET.has(v) && !REAL_EXTRA.has(v) && v.length === x.w.length);
+    if (wrongs.length) out.push({ w: x.w, wrongs, c: x.c, lv: x.lv, tilde: acc >= 0 });
+  });
+  return out;
+})();
+function runTilde2(root, api) {
+  const items = freshPick('tilde', lvPool(TILDEX, api.level), 10).map(x => ({ w: x.w, wrongs: x.wrongs, c: x.c, tilde: x.tilde }));
+  return runQuiz(root, api, {
+    instr: '¿Cuál está bien escrita? (fijate en la tilde)', items, speak: it => it.w, cat: it => it.tilde ? 'lleva tilde' : 'no lleva tilde',
+    render: it => h('div', {}, h('div', { class: 'big' }, '✏️'), h('div', { class: 'muted' }, catLabel(it.c))),
+    options: it => shuffle([it.w, ...take(it.wrongs, api.level === 1 ? 1 : 2)]).map(o => ({ label: o, ok: o === it.w })),
+    fbWrong: it => 'Se escribe «' + it.w + '»' + (it.tilde ? ' (lleva tilde)' : ' (no lleva tilde)'), failLabel: it => it.w,
+    notes: () => ['Hay palabras que llevan tilde y palabras que NO la llevan: si pone tilde a todo, aún no aplica la regla (agudas, llanas y esdrújulas).']
+  });
+}
+/* plural y artículos */
+const PLUX = LEX.filter(x => !x.plural && !x.star && pluralOf(x.w)).map(x => ({ w: x.w, p: pluralOf(x.w), c: x.c, lv: /[aeo]$/.test(x.w) ? 1 : /(ón|án|én|ín|ún|z)$/.test(x.w) ? 3 : 2 }));
+function runPlurales2(root, api) {
+  const items = freshPick('plural', PLUX.filter(x => x.lv === api.level || (x.lv < api.level && rnd(4) === 0)), 10);
+  return runQuiz(root, api, {
+    instr: '¿Cuál es el plural?', items, speak: it => it.w,
+    render: it => h('div', {}, h('div', { class: 'big' }, '👥'), h('h2', {}, 'Un/a «' + it.w + '», dos…')),
+    options: it => { const w = it.w, c = new Set([w + 's', w + 'es', w.replace(/z$/, 'ces'), unaccent(w) + 'es', unaccent(w) + 's', w + 'z', w.replace(/ón$/, 'ónes'), w.replace(/ión$/, 'iónes')]); c.delete(it.p); c.delete(w); return shuffle([it.p, ...take([...c], api.level === 3 ? 3 : 2)]).map(o => ({ label: o, ok: o === it.p })); },
+    fbWrong: it => 'El plural es «' + it.p + '»', failLabel: it => it.w + ' → ' + it.p,
+    notes: () => ['Las reglas de plural (z→ces, pérdida de tilde en -ón/-ión, +es tras consonante) son un buen indicador de conocimiento morfológico.']
+  });
+}
+const ARTX = (() => { const out = []; LEX.forEach(x => { if (!x.g || x.star) return; const lv = (x.g === 'm' && x.w.endsWith('a')) || (x.g === 'f' && x.w.endsWith('o')) ? 3 : x.lv; if (!x.plural) { out.push({ w: x.w, g: x.g, num: 's', def: true, lv }); out.push({ w: x.w, g: x.g, num: 's', def: false, lv: Math.max(2, lv) }); } const p = x.plural ? x.w : pluralOf(x.w); if (p) { out.push({ w: p, g: x.g, num: 'p', def: true, lv: Math.max(2, lv) }); out.push({ w: p, g: x.g, num: 'p', def: false, lv: Math.max(2, lv) }); } }); return out; })();
+function runArticulos2(root, api) {
+  const items = freshPick('genero', ARTX.filter(x => api.level === 1 ? (x.lv === 1 && x.num === 's' && x.def) : api.level === 2 ? x.lv <= 2 : x.lv >= 2), 10, x => x.w + x.def);
+  const ans = it => DET[it.g][(it.def ? 0 : 2) + (it.num === 's' ? 0 : 1)];
+  return runQuiz(root, api, {
+    instr: 'Elegí el artículo que va antes de la palabra', items, speak: it => it.w,
+    render: it => h('h2', { class: 'big', style: 'font-size:2.6rem' }, '＿＿ ' + it.w),
+    options: it => (api.level === 1 ? (it.def ? ['el', 'la'] : ['un', 'una']) : it.def ? ['el', 'la', 'los', 'las'] : ['un', 'una', 'unos', 'unas']).map(o => ({ label: o, ok: o === ans(it) })),
+    fbWrong: it => 'Se dice «' + ans(it) + ' ' + it.w + '»', failLabel: it => ans(it) + ' ' + it.w,
+    notes: () => ['Observar los errores de género con palabras terminadas en -a masculinas (el mapa, el día) o en -o femeninas (la mano), y los de número.']
+  });
+}
+function runAlfabetico2(root, api) {
+  const by = {}; LEX.forEach(x => { if (!x.plural) (by[unaccent(x.w[0])] = by[unaccent(x.w[0])] || []).push(x.w); });
+  const cmp = (a, b) => a.localeCompare(b, 'es');
+  const gen = () => {
+    if (api.level === 1) { let a, b; do { a = pick(LEX).w; b = pick(LEX).w; } while (Math.abs(unaccent(a[0]).charCodeAt(0) - unaccent(b[0]).charCodeAt(0)) < 4); return [a, b]; }
+    const ks = Object.keys(by).filter(k => by[k].length >= (api.level === 2 ? 2 : 3)); const k = pick(ks), arr = by[k];
+    if (api.level === 2) { let a, b, g = 0; do { a = pick(arr); b = pick(arr); g++; } while ((a === b || a[1] === b[1]) && g < 30); if (a === b) b = arr.find(x => x !== a); return [a, b]; }
+    const t = take(arr, 3); return t;
+  };
+  const items = freshGen('alfa', gen, 10, it => [...it].sort().join('|'));
+  return runQuiz(root, api, {
+    instr: '¿Cuál va primero en el diccionario (orden alfabético)?', items, render: () => h('div', { class: 'big' }, '📖'),
+    options: it => shuffle(it).map(o => ({ label: o, ok: o === [...it].sort(cmp)[0] })), fbWrong: it => 'Primero va «' + [...it].sort(cmp)[0] + '»', failLabel: it => it.join(' / '),
+    notes: () => ['El orden alfabético supone dominar el abecedario y comparar letras sucesivas (Medio y Difícil: misma letra inicial).']
+  });
+}
+
+/* oraciones */
+const wordsOf = s => s.replace(/[.,]/g, '').split(' ');
+function runOracion2(root, api) {
+  const items = freshGen('ora', () => ({ parts: sentenceGen(api.level).split(' ') }), api.level === 3 ? 6 : 8, it => it.parts.join(' '));
+  return runBuilder(root, api, { instr: 'Ordená las palabras para armar la oración', items, join: ' ',
+    fbWrong: it => 'La oración original era: ' + it.parts.join(' ') + ' (si la tuya también tiene sentido, ¡anotalo!)',
+    notes: ['Puede haber oraciones válidas distintas a la original: ante la duda, pedir que la lea en voz alta y valorar el sentido y la concordancia.', 'Observar si respeta la mayúscula inicial y el punto final como pistas.'] });
+}
+function runJunto2(root, api) {
+  const items = freshGen('junto', () => ({ words: wordsOf(sentenceGen(api.level)).map(x => x.toLowerCase()) }), 8, it => it.words.join(' '));
+  const wrongs = ws => { const s = new Set(); let g = 0; while (s.size < 2 && g++ < 60) { const w = [...ws], i = rnd(w.length - 1), t = rnd(3); if (t === 0 && w[i].length > 1) { w[i + 1] = w[i].slice(-1) + w[i + 1]; w[i] = w[i].slice(0, -1); } else if (t === 1 && w[i + 1].length > 1) { w[i] = w[i] + w[i + 1][0]; w[i + 1] = w[i + 1].slice(1); } else { w.splice(i, 2, w[i] + w[i + 1]); } const j = w.join(' '); if (j !== ws.join(' ')) s.add(j); } return [...s]; };
+  return runQuiz(root, api, {
+    instr: 'Está todo pegado: ¿cómo se separa bien?', items, render: it => h('div', { class: 'big', style: 'font-size:2rem;word-break:break-all' }, it.words.join('')),
+    options: it => shuffle([it.words.join(' '), ...wrongs(it.words)]).map(o => ({ label: o, ok: o === it.words.join(' ') })), fbWrong: it => 'Se separa así: ' + it.words.join(' '), failLabel: it => it.words.join(' '),
+    notes: () => ['Los errores de segmentación (hipo e hipersegmentación: «elgato», «a ver» por «haber») suelen verse en lectoescritura inicial.']
+  });
+}
+function runContarPalabras2(root, api) {
+  const items = freshGen('palabras', () => { const s = sentenceGen(api.level); return { s, n: wordsOf(s).length }; }, 10, it => it.s);
+  return runQuiz(root, api, {
+    instr: '¿Cuántas palabras tiene la oración?', items, speak: it => it.s, hint: true,
+    render: it => h('div', { class: 'passage', style: 'text-align:center;font-size:1.3rem' }, it.s), options: it => numOpts(it.n).filter(o => +o.label > 0), fbWrong: it => 'Tiene ' + it.n + ' palabras', failLabel: it => it.s + ' (' + it.n + ')',
+    notes: () => ['La conciencia léxica predice la lectura. Los errores suelen venir de las palabras funcionales (el, de, un).']
+  });
+}
+
+/* rimas, antónimos, sinónimos, analogías */
+const L2 = w => w.slice(-2), V2 = w => w.replace(/[^aeiouáéíóú]/g, '').slice(-2).replace(/[áéíóú]/g, m => ({ 'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u' }[m]));
+function runRimas2(root, api) {
+  const fam = RIMAS2.filter(f => f.length >= 2), nd = api.level === 3 ? 3 : 2;
+  const gen = () => { let f, t, a, g = 0; do { f = pick(fam); t = pick(f); a = pick(f.filter(x => x !== t)); g++; } while (api.level === 1 && t.length > 6 && g < 40); return { t, a }; };
+  const items = freshGen('rima', gen, 10, it => it.t + '|' + it.a), all = RIMAS2.flat();
+  return runQuiz(root, api, {
+    instr: '¿Qué palabra rima? (termina con el mismo sonido)', items, speak: it => it.t,
+    render: it => h('div', {}, h('div', { class: 'big' }, '🎵'), h('h2', {}, 'Rima con «' + it.t + '»')),
+    options: it => shuffle([it.a, ...take(all.filter(x => L2(x) !== L2(it.t) && L2(x) !== L2(it.a) && V2(x) !== V2(it.t) && x !== it.t), nd)]).map(o => ({ label: o, ok: o === it.a })),
+    fbWrong: it => '«' + it.t + '» rima con «' + it.a + '»', failLabel: it => it.t + ' – ' + it.a,
+    notes: () => ['La detección de rimas es una habilidad fonológica temprana. Si no logra rimar pero sí segmenta sílabas, explorar la discriminación del sonido final.']
+  });
+}
+const wordsIn = prs => [...new Set(prs.flat())];
+function pairGame(root, api, gid, PAIRS, ttl, icon, extraDistr) {
+  const seg = api.level === 1 ? [0, 55] : api.level === 2 ? [25, 85] : [45, PAIRS.length], pool = PAIRS.slice(Math.min(seg[0], PAIRS.length - 10), seg[1]);
+  const dirs = pool.flatMap(([a, b]) => [{ a, b }, { a: b, b: a }]), items = freshPick(gid, dirs, 10, x => x.a + '>' + x.b), all = wordsIn(PAIRS);
+  const related = {}; PAIRS.forEach(([a, b]) => { (related[a] = related[a] || new Set()).add(b); (related[b] = related[b] || new Set()).add(a); });
+  return runQuiz(root, api, {
+    instr: ttl, items, speak: it => it.a, render: it => h('div', {}, h('div', { class: 'big' }, icon), h('h2', {}, it.a)),
+    options: it => { const bad = all.filter(w => w !== it.a && w !== it.b && !(related[it.a] && related[it.a].has(w))); const d = take(bad, api.level === 3 ? 3 : 2); if (extraDistr && api.level === 3) { const x = extraDistr(it.a); if (x && x !== it.b) d[0] = x; } return shuffle([it.b, ...[...new Set(d)]]).map(o => ({ label: o, ok: o === it.b })); },
+    fbWrong: it => '«' + it.a + '» ↔ «' + it.b + '»', failLabel: it => it.a + ' ↔ ' + it.b,
+    notes: () => ['Las relaciones semánticas (contrarios y sinónimos) muestran la organización del léxico: la dificultad con términos abstractos suele reflejar vocabulario limitado.']
+  });
+}
+const antOf = {}; ANT2.forEach(([a, b]) => { antOf[a] = b; antOf[b] = a; });
+function runAntonimos2(root, api) { return pairGame(root, api, 'anto', ANT2, '¿Cuál es el contrario?', '↔️'); }
+function runSinonimos2(root, api) { return pairGame(root, api, 'sino', SIN2, '¿Cuál significa casi lo mismo?', '🟰', w => antOf[w]); }
+const SINREL = {}; SIN2.forEach(([a, b]) => { (SINREL[a] = SINREL[a] || new Set()).add(b); (SINREL[b] = SINREL[b] || new Set()).add(a); });
+function runAnalogias2(root, api) {
+  if (api.ultra) return runAnalogiasU(root, api);
+  const tabs = api.level === 1 ? ['sonido', 'cria', 'hogar', 'accion'] : api.level === 2 ? ['sonido', 'cria', 'hogar', 'accion', 'trabajo', 'herramienta', 'parte'] : ['trabajo', 'herramienta', 'parte', 'categoria', 'ant', 'sin'];
+  const gen = () => {
+    const t = pick(tabs); let P, vals, name;
+    if (t === 'ant' || t === 'sin') { P = (t === 'ant' ? ANT2 : SIN2).filter(([x, y]) => t === 'ant' || (SINREL[x].size === 1 && SINREL[y].size === 1)); const [a, b] = pick(P); let c, d, g = 0; do { [c, d] = pick(P); g++; } while ((c === a || c === b || d === a || d === b) && g < 30); const rel = t === 'ant' ? 'contrario' : 'sinónimo'; return { t, A: a, B: b, C: c, D: d, rel, dir: 0, pool: wordsIn(P) }; }
+    P = REL[t].pairs; const i = rnd(P.length); let j; do { j = rnd(P.length); } while (j === i || P[j][1] === P[i][1]); const rev = rnd(2);
+    return { t, A: rev ? P[i][1] : P[i][0], B: rev ? P[i][0] : P[i][1], C: rev ? P[j][1] : P[j][0], D: rev ? P[j][0] : P[j][1], rel: REL[t].l, dir: rev, pool: rev ? P.map(x => x[0]) : P.map(x => x[1]) };
+  };
+  const items = freshGen('ana', gen, 10, it => it.A + ':' + it.B + '::' + it.C + ':' + it.D);
+  return runQuiz(root, api, {
+    instr: 'Encontrá la relación y completá la analogía', items,
+    render: it => h('div', { class: 'seq', style: 'font-size:1.5rem' }, h('span', {}, it.A), '→', h('span', {}, it.B), ' :: ', h('span', {}, it.C), '→', h('span', { class: 'q' }, '?')),
+    options: it => shuffle([it.D, ...take(it.pool.filter(x => x !== it.D && x !== it.B && x !== it.C && x !== it.A), api.level === 1 ? 2 : 3)]).map(o => ({ label: o, ok: o === it.D })),
+    fbWrong: it => it.A + ' se relaciona con ' + it.B + ' como ' + it.C + ' con ' + it.D, failLabel: it => it.A + ':' + it.B + ' :: ' + it.C + ':' + it.D,
+    notes: () => ['Las analogías exigen identificar la relación (sonido, cría, hogar, lugar de trabajo, parte-todo, contrario) y transferirla: es razonamiento verbal, más que vocabulario.']
+  });
+}
+/* categorías e intruso con palabras (28 categorías) */
+const CATKEYS = Object.keys(LEXCAT), CONF0 = { aves: ['animales'], bichos: ['animales'], marinos: ['animales'], frutas: ['comidas'], verduras: ['comidas'], bebidas: ['comidas'], escolares: ['objetos'], utensilios: ['objetos'], herramientas: ['objetos'], muebles: ['objetos', 'casa'], juguetes: ['objetos'], naturaleza: ['flores'], deportes: ['juguetes'], profesiones: ['familia'], objetos: ['casa'] };
+const conflict = (a, b) => (CONF0[a] || []).includes(b) || (CONF0[b] || []).includes(a);
+const NEAR = [['frutas', 'verduras'], ['aves', 'bichos'], ['muebles', 'utensilios'], ['escolares', 'juguetes'], ['profesiones', 'familia'], ['instrumentos', 'juguetes'], ['ropa', 'objetos'], ['transportes', 'juguetes']];
+function runCategorias2(root, api) {
+  const nopt = api.level === 1 ? 3 : 4;
+  const gen = () => { const k = pick(CATKEYS); return { k, grp: take(LEXCAT[k].words.map(x => x.w), 3) }; };
+  const items = freshGen('cat', gen, 10, it => it.k + '|' + [...it.grp].sort().join(','));
+  return runQuiz(root, api, {
+    instr: '¿Cómo se llama el grupo?', items, render: it => h('div', { class: 'big', style: 'font-size:2.2rem;line-height:1.3' }, it.grp.join(' · ')),
+    options: it => { const near = NEAR.filter(p => p.includes(it.k)).map(p => p.find(x => x !== it.k)); const d = take(CATKEYS.filter(x => x !== it.k && !conflict(x, it.k)), nopt - 1); if (api.level === 3 && near.length) d[0] = pick(near); return shuffle([it.k, ...[...new Set(d)]]).map(o => ({ label: GRUPO[o], ok: o === it.k })); },
+    fbWrong: it => 'Es el grupo de: ' + GRUPO[it.k], failLabel: it => it.grp.join(', ') + ' → ' + GRUPO[it.k],
+    notes: () => ['Nombrar la categoría (abstracción semántica) es más exigente que reconocer un intruso. Ver también «El intruso».']
+  });
+}
+function runIntruso2(root, api) {
+  const gen = () => { const near = api.level === 3 ? pick(NEAR) : null; let a, b; if (near) { [a, b] = rnd(2) ? near : [near[1], near[0]]; } else { a = pick(CATKEYS); do { b = pick(CATKEYS); } while (b === a || conflict(a, b) || NEAR.some(p => p.includes(a) && p.includes(b))); } return { a, b, grp: take(LEXCAT[a].words.map(x => x.w), 3), odd: pick(LEXCAT[b].words).w }; };
+  const items = freshGen('intruso', gen, 10, it => it.a + '|' + it.b + '|' + [...it.grp].sort().join(',') + '|' + it.odd);
+  return runQuiz(root, api, {
+    instr: 'Tocá el que NO va con los demás', items, cat: it => GRUPO[it.a], render: () => h('div', { class: 'big' }, '🤔'),
+    options: it => shuffle([...it.grp.map(w => ({ label: w, ok: false })), { label: it.odd, ok: true }]),
+    fbRight: it => '¡Sí! Los otros son ' + GRUPO[it.a], fbWrong: it => 'Los otros tres son ' + GRUPO[it.a], failLabel: it => it.grp.join(', ') + ' + ' + it.odd + ' (' + GRUPO[it.a] + ')',
+    notes: () => ['Preguntar «¿por qué no va?»: la categoría que nombra (perceptual vs. semántica) informa sobre el nivel de abstracción del lenguaje.']
+  });
+}
+
+/* emociones y situaciones sociales */
+const SIMIL = { alegría: ['orgullo', 'cariño'], orgullo: ['alegría'], miedo: ['preocupación'], preocupación: ['miedo', 'tristeza'], tristeza: ['preocupación', 'celos'], enojo: ['celos'], celos: ['enojo', 'tristeza'], cariño: ['alegría'] };
+const EMOJI_EMO = { alegría: '😀', tristeza: '😢', enojo: '😠', miedo: '😨', sorpresa: '😲', vergüenza: '😳', orgullo: '😎', aburrimiento: '🥱', preocupación: '😟', cariño: '🤗', celos: '😒', asco: '🤢' };
+function runEmociones2(root, api) {
+  const faces = EMOC.map(([e, n]) => ({ k: 'cara', e, a: n })), sits = Object.entries(EMO_SIT).flatMap(([a, l]) => l.map(s => ({ k: 'sit', s, a }))), rev = Object.entries(EMO_SIT).flatMap(([a, l]) => l.map(s => ({ k: 'rev', s, a })));
+  const easy = EMOS.slice(0, 6), pool = api.level === 1 ? [...faces, ...sits.filter(x => easy.includes(x.a))] : api.level === 2 ? [...sits, ...faces.slice(0, 8)] : [...sits, ...rev];
+  const items = freshPick('emo', pool, 10, x => x.k + '|' + (x.s || x.e) + '|' + x.a), no = api.level === 1 ? 3 : 4, ALL = [...new Set([...EMOC.map(x => x[1]), ...EMOS])];
+  return runQuiz(root, api, {
+    instr: items.some(x => x.k === 'rev') ? 'Elegí lo que corresponde a la emoción' : '¿Qué emoción es?', items,
+    render: it => it.k === 'cara' ? h('div', { class: 'big' }, it.e) : it.k === 'sit' ? h('div', {}, h('div', { class: 'big' }, '💭'), h('p', { class: 'lead' }, it.s, h('br'), h('small', { class: 'muted' }, '¿Qué emoción sentirías?'))) : h('div', {}, h('div', { class: 'big' }, EMOJI_EMO[it.a]), h('h2', {}, '¿Cuándo sentís ' + it.a + '?')),
+    options: it => it.k === 'rev' ? shuffle([it.s, ...take(Object.entries(EMO_SIT).filter(([k]) => k !== it.a && !(SIMIL[it.a] || []).includes(k)).flatMap(([, l]) => l), 3)]).map(o => ({ label: o, ok: o === it.s })) : shuffle([it.a, ...take((it.k === 'cara' ? EMOC.map(x => x[1]) : EMOS).filter(x => x !== it.a && !(SIMIL[it.a] || []).includes(x) && !(SIMIL[x] || []).includes(it.a) && !(it.k === 'cara' && ((it.a === 'alegría' && x === 'entusiasmo') || (it.a === 'entusiasmo' && x === 'alegría')))), no - 1)]).map(o => ({ label: o, ok: o === it.a })),
+    fbWrong: it => it.k === 'rev' ? 'Una situación de ' + it.a + ': ' + it.s : 'Se parece más a ' + it.a, failLabel: it => (it.s || it.e) + ' → ' + it.a,
+    notes: () => ['Las emociones se mezclan: más que acertar, interesa conversar («¿qué otra cosa podrías sentir?» «¿cuándo te pasó algo parecido?»).', 'Es una referencia orientativa; no evalúa regulación emocional por sí sola.']
+  });
+}
+function runSocial2(root, api) {
+  const all = [...SOC.map(([q, a, d]) => ({ q, a, d })), ...SOC2.map(([q, a, d]) => ({ q, a, d }))], items = freshPick('social', all, 10, x => x.q);
+  return runQuiz(root, api, {
+    instr: '¿Qué es mejor hacer?', items, render: it => h('div', { class: 'situ' }, h('div', { class: 'big' }, '🧒'), h('p', { class: 'lead' }, it.q)),
+    options: it => shuffle([it.a, ...take(it.d, api.level === 1 ? 1 : 2)]).map(o => ({ label: o, ok: o === it.a })), fbWrong: it => 'Una mejor opción: ' + it.a, failLabel: it => it.q + ' → ' + it.a,
+    notes: () => ['Sirve como disparador de conversación: pedir que explique por qué elige esa respuesta y qué sentiría la otra persona. No evalúa por sí solo la competencia social.']
+  });
+}
+
+/* cloze por conjugación */
+function runCloze2(root, api) {
+  const tenses = api.level === 1 ? ['pres'] : api.level === 2 ? ['pres', 'pret'] : ['pres', 'pret', 'fut'];
+  const gen = () => { const [inf, comp] = pick(VERBOS), te = pick(tenses), p = rnd(5), sj = pick(SUJ[p]), adv = pick(TENSE[te]); return { inf, comp, te, p, sj, adv, a: conjugar(inf, te, p) }; };
+  const items = freshGen('cloze', gen, 10, it => [it.inf, it.te, it.p, it.sj, it.adv, it.comp].join('|'));
+  return runQuiz(root, api, {
+    instr: 'Completá con el verbo conjugado', items, speak: it => it.adv + ' ' + (it.sj === 'Tomás' ? it.sj : lowFirst(it.sj)) + ' ' + it.a + ' ' + it.comp, cat: it => ({ pres: 'presente', pret: 'pasado', fut: 'futuro' })[it.te],
+    render: it => h('h2', { style: 'font-size:1.5rem;line-height:1.5' }, it.adv + ' ' + (it.sj === 'Tomás' ? it.sj : lowFirst(it.sj)) + ' ＿＿ (' + it.inf + ') ' + it.comp + '.'),
+    options: it => { const s = new Set(); ['pres', 'pret', 'fut'].forEach(te => [0, 1, 2, 3, 4].forEach(p => s.add(conjugar(it.inf, te, p)))); s.delete(it.a); return shuffle([it.a, ...take([...s], 3)]).map(o => ({ label: o, ok: o === it.a })); },
+    fbWrong: it => 'Es «' + it.a + '»', failLabel: it => it.adv + ' ' + it.sj + ' ' + it.a,
+    notes: () => ['Concordancia de persona y tiempo con verbos regulares (incluye voseo: «vos cantás»). Errores de persona vs. errores de tiempo orientan distinto.']
+  });
+}
+
+/* comprensión y memoria con historias generadas */
+const optsStr = (a, pool, n = 2) => shuffle([a, ...take(pool.filter(x => x !== a), n)]);
+function storyQs(kind) {
+  const N = pick(NOMBRES);
+  if (kind === 'visita') {
+    const L = pick(H_LUG), C = pick(H_COMP), F = pick(H_HALL), T = pick(H_TIEMPO), t = N + ' fue ' + L[0] + ' con ' + C + ' ' + T + '. Allí encontró ' + F[0] + '. Después volvieron a casa.';
+    return [{ t, q: '¿Quién fue ' + L[0] + '?', a: N, d: take(NOMBRES.filter(x => x !== N), 2) }, { t, q: '¿Adónde fue ' + N + '?', a: L[0], d: take(H_LUG.map(x => x[0]).filter(x => x !== L[0]), 2) }, { t, q: '¿Con quién fue ' + N + '?', a: C, d: take(H_COMP.filter(x => x !== C), 2) }, { t, q: '¿Cuándo fue?', a: T, d: take(H_TIEMPO.filter(x => x !== T), 2) }, { t, q: '¿Qué encontró ' + N + '?', a: F[0], d: take(H_HALL.map(x => x[0]).filter(x => x !== F[0]), 2) }];
+  }
+  if (kind === 'mascota') {
+    const M = pick(H_MASC), P = pick(H_PET), A = pick(H_ACT), t = N + ' tiene ' + M[0] + '. Se llama ' + P + '. Todos los días ' + A + '.';
+    return [{ t, q: '¿Qué mascota tiene ' + N + '?', a: M[0], d: take(H_MASC.map(x => x[0]).filter(x => x !== M[0]), 2) }, { t, q: '¿Cómo se llama la mascota?', a: P, d: take(H_PET.filter(x => x !== P), 2) }, { t, q: '¿Qué hacen todos los días?', a: A, d: take(H_ACT.filter(x => x !== A), 2) }];
+  }
+  if (kind === 'receta') {
+    const [dish, ing] = pick(H_COMIDA), used = take(ing, 3), out = pick(ing.filter(x => !used.includes(x))), t = N + ' quiere preparar ' + dish + '. Necesita ' + used[0] + ', ' + used[1] + ' y ' + used[2] + '. Primero lo lava y lo corta todo.';
+    return [{ t, q: '¿Qué quiere preparar ' + N + '?', a: dish, d: take(H_COMIDA.map(x => x[0]).filter(x => x !== dish), 2) }, { t, q: '¿Cuál de estos ingredientes NO necesita?', a: out, d: take(used, 2) }, { t, q: '¿Cuántos ingredientes necesita?', a: 'Tres', d: ['Dos', 'Cuatro'] }];
+  }
+  if (kind === 'clima') {
+    const [cl, pr, ra, rd] = pick(H_CLIMA), t = 'Ayer ' + cl + '. ' + N + ' se puso ' + pr[0] + ' y ' + pr[1] + '.';
+    return [{ t, q: '¿Por qué se puso esa ropa ' + N + '?', a: ra, d: rd }, { t, q: '¿Cuándo pasó?', a: 'Ayer', d: ['Hoy', 'Mañana'] }];
+  }
+  if (kind === 'cantidad') {
+    const [o1, o2] = pick(H_OBJ2); let a, b; do { a = R(2, 9); b = R(2, 9); } while (a === b); const t = 'En la mesa hay ' + a + ' ' + o1 + ' y ' + b + ' ' + o2 + '.';
+    const mk = (n, extra) => optsStr(String(n), [...new Set([n + 1, n - 1, n + 2, ...(extra || [])].filter(v => v > 0 && v !== n).map(String))], 2);
+    return [{ t, q: '¿Cuántos hay de ' + o1 + '?', a: String(a), d: mk(a).filter(x => x !== String(a)).slice(0, 2) }, { t, q: '¿Cuántos objetos hay en total?', a: String(a + b), d: mk(a + b).filter(x => x !== String(a + b)).slice(0, 2) }, { t, q: '¿De cuál hay MÁS?', a: a > b ? o1 : o2, d: [a > b ? o2 : o1, 'Hay la misma cantidad'] }];
+  }
+  if (kind === 'orden') {
+    const tri = pick([['se levantó', 'desayunó', 'salió a jugar'], ['abrió el cuaderno', 'resolvió las cuentas', 'guardó todo'], ['juntó los juguetes', 'los puso en la caja', 'se lavó las manos'], ['pidió permiso', 'agarró la pelota', 'fue a la plaza'], ['encendió la luz', 'buscó su libro', 'se puso a leer']]), t = 'Primero ' + N + ' ' + tri[0] + ', después ' + tri[1] + ' y por último ' + tri[2] + '.';
+    return tri.map((x, i) => ({ t, q: '¿Qué hizo ' + ['primero', 'después', 'por último'][i] + '?', a: x, d: tri.filter((_, j) => j !== i) }));
+  }
+  const c = pick(H_CAUSA); const f = s => s.replace(/\{N\}/g, N); return [{ t: f(c[0]), q: f(c[1]), a: f(c[2]), d: c[3].map(f) }];
+}
+function storyItems(api, n) {
+  const kinds = api.level === 1 ? ['visita', 'mascota', 'orden'] : api.level === 2 ? ['receta', 'cantidad', 'visita', 'orden'] : ['causa', 'clima', 'receta', 'causa'];
+  let out = []; const seen = new Set(); let g = 0;
+  while (out.length < n && g++ < 30) { const qs0 = storyQs(pick(kinds)), qs = n === 1 ? [pick(qs0)] : qs0; qs.forEach(q => { const k = q.t + '|' + q.q; if (!seen.has(k) && out.length < n) { seen.add(k); out.push(q); } }); }
+  return out;
+}
+function runComprension2(root, api) {
+  const items = freshGen('comp', () => storyItems(api, 1)[0], 8, it => it.t + '|' + it.q);
+  return runQuiz(root, api, {
+    instr: 'Leé el texto y respondé', items, hint: true, speak: it => it.t + ' ' + it.q, render: it => h('div', {}, h('div', { class: 'passage' }, it.t), h('h2', {}, it.q)),
+    options: it => shuffle([it.a, ...it.d]).map(o => ({ label: o, ok: o === it.a })), fbWrong: it => 'La respuesta era: ' + it.a, failLabel: it => it.q + ' → ' + it.a,
+    notes: () => ['Diferenciar preguntas literales (dato explícito) de inferenciales (el porqué): si falla las segundas, trabajar inferencia.', 'Con el texto a la vista, un error indica comprensión y no memoria.']
+  });
+}
+async function runMemHistoria2(root, api) {
+  const kinds = api.level === 1 ? ['mascota', 'visita'] : api.level === 2 ? ['visita', 'receta', 'orden'] : ['visita', 'receta', 'cantidad'];
+  let qs = []; for (let g = 0; g < 20 && qs.length < 3; g++) qs = storyQs(pick(kinds));
+  const text = qs[0].t, btn = h('button', { class: 'btn' }, 'Ya la leí: tapar el texto');
+  root.append(h('div', { class: 'status' }, 'Leé (o escuchá) la historia con atención. Después te pregunto.'), h('div', { class: 'passage', style: 'font-size:1.2rem' }, text), h('div', { class: 'row' }, h('button', { class: 'btn ghost sm', onclick: () => speak(text) }, 'Escuchar'), btn));
+  say(text); await new Promise(res => btn.onclick = res); if (!api.alive()) return;
+  root.replaceChildren(); speechSynthesisCancel();
+  return runQuiz(root, api, { instr: 'Ahora respondé de memoria (el texto ya no está)', items: (api.practice ? qs.slice(0, 2) : qs).map(q => ({ q: q.q, a: q.a, d: q.d, t: text })), render: it => h('h2', { style: 'font-size:1.5rem' }, it.q), options: it => shuffle([it.a, ...it.d]).map(o => ({ label: o, ok: o === it.a })), fbWrong: it => 'Era: ' + it.a, failLabel: it => it.q + ' → ' + it.a,
+    notes: () => ['Memoria verbal de una historia: si recuerda detalles aislados pero no la secuencia, trabajar la organización del relato. Comparar con «Leé y respondé» (donde el texto está a la vista).'] });
+}
+/* ordenar secuencias de pasos */
+function runHistoria2(root, api) {
+  if (rnd(100) < (api.level === 1 ? 40 : 15)) { const pool = api.level === 1 ? HIST.filter(x => x[1].length === 3) : HIST; return runBuilder(root, api, { instr: 'Ordená las imágenes: ¿qué pasa primero y qué pasa después?', emo: true, join: '', items: freshPick('hist', pool, Math.min(5, pool.length), x => x[0]).map(x => ({ title: x[0], parts: x[1] })), render: it => h('h2', {}, it.title), fbWrong: it => 'El orden era: ' + it.parts.join(' → '), notes: ['La secuenciación temporal se vincula con la narración y con la organización de rutinas.'] }); }
+  const pool = SEQ2.filter(x => api.level === 1 ? x[1].length === 4 : api.level === 2 ? x[1].length >= 4 : x[1].length >= 4), items = freshPick('hist', pool, 5, x => x[0]).map(x => ({ title: x[0], parts: x[1] }));
+  return runBuilder(root, api, { instr: 'Ordená los pasos: ¿qué se hace primero y qué después?', join: ' ', items, render: it => h('h2', {}, it.title), fbWrong: it => 'El orden era: ' + it.parts.map((p, i) => (i + 1) + '. ' + p).join('  '), notes: ['La secuenciación temporal se vincula con la narración y con la organización de rutinas. Pedir que cuente la secuencia con sus palabras.'] });
+}
+
+/* lectura: pseudopalabras fijas y palabras reales */
+const PSEUDOBANK = (() => {
+  let seed = 20240607; const rnd2 = n => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed % n; };
+  const ons = ['p', 'b', 't', 'd', 'k', 'g', 'm', 'n', 'l', 'r', 's', 'f', 'ch', 'j', 'v', 'z', 'ñ', 'll', 'br', 'tr', 'pl', 'gr', 'fl', 'cr'], vow = ['a', 'e', 'i', 'o', 'u'];
+  const syl = () => { let o = ons[rnd2(ons.length)], v = vow[rnd2(5)]; if (o === 'k') o = (v === 'a' || v === 'o' || v === 'u') ? 'c' : 'qu'; if (o === 'g' && (v === 'e' || v === 'i')) o = 'gu'; if ((o === 'j' || o === 'z') && false) o = 'j'; return o + v + (rnd2(6) === 0 ? ['n', 's', 'r', 'l'][rnd2(4)] : ''); };
+  const out = new Set(); let g = 0;
+  while (out.size < 420 && g++ < 5000) { const n = 2 + (rnd2(3) === 0 ? 1 : 0), w = Array.from({ length: n }, syl).join(''); if (w.length < 4 || w.length > 9 || LEXSET.has(w) || REAL_EXTRA.has(w) || /(.)\1\1/.test(w) || /[aeiou]{3}/.test(w) || /[nsrl][nsrl]/.test(w)) continue; out.add(w); }
+  return [...out];
+})();
+function runPseudo2(root, api) {
+  const maxL = api.level === 1 ? 6 : api.level === 2 ? 9 : 14, minL = api.level === 3 ? 6 : 3;
+  const real = LEX.filter(x => !x.plural && x.len >= minL && x.len <= maxL).map(x => ({ w: x.w, real: true })), fake = PSEUDOBANK.filter(w => w.length >= minL && w.length <= maxL).map(w => ({ w, real: false }));
+  const items = shuffle([...freshPick('pseudoR', real, 7, x => x.w), ...freshPick('pseudoF', fake, 7, x => x.w)]);
+  return runQuiz(root, api, {
+    instr: '¿Esta palabra existe en español?', items, speak: it => it.w, cat: it => it.real ? 'palabra real' : 'palabra inventada',
+    render: it => h('div', { class: 'letter', style: 'font-size:3.2rem;letter-spacing:.05em' }, it.w), options: it => [{ label: '✅ Existe', ok: it.real }, { label: '❌ No existe', ok: !it.real }],
+    fbWrong: it => it.real ? '«' + it.w + '» sí existe' : '«' + it.w + '» es inventada', failLabel: it => it.w + (it.real ? ' (existe)' : ' (inventada)'),
+    notes: () => ['Aceptar pseudopalabras como reales sugiere lectura por reconocimiento global; rechazar palabras reales poco frecuentes puede indicar vocabulario limitado.']
+  });
+}
+function runLecturaVozAlta2(root, api) {
+  const maxL = api.level === 1 ? 6 : api.level === 2 ? 9 : 14, minL = api.level === 3 ? 7 : 3;
+  const real = LEX.filter(x => !x.plural && x.len >= minL && x.len <= maxL).map(x => ({ w: x.w, t: 'palabras reales' })), fake = PSEUDOBANK.filter(w => w.length >= minL && w.length <= maxL).map(w => ({ w, t: 'pseudopalabras' }));
+  const items = shuffle([...freshPick('lecR', real, 8, x => x.w), ...freshPick('lecF', fake, 8, x => x.w)]);
+  return runAdult(root, api, { instr: 'Que lea la palabra en voz alta', items, cat: it => it.t, render: it => h('div', { class: 'letter', style: 'font-size:3.4rem;letter-spacing:.04em' }, it.w),
+    notes: ['Comparar palabras reales y pseudopalabras: peor desempeño en pseudopalabras sugiere dificultad de decodificación (ruta fonológica); peor en palabras largas, de lectura lenta.', 'Anotar la fluidez (silabeo, lectura entrecortada) además de los errores.'] });
+}
+function runDictado2(root, api) {
+  const gen = () => { if (api.level === 3 && rnd(3) === 0) return { w: sentenceGen(2) }; const base = api.level === 1 ? LEX.filter(x => x.lv === 1 && !x.plural) : api.level === 2 ? SPELLX.filter(x => !x.e) : LEX.filter(x => x.lv >= 2 && !x.plural); return { w: pick(base).w }; };
+  const items = freshGen('dictado', gen, 10, it => it.w);
+  return runAdult(root, api, { instr: 'El adulto dicta la palabra; el niño la escribe en papel', items, speak: it => it.w, reveal: true, cat: it => it.w.includes(' ') ? 'oración' : 'palabra',
+    render: (it, rev) => h('div', {}, h('div', { class: 'big' }, '✏️'), h('div', { class: 'letter', style: 'font-size:' + (it.w.includes(' ') ? '1.8' : '3') + 'rem;letter-spacing:.04em' }, rev ? it.w : '••••••')),
+    notes: ['Clasificar los errores: fonológicos (omite o cambia sonidos), de ortografía arbitraria (b/v, h) o de segmentación. Cada tipo orienta una intervención distinta.', 'Conviene dictar con voz natural y repetir una vez, sin silabear.'] });
+}
+
+/* figuras: propiedades */
+const SHAPEP = { 'triángulo': { l: 3 }, 'cuadrado': { l: 4, sq: true }, 'rectángulo': { l: 4, rect: true }, 'rombo': { l: 4, rh: true }, 'pentágono': { l: 5 }, 'hexágono': { l: 6 }, 'octágono': { l: 8 }, 'trapecio': { l: 4 }, 'círculo': { l: 0 }, 'óvalo': { l: 0 } };
+function runFiguras2(root, api) {
+  const names = [['círculo', 'cuadrado', 'triángulo', 'rectángulo'], ['círculo', 'cuadrado', 'triángulo', 'rectángulo', 'rombo', 'óvalo', 'pentágono'], Object.keys(SHAPEP)][api.level - 1];
+  const gen = () => { const t = api.level === 1 ? 0 : rnd(4); const n = pick(names); const pol = Object.keys(SHAPEP).filter(x => SHAPEP[x].l > 0);
+    if (t === 0) return { t, n, c: pick(CO), key: 'nombre|' + n };
+    if (t === 1) { const p = pick(pol); return { t, n: p, q: '¿Cuántos lados tiene el ' + p + '?', a: SHAPEP[p].l, key: 'lados|' + p }; }
+    if (t === 2) { const p = pick(['triángulo', 'pentágono', 'hexágono', 'octágono']); return { t, n: p, q: '¿Cuál de estas figuras tiene ' + SHAPEP[p].l + ' lados?', a: p, key: 'cuál|' + p }; }
+    const qs = [['¿Cuál tiene los 4 lados iguales y los 4 ángulos rectos?', 'cuadrado', ['rectángulo', 'rombo', 'trapecio']], ['¿Cuál tiene 4 lados iguales pero sus ángulos NO son rectos?', 'rombo', ['cuadrado', 'rectángulo', 'triángulo']], ['¿Cuál NO tiene lados (es curva)?', 'círculo', ['triángulo', 'cuadrado', 'hexágono']], ['¿Cuál tiene solo 3 lados?', 'triángulo', ['cuadrado', 'rombo', 'pentágono']], ['¿Cuál tiene 8 lados?', 'octágono', ['hexágono', 'pentágono', 'cuadrado']], ['¿Cuál tiene 6 lados?', 'hexágono', ['pentágono', 'octágono', 'triángulo']]], q = pick(qs); return { t, n: q[1], q: q[0], a: q[1], d: q[2], key: 'prop|' + q[0] }; };
+  const items = freshGen('figuras', gen, 10, it => it.key);
+  return runQuiz(root, api, {
+    instr: '¿Qué sabés de las figuras?', items,
+    render: it => it.t === 0 ? h('div', { class: 'clock', html: polySVG(it.n, it.c) }) : h('div', {}, h('div', { class: 'clock', html: it.t === 1 ? polySVG(it.n, 'var(--soft)') : '' }), h('h2', { style: 'font-size:1.3rem' }, it.q)),
+    options: it => it.t === 0 ? shuffle([it.n, ...take(names.filter(x => x !== it.n), 3)]).map(o => ({ label: o, ok: o === it.n })) : it.t === 1 ? numOpts(it.a) : it.t === 2 ? shuffle([it.a, ...take(['triángulo', 'pentágono', 'hexágono', 'octágono', 'cuadrado', 'círculo'].filter(x => x !== it.a), 3)]).map(o => ({ label: o, ok: o === it.a })) : shuffle([it.a, ...it.d]).map(o => ({ label: o, ok: o === it.a })),
+    fbWrong: it => it.t === 0 ? 'Es un ' + it.n : 'La respuesta era ' + it.a, failLabel: it => it.key,
+    notes: () => ['Confundir cuadrado/rectángulo o rombo/cuadrado girado señala que reconoce por apariencia y no por propiedades (lados, ángulos).']
+  });
+}
+
+/* ================= CONEXIÓN DE LOS BANCOS Y VARIEDAD EN JUEGOS PROPIOS ================= */
+const SWAP = { syl: runSyllables2, sili: runSilabaInicial2, silfin: runSilFin2, silfalta: runSilFalta2, quitasil: runQuitaSil2, forma: runFormaPalabra2, letras: runOrdenLetras2, soni: runSonidoInicial2, spell: runSpelling2, bienesc: runBienEscrita2, tilde: runTilde2, plural: runPlurales2, genero: runArticulos2, alfa: runAlfabetico2, ora: runOracion2, junto: runJunto2, palabras: runContarPalabras2, rima: runRimas2, anto: runAntonimos2, sino: runSinonimos2, ana: runAnalogias2, cat: runCategorias2, intruso: runIntruso2, emo: runEmociones2, social: runSocial2, cloze: runCloze2, comp: runComprension2, memhist: runMemHistoria2, hist: runHistoria2, pseudo: runPseudo2, lectura: runLecturaVozAlta2, dictado: runDictado2, figuras: runFiguras2 };
+Object.entries(SWAP).forEach(([id, fn]) => { const g = GAMES.find(x => x.id === id); if (g) g.run = fn; });
+const BANKS = {"syl": 769, "spell": 381, "series": 1996, "calc": 4953, "rima": 1531, "espejo": 4461, "intruso": 11999, "pseudo": 1167, "emo": 134, "social": 51, "anto": 212, "sino": 158, "ana": 3899, "cat": 11487, "ora": 3676, "comp": 6389, "cloze": 4455, "sili": 754, "soni": 789, "forma": 753, "letras": 582, "contar": 12, "mayor": 9211, "valor": 10178, "prob": 8956, "reloj": 2940, "plata": 8943, "rot": 138, "dif": 11953, "stroop": 40, "hist": 49, "mat": 2845, "plural": 726, "genero": 2720, "alfa": 9998, "tilde": 736, "junto": 4023, "bienesc": 150, "palabras": 4718, "silfalta": 1071, "silfin": 754, "quitasil": 1417, "numletra": 983, "vecino": 2285, "saltos": 983, "tablas": 450, "fracc": 906, "figuras": 10, "donde": 288, "flechas": 12799, "simdice": 8, "regla": 24, "lectura": 1167, "dictado": 1590, "dias": 3163, "ordinal": 11716, "amigos": 47, "mix": 1104};
+const bankTotal = () => Object.values(BANKS).reduce((a, b) => a + b, 0);
+
+/* Simón: 7 juegos de sonidos distintos */
+const mkSet = (arr, mult = 1) => arr.map(([n, s], i) => ({ n, s, c: ['#e5484d', '#6e8bf0', '#46c28a', '#f5c518'][i], f: Math.round([261, 329, 392, 523][i] * mult) }));
+const SIMON_SETS = [mkSet([['Rojo', '▲'], ['Azul', '●'], ['Verde', '■'], ['Amarillo', '★']]), mkSet([['Perro', '🐶'], ['Gato', '🐱'], ['Vaca', '🐮'], ['Pato', '🦆']], 1.1), mkSet([['Manzana', '🍎'], ['Banana', '🍌'], ['Uva', '🍇'], ['Naranja', '🍊']], .9), mkSet([['Sol', '☀️'], ['Luna', '🌙'], ['Estrella', '⭐'], ['Nube', '☁️']], 1.2), mkSet([['Auto', '🚗'], ['Tren', '🚂'], ['Barco', '⛵'], ['Avión', '✈️']], .8), mkSet([['Pelota', '⚽'], ['Bici', '🚲'], ['Globo', '🎈'], ['Regalo', '🎁']], 1.05), mkSet([['Corazón', '❤️'], ['Rombo', '🔷'], ['Círculo', '🟢'], ['Flor', '🌸']], .95)];
+const GO_PAIRS = [['⭐', '💣', 'la estrella', 'la bomba'], ['🐶', '🐱', 'el perro', 'el gato'], ['🍎', '🍌', 'la manzana', 'la banana'], ['🔴', '🔵', 'el círculo rojo', 'el círculo azul'], ['🚗', '🚲', 'el auto', 'la bicicleta'], ['☀️', '☁️', 'el sol', 'la nube'], ['🌸', '🍄', 'la flor', 'el hongo'], ['⚽', '🏀', 'la pelota de fútbol', 'la de básquet'], ['🐟', '🐦', 'el pez', 'el pájaro'], ['🎈', '📌', 'el globo', 'la tachuela']];
+const NBACK_SETS = [['🔴', '🔵', '🟢', '🟡', '🟣', '🟠'], ['🐶', '🐱', '🐸', '🐵', '🐷', '🐰'], ['B', 'D', 'K', 'M', 'P', 'T'], ['▲', '●', '■', '★', '♥', '♦'], ['1', '2', '3', '4', '5', '6'], ['🍎', '🍌', '🍇', '🍊', '🍓', '🍉'], ['🚗', '🚌', '🚲', '✈️', '🚂', '⛵']];
+Object.assign(THEMES, {
+  deportes: ['⚽', '🏀', '🎾', '🏐', '🏈', '⚾', '🏓', '🏸', '🏒', '⛳', '🥊', '🏊'], comidas: ['🍕', '🍔', '🌭', '🍟', '🍩', '🍪', '🍰', '🧁', '🍫', '🍿', '🥐', '🍦'], naturaleza: ['🌳', '🌵', '🌻', '🌹', '🍄', '🌈', '⭐', '🌙', '☀️', '⛄', '🔥', '💧'],
+  objetos: ['🔑', '📚', '✏️', '🎒', '⏰', '📷', '🔦', '🎁', '🧸', '🎈', '🔔', '🧲'], musica: ['🎸', '🥁', '🎹', '🎺', '🎻', '🎷', '📯', '🔔', '🎤', '🎧', '🎼', '📻'], insectos: ['🐝', '🐞', '🦋', '🐜', '🐛', '🦗', '🕷️', '🦂', '🐌', '🦟', '🐢', '🐸'],
+  caras: ['😀', '😢', '😠', '😨', '😲', '😴', '🤒', '😎', '🥳', '😍', '😇', '🤔'], clima: ['☀️', '🌧️', '⛈️', '❄️', '🌈', '🌪️', '💨', '☁️', '🌫️', '⛅', '🌦️', '🌡️']
+});
+{ const m = GAMES.find(g => g.id === 'memo'); if (m) m.options = [{ label: 'Animales', value: 'animales' }, { label: 'Frutas', value: 'frutas' }, { label: 'Transportes', value: 'transportes' }, { label: 'Deportes', value: 'deportes' }, { label: 'Comidas', value: 'comidas' }, { label: 'Naturaleza', value: 'naturaleza' }, { label: 'Objetos', value: 'objetos' }, { label: 'Música', value: 'musica' }, { label: 'Insectos', value: 'insectos' }, { label: 'Caras', value: 'caras' }, { label: 'Clima', value: 'clima' }]; }
+
+/* Hanoi: posiciones de partida y torre de destino variadas (3^n estados) con mínimo calculado por búsqueda */
+function hanoiRandom(n) { const p = [[], [], []]; for (let d = n; d >= 1; d--) p[rnd(3)].push(d); return p; }
+function hanoiBest(startPegs, goal, n) {
+  const s0 = new Array(n); startPegs.forEach((p, i) => p.forEach(d => { s0[d - 1] = i; }));
+  const key = a => a.join(''), target = key(Array(n).fill(goal)), seen = new Map([[key(s0), 0]]); let q = [s0];
+  while (q.length) {
+    const nq = [];
+    for (const s of q) {
+      const k = key(s), dist = seen.get(k); if (k === target) return dist;
+      for (let src = 0; src < 3; src++) { let d = -1; for (let i = 0; i < n; i++) if (s[i] === src) { d = i; break; } if (d < 0) continue;
+        for (let dst = 0; dst < 3; dst++) { if (dst === src) continue; let ok = true; for (let i = 0; i < d; i++) if (s[i] === dst) { ok = false; break; } if (!ok) continue; const t = s.slice(); t[d] = dst; const tk = key(t); if (!seen.has(tk)) { seen.set(tk, dist + 1); nq.push(t); } } }
+    }
+    q = nq;
+  }
+  return -1;
+}
+/* búsqueda de letras y cifras: grupos de caracteres parecidos */
+const CAN_LET = [['b', 'd', 'p', 'q'], ['m', 'n', 'u', 'w'], ['a', 'e', 'o', 'c'], ['i', 'l', 'j', 't'], ['f', 't', 'l', 'h'], ['s', 'z', 'c', 'e'], ['B', 'D', 'P', 'R'], ['M', 'N', 'W', 'H'], ['O', 'Q', 'C', 'G'], ['E', 'F', 'L', 'T']];
+const CAN_NUM = [['6', '9', '8', '0'], ['2', '5', '3', '8'], ['1', '7', '4', '2'], ['3', '8', '6', '5'], ['0', '6', '8', '9'], ['5', '6', '2', '3'], ['4', '9', '7', '1']];
+function varyCancel(cfg, api, isNum) {
+  const L = api.ultra ? 4 : api.level, grp = pick(isNum ? CAN_NUM : CAN_LET), extra = isNum ? ['1', '2', '3', '4', '5', '7'] : ['o', 'x', 'k', 'v', 'z', 'y'];
+  const nt = L >= 4 ? 3 : L === 3 ? 2 : 1, t = take(grp, nt), d = [...grp.filter(x => !t.includes(x)), ...(L === 1 ? take(extra.filter(x => !grp.includes(x)), 3) : [])];
+  if (L === 1 && !isNum) { const A = take('AEOSMTLR'.split(''), 1)[0]; return { ...cfg, t: [A], d: take('OTLEFIHKMNSXZ'.split('').filter(x => x !== A), 5) }; }
+  return { ...cfg, t, d };
+}
+/* fluidez: categorías y letras */
+const FLU_SEM = ['animales', 'frutas y verduras', 'cosas de la escuela', 'cosas para comer', 'ropa', 'partes del cuerpo', 'profesiones', 'transportes', 'juguetes', 'cosas de la casa', 'instrumentos musicales', 'animales de la granja', 'animales del mar', 'cosas que se ven en la plaza', 'cosas del baño', 'deportes', 'flores y plantas', 'lugares de la ciudad', 'cosas que vuelan', 'cosas redondas', 'cosas que hacen ruido', 'cosas frías', 'cosas dulces', 'cosas que se usan en invierno', 'cosas que se usan en verano', 'nombres de varones', 'nombres de mujeres', 'colores', 'cosas de la cocina', 'cosas de una granja', 'cosas que tienen ruedas', 'bebidas', 'postres', 'verduras', 'frutas', 'herramientas', 'animales que viven en la selva', 'aves', 'insectos y bichitos', 'cosas del mar o de la playa'];
+const FLU_FON = 'ABCDEFGLMNPRSTV'.split('').map(l => 'palabras que empiezan con ' + l);
+function fluCats(L) { const s = take(FLU_SEM, 4), f = take(FLU_FON, 2); return [null, [[s[0], 'sem'], [s[1], 'sem']], [[s[0], 'sem'], [s[1], 'sem'], [f[0], 'fon']], [[s[0], 'sem'], [s[1], 'sem'], [f[0], 'fon'], [f[1], 'fon']]][L]; }
+/* memotest de palabras: seis tipos de pares */
+const EMOJI_RE = /\p{Extended_Pictographic}/u;
+let memoTxt = 'Uní cada dibujo con su palabra';
+function memoPairs(n) {
+  const mode = pick(['dib', 'ant', 'sin', 'plural', 'rima', 'cat']); let pairs;
+  if (mode === 'dib') { pairs = take(SONI, n).map(([e, w]) => [e, w]); memoTxt = 'Uní cada dibujo con su palabra'; }
+  else if (mode === 'ant') { pairs = take(ANT2, n + 2); memoTxt = 'Uní cada palabra con su CONTRARIO'; }
+  else if (mode === 'sin') { pairs = take(SIN2, n + 3); memoTxt = 'Uní cada palabra con su SINÓNIMO'; }
+  else if (mode === 'plural') { pairs = take(PLUX, n).map(x => [x.w, x.p]); memoTxt = 'Uní cada palabra con su PLURAL'; }
+  else if (mode === 'rima') { pairs = take(RIMAS2, n).map(f => take(f, 2)); memoTxt = 'Uní las palabras que RIMAN'; }
+  else { pairs = take(CATKEYS.filter(k => !CONF0[k]), n).map(k => [pick(LEXCAT[k].words).w, GRUPO[k]]); memoTxt = 'Uní cada palabra con su GRUPO'; }
+  const seen = new Set(); pairs = pairs.filter(([a, b]) => { if (seen.has(a) || seen.has(b) || a === b) return false; seen.add(a); seen.add(b); return true; });
+  return pairs.length >= n ? pairs.slice(0, n) : memoPairs(n);
+}
+/* ¿es de la categoría? objetivos variados */
+const GO_TARGETS = [
+  { n: 'animales', y: ['animales', 'aves', 'bichos', 'marinos'], lv: 1 }, { n: 'ropa', y: ['ropa'], lv: 1 }, { n: 'frutas', y: ['frutas'], lv: 1 }, { n: 'transportes', y: ['transportes'], lv: 1 }, { n: 'partes del cuerpo', y: ['cuerpo'], lv: 1 }, { n: 'familiares', y: ['familia'], lv: 1 },
+  { n: 'cosas para comer', y: ['comidas', 'frutas', 'verduras'], lv: 2, x: ['marinos', 'aves', 'animales', 'bebidas'] }, { n: 'profesiones', y: ['profesiones'], lv: 2 }, { n: 'instrumentos', y: ['instrumentos'], lv: 2 }, { n: 'útiles escolares', y: ['escolares'], lv: 2 }, { n: 'deportes', y: ['deportes'], lv: 2 }, { n: 'juguetes', y: ['juguetes'], lv: 2 }, { n: 'verduras', y: ['verduras'], lv: 2, x: ['comidas', 'frutas'] },
+  { n: 'lugares de la ciudad', y: ['lugares'], lv: 3 }, { n: 'herramientas', y: ['herramientas'], lv: 3 }, { n: 'cosas de la cocina', y: ['utensilios'], lv: 3 }, { n: 'partes de la casa', y: ['casa'], lv: 3 }, { n: 'cosas de la naturaleza', y: ['naturaleza', 'flores'], lv: 3 }, { n: 'sentimientos', y: ['sentimientos'], lv: 3 }, { n: 'figuras', y: ['formas'], lv: 3 }, { n: 'colores', y: ['colores'], lv: 3 }, { n: 'muebles', y: ['muebles'], lv: 3 }
+];
+function goCfg(L) {
+  const t = pick(GO_TARGETS.filter(x => x.lv <= L && (L === 1 ? x.lv === 1 : x.lv >= L - 1)));
+  const yes = t.y.flatMap(k => LEXCAT[k].words.map(x => x.w)), no = CATKEYS.filter(k => !t.y.includes(k) && !(t.x || []).includes(k) && !t.y.some(y => conflict(y, k))).flatMap(k => LEXCAT[k].words.map(x => x.w));
+  return { name: t.n, yes, no };
+}
+
+/* ================= RULETA MIXTA: una pregunta de cada área ================= */
+const MIX_IDS = ['syl', 'sili', 'silfin', 'silfalta', 'quitasil', 'soni', 'spell', 'bienesc', 'tilde', 'plural', 'genero', 'alfa', 'junto', 'palabras', 'rima', 'anto', 'sino', 'ana', 'cat', 'intruso', 'emo', 'social', 'cloze', 'comp', 'pseudo', 'figuras', 'series', 'calc', 'mayor', 'valor', 'prob', 'reloj', 'plata', 'rot', 'mat', 'espejo', 'contar', 'amigos', 'vecino', 'saltos', 'tablas', 'fracc', 'dias', 'ordinal', 'donde', 'flechas', 'dif', 'stroop', 'regla', 'numletra'];
+async function mixCapture(g, level) {
+  const rq = window.runQuiz; let got = null; window.runQuiz = async (r, a, cfg) => { got = cfg; };
+  try { const r = g.run(document.createElement('div'), { alive: () => true, level, ultra: false, practice: false, end() {} }, g.options ? g.options[0].value : null); if (r && r.then) await r; } catch (e) {} finally { window.runQuiz = rq; }
+  return got;
+}
+async function runMix(root, api) {
+  const N = api.practice ? 3 : 10, ids = take(MIX_IDS, N + 4); let asked = 0, correct = 0; const areas = {}, fails = [], rts = [];
+  for (const id of ids) {
+    if (asked >= N) break; if (!api.alive()) return;
+    const g = GAMES.find(x => x.id === id), cfg = g && await mixCapture(g, api.level); if (!cfg || !cfg.items || !cfg.items.length) continue;
+    root.replaceChildren(h('div', { class: 'bar' }, h('span', { class: 'tag', style: '--c:' + axc(g.ax) }, g.area), h('span', { class: 'pl muted' }, (asked + 1) + ' / ' + N)), h('div', { class: 'prog', style: 'margin-bottom:8px' }, h('i', { style: 'width:' + (100 * asked / N) + '%' })));
+    const it = pick(cfg.items);
+    const res = await new Promise(done => { runQuiz(root, { alive: api.alive, level: api.level, ultra: false, practice: api.practice, noProgress: true, end: done }, { ...cfg, items: [it] }); });
+    if (!api.alive()) return;
+    asked++; const ok = res.score >= 1; if (ok) correct++; rts.push(res.rt || 0); const a = (areas[g.ax] = areas[g.ax] || [0, 0]); a[1]++; if (ok) a[0]++; if (!ok && res.review && res.review[0]) fails.push(g.area + ': ' + res.review[0]);
+  }
+  const rt = mean(rts);
+  api.end({ score: correct, max: asked, rt: Math.round(rt * 10) / 10, review: fails, lines: [['Aciertos', correct + '/' + asked], ['Tiempo medio (s)', rt.toFixed(1)], ...Object.entries(areas).map(([k, [a, b]]) => [k, a + '/' + b])],
+    notes: ['Cada pregunta viene de un área distinta: sirve como rastreo rápido. Mirar en qué áreas aparecen los errores y profundizar con el juego correspondiente.', 'Es una muestra de una sola pregunta por área: no alcanza para sacar conclusiones, solo para orientar.'] });
+}
+GAMES.push({ id: 'mix', icon: '🎡', title: 'Ruleta mixta', area: 'Todas las áreas', ax: 'Mixto', desc: 'Una pregunta al azar de cada área: lenguaje, cálculo, razonamiento, atención…', how: 'Cada pregunta viene de un juego distinto. Mirá de qué área es y respondé.', run: runMix, observe: ['Rastreo rápido: ver en qué áreas aparecen los errores y profundizar con el juego correspondiente.'] });
 
 
 
-const AXES = ['Mem. trabajo', 'Atención', 'Fonología', 'Lectoescritura', 'Comprensión', 'Mem. visual', 'Flexibilidad', 'Razonamiento', 'Cálculo', 'Lenguaje', 'Visoespacial', 'Socioemocional'];
-const AXC = { 'Mem. trabajo': '#5b6cf0', 'Atención': '#e8851c', 'Fonología': '#2f9fe0', 'Lectoescritura': '#2e9e68', 'Comprensión': '#a8820a', 'Mem. visual': '#c4488f', 'Flexibilidad': '#3b6fe0', 'Razonamiento': '#d6473f', 'Cálculo': '#12a094', 'Lenguaje': '#e8706a', 'Visoespacial': '#9b5de5', 'Socioemocional': '#e0527a' };
+
+const AXES = ['Mem. trabajo', 'Atención', 'Fonología', 'Lectoescritura', 'Comprensión', 'Mem. visual', 'Flexibilidad', 'Razonamiento', 'Cálculo', 'Lenguaje', 'Visoespacial', 'Socioemocional', 'Mixto'];
+const AXC = { 'Mem. trabajo': '#5b6cf0', 'Atención': '#e8851c', 'Fonología': '#2f9fe0', 'Lectoescritura': '#2e9e68', 'Comprensión': '#a8820a', 'Mem. visual': '#c4488f', 'Flexibilidad': '#3b6fe0', 'Razonamiento': '#d6473f', 'Cálculo': '#12a094', 'Lenguaje': '#e8706a', 'Visoespacial': '#9b5de5', 'Socioemocional': '#e0527a', 'Mixto': '#5b6cf0' };
 
 /* ================= pantallas ================= */
 const lastOf = (pid, gid) => results.filter(r => r.pid === pid && r.gid === gid).slice(-1)[0];
@@ -2261,7 +3137,7 @@ function openGame(g, circuit) {
   const lv = h('div', { class: 'lv', role: 'radiogroup', 'aria-label': 'Nivel' }, (g.ultra ? [1, 2, 3, 4] : [1, 2, 3]).map(n => h('label', { class: (n === sug ? 'on' : '') + (n === 4 ? ' ultra' : '') }, h('input', { type: 'radio', name: 'lv', checked: n === sug, onchange: e => { lvl = n; [...e.target.closest('.lv').children].forEach((l, k) => l.classList.toggle('on', k === n - 1)); } }), LV[n] + (n === sug ? ' · sugerido' : n === 4 ? ' · muy difícil' : ''))));
   const opts = g.options ? [h('div', { class: 'lab' }, g.optionsLabel), h('div', { class: 'lv' }, g.options.map((o, i) => h('label', { class: i === 0 ? 'on' : '' }, h('input', { type: 'radio', name: 'opt', checked: i === 0, onchange: e => { chosen = o.value; [...e.target.closest('.lv').children].forEach((l, k) => l.classList.toggle('on', k === i)); } }), o.label)))] : null;
   const body = h('div', { class: 'stage' },
-    h('div', { class: 'tile', style: 'width:88px;height:88px;font-size:3rem;margin:0 auto 8px;border-radius:24px' }, g.icon), h('h2', {}, g.title), h('span', { class: 'tag' }, g.area),
+    h('div', { class: 'tile', style: 'width:88px;height:88px;font-size:3rem;margin:0 auto 8px;border-radius:24px' }, g.icon), h('h2', {}, g.title), h('span', { class: 'tag' }, g.area), BANKS[g.id] ? h('p', { class: 'bank' }, fmtMiles(BANKS[g.id]) + ' ejercicios distintos en este juego') : null,
     circuit ? h('p', { class: 'muted' }, 'Circuito · juego ' + (circuit.i + 1) + ' de ' + circuit.queue.length) : null,
     h('p', { class: 'lead' }, g.how), h('div', { class: 'lab' }, 'Nivel'), lv, opts,
     h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => startGame(g, lvl, chosen, circuit) }, 'Empezar'), h('button', { class: 'btn sun', onclick: () => showTutorial(g, circuit) }, 'Cómo se juega'), h('button', { class: 'btn ghost', onclick: () => guard(showHub) }, circuit ? 'Salir del circuito' : 'Volver')));
@@ -2361,7 +3237,7 @@ function showProgress() {
   session++; playing = false; setNav('progress'); rerender = showProgress;
   const p = cur(), rs = resOf(p.id), got = achs[p.id] || {};
   const days = new Set(rs.map(r => dayKey(r.ts))).size;
-  const rv = AXES.map(ax => { const ids = GAMES.filter(g => g.ax === ax).map(g => g.id), l3 = rs.filter(r => ids.includes(r.gid)).slice(-3); return { l: ax, v: l3.length ? Math.round(mean(l3.map(r => r.pct))) : null }; });
+  const rv = AXES.filter(a => a !== 'Mixto').map(ax => { const ids = GAMES.filter(g => g.ax === ax).map(g => g.id), l3 = rs.filter(r => ids.includes(r.gid)).slice(-3); return { l: ax, v: l3.length ? Math.round(mean(l3.map(r => r.pct))) : null }; });
   const rows = GAMES.map(g => { const l = rs.filter(r => r.gid === g.id); if (!l.length) return null; const last = l[l.length - 1]; return h('tr', {}, h('td', {}, h('span', { class: 'cdot', style: '--c:' + axc(g.ax) }), g.icon + ' ' + g.title), h('td', {}, last.pct + '%'), h('td', {}, Math.max(...l.map(r => r.pct)) + '%'), h('td', {}, String(l.length)), h('td', {}, spark(l.slice(-10).map(r => r.pct)))); }).filter(Boolean);
   const hist = rs.slice(-30).reverse().map(r => h('tr', {}, h('td', {}, new Date(r.ts).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })), h('td', {}, r.game), h('td', {}, LV[r.level]), h('td', {}, r.headline + ' · ' + r.pct + '%'), h('td', {}, r.obs || '')));
   show(h('div', {},
@@ -2399,7 +3275,7 @@ function showSettings() {
       h('label', {}, 'Tema ', h('select', { onchange: e => { S.theme = e.target.value; applySettings(); } }, [['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Oscuro']].map(([v, l]) => h('option', { value: v, selected: S.theme === v }, l)))),
       h('div', { class: 'row', style: 'justify-content:flex-start' }, 'Tamaño de letra:', h('button', { class: 'btn ghost sm', onclick: () => { S.fs = Math.max(.8, +(S.fs - .1).toFixed(1)); applySettings(); } }, 'A−'), h('button', { class: 'btn ghost sm', onclick: () => { S.fs = Math.min(1.6, +(S.fs + .1).toFixed(1)); applySettings(); } }, 'A+')),
       tg('Lectura fácil (letra espaciada, fondo crema; útil en dislexia)', 'easy'), tg('Alto contraste', 'contrast'), tg('Reducir movimiento y animaciones', 'reduce'),
-      tg('Modo sin presión (oculta cronómetros, vidas y contadores)', 'np'), tg('Leer consignas y palabras en voz alta', 'voice'), tg('Mostrar el tutorial la primera vez que se abre cada juego', 'tutAuto'),
+      tg('Modo sin presión (oculta cronómetros, vidas y contadores)', 'np'), tg('Leer consignas y palabras en voz alta', 'voice'), tg('Mostrar el tutorial la primera vez que se abre cada juego', 'tutAuto'), tg('No repetir ejercicios que ya viste (por alumno/a)', 'noRepeat'), h('button', { class: 'btn ghost sm', onclick: () => { Object.keys(SEEN2).forEach(k => delete SEEN2[k]); store.set('pp2_seen2', SEEN2); toast('Historial de ejercicios vistos borrado'); } }, 'Borrar historial de ejercicios vistos'),
       h('label', {}, 'Volumen ', h('input', { type: 'range', min: 0, max: 1, step: .1, value: S.volume, oninput: e => { S.volume = +e.target.value; applySettings(); beep(660, .1); } }))),
     h('div', { class: 'panel' }, h('h3', {}, 'Datos'),
       h('p', { class: 'muted' }, 'Todo se guarda solo en este navegador. Hacé copias de seguridad si es información que querés conservar.'),
@@ -2488,6 +3364,7 @@ const TUT = {
   memopal: [['Hay cartas con dibujos y cartas con palabras.', 'Da vuelta dos: si el dibujo y la palabra coinciden, hacen pareja.', 'Encontrá todas las parejas.'], 'Leé cada palabra con atención al darla vuelta.'],
   amigos: [['Aparece una suma con un número escondido.', 'Pensá cuánto falta para llegar al total.', 'Elegí el número que falta.'], 'Pensá en el 10 como una meta.']
 };
+TUT.mix = [['Aparece una pregunta de un juego cualquiera: arriba ves de qué área es.', 'Respondé como en ese juego: elegí la opción correcta.', 'Son 10 preguntas de áreas distintas; al final ves cómo te fue en cada área.'], 'Es un rastreo rápido: sirve para elegir después qué juego practicar.'];
 const tutSeen = store.get('pp2_tutseen', {});
 function showTutorial(g, circuit) {
   const t = TUT[g.id] || [[g.how]], steps = t[0], tip = t[1]; let close;
@@ -2509,7 +3386,7 @@ function showHelp() {
     h('div', { class: 'panel' }, h('h3', {}, 'Tutorial de cada juego'), h('p', { class: 'muted' }, 'Tocá un juego para ver cómo se juega.'),
       AXES.map(ax => { const gs = GAMES.filter(g => g.ax === ax); return gs.length ? h('div', {}, h('div', { class: 'lab' }, ax), h('div', { class: 'chips' }, gs.map(g => h('button', { class: 'chip', style: '--c:' + axc(ax), onclick: () => showTutorial(g, null) }, g.icon + ' ' + g.title)))) : null; })),
     h('div', { class: 'panel' }, h('h3', {}, 'Atajos'), h('ul', {}, h('li', {}, h('b', {}, '1–9'), ': elegir la opción número N en juegos de elección'), h('li', {}, h('b', {}, 'Barra espaciadora'), ': tocar en los juegos de reacción'), h('li', {}, h('b', {}, 'P / Esc'), ': pausa')),
-      h('h3', {}, 'Usarlo sin internet'), h('p', {}, 'Es un solo archivo HTML con todo incluido (tipografías, sonidos, juegos). Guardalo en el dispositivo y abrilo con el navegador: no necesita conexión. Los resultados quedan en ese navegador; hacé copias de seguridad desde Ajustes.'),
+      h('h3', {}, 'Banco de ejercicios'), h('p', {}, 'Cada juego genera sus ejercicios a partir de bancos de palabras, frases y situaciones, y recuerda lo que ya viste para no repetirlo. Cantidad medida (mínimo, contando solo ejercicios distintos): ' + fmtMiles(bankTotal()) + ' en los juegos de preguntas.'), h('h3', {}, 'Usarlo sin internet'), h('p', {}, 'Es un solo archivo HTML con todo incluido (tipografías, sonidos, juegos). Guardalo en el dispositivo y abrilo con el navegador: no necesita conexión. Los resultados quedan en ese navegador; hacé copias de seguridad desde Ajustes.'),
       h('h3', {}, 'Importante'), h('ul', {}, h('li', {}, 'No son tests estandarizados ni tienen baremos: el semáforo es una referencia interna orientativa.'), h('li', {}, 'Un resultado bajo no es un diagnóstico; sirve para orientar la observación y la intervención.'), h('li', {}, 'Los datos no salen de este dispositivo.')))));
 }
 function tour() {
@@ -2531,7 +3408,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && pla
 if (!store.get('pp2_seen', false)) {
   store.set('pp2_seen', true);
   const p = profiles[0], name = h('input', { type: 'text', id: 'wname', value: '', maxlength: 40, placeholder: 'Nombre del alumno/a' }), age = h('input', { type: 'number', id: 'wage', min: 4, max: 17, value: 8 });
-  const close = modal(h('div', {}, h('h2', {}, 'Bienvenido/a'), h('p', {}, '74 juegos para observar atención, memoria, lenguaje, lectoescritura, cálculo y razonamiento. Empecemos creando el perfil del primer alumno/a.'),
+  const close = modal(h('div', {}, h('h2', {}, 'Bienvenido/a'), h('p', {}, '75 juegos para observar atención, memoria, lenguaje, lectoescritura, cálculo y razonamiento. Empecemos creando el perfil del primer alumno/a.'),
     h('label', {}, 'Nombre'), name, h('label', {}, 'Edad (años)'), age,
     h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { p.name = name.value.trim() || 'Alumno/a 1'; p.age = Math.min(17, Math.max(4, +age.value || 8)); saveP(); paintProfiles(); close(); showHub(); tour(); } }, 'Empezar'))));
 }
