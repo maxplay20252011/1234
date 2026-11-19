@@ -1,0 +1,9 @@
+{"aps": [
+  {"ssid": "MiCasa", "bssid": "AA:BB:CC:00:00:01", "channel": 6, "freq_mhz": 2437, "signal": 72,
+   "akm": ["PSK"], "pairwise": ["CCMP", "TKIP"], "versions": ["WPA1", "WPA2"], "connected": true, "wps": true},
+  {"ssid": "MiCasa", "bssid": "AA:BB:CC:00:00:02", "channel": 36, "freq_mhz": 5180, "signal": 60,
+   "akm": ["PSK"], "pairwise": ["CCMP"], "versions": ["WPA2"]},
+  {"ssid": "MiCasa", "bssid": "DE:AD:BE:EF:00:09", "channel": 6, "freq_mhz": 2437, "signal": 80,
+   "akm": ["OPEN"]},
+  {"ssid": "vecino1", "bssid": "11:22:33:00:00:01", "channel": 6, "freq_mhz": 2437, "signal": 50, "akm": ["PSK"], "versions": ["WPA2"]}
+]}
