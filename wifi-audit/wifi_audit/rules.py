@@ -109,7 +109,7 @@ def analyze(target: AccessPoint, all_aps: list[AccessPoint], known_bssids: set[s
             "Cambia el SSID y la contraseña por valores propios.")
 
     # ---------------------------------------------------------- contraseña (opcional, local)
-    if passwd is not None:
+    if passwd is not None and "OPEN" not in target.akm:
         sev, reasons, bits = pp.evaluate(passwd, target.ssid)
         if sev:
             exposed = "PSK" in target.akm
@@ -159,6 +159,10 @@ def analyze(target: AccessPoint, all_aps: list[AccessPoint], known_bssids: set[s
 
 def score(findings: list[Finding]) -> tuple[int, str]:
     s = max(0, 100 - sum(PENALTY[f.severity] for f in findings))
+    if any(f.severity == "critical" for f in findings):
+        s = min(s, 20)
+    elif any(f.severity == "high" for f in findings):
+        s = min(s, 55)
     grade = "A" if s >= 90 else "B" if s >= 75 else "C" if s >= 60 else "D" if s >= 40 else "F"
     return s, grade
 
