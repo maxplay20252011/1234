@@ -1,0 +1,12 @@
+{
+  "name": "control-remoto-agent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20.6" },
+  "scripts": {
+    "start": "node agent.js",
+    "dev": "node --env-file=../.env agent.js"
+  },
+  "dependencies": { "ws": "^8.18.0" }
+}

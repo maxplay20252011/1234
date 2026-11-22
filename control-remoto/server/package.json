@@ -1,0 +1,13 @@
+{
+  "name": "control-remoto-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20.6" },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --env-file=../.env server.js",
+    "test": "node --test test/smoke.test.mjs"
+  },
+  "dependencies": { "ws": "^8.18.0" }
+}

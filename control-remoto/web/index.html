@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Control remoto</title>
+<style>
+  :root { --bg:#0f1115; --card:#181b22; --txt:#e8eaf0; --mut:#8b92a5; --ok:#3ecf8e; --bad:#ef5350; --warn:#f5a524; --acc:#4c8dff; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:16px/1.4 system-ui,sans-serif; padding:16px; max-width:560px; margin-inline:auto; }
+  h1 { font-size:1.2rem; margin:0 0 12px; }
+  .card { background:var(--card); border-radius:12px; padding:14px; margin-bottom:12px; }
+  .estado { display:flex; gap:8px; align-items:center; color:var(--mut); }
+  .punto { width:10px; height:10px; border-radius:50%; background:var(--bad); flex:none; }
+  .punto.ok { background:var(--ok); } .punto.warn { background:var(--warn); }
+  input, button { font:inherit; border-radius:10px; border:0; padding:12px 14px; }
+  input { width:100%; background:#0f1115; color:var(--txt); border:1px solid #2a2f3a; margin-bottom:8px; }
+  button { background:var(--acc); color:#fff; cursor:pointer; }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  #acciones { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  #acciones button { min-height:52px; }
+  #acciones button.peligrosa { background:var(--bad); }
+  #registro { font:13px/1.5 ui-monospace,monospace; max-height:40vh; overflow:auto; white-space:pre-wrap; word-break:break-word; color:var(--mut); }
+  #registro .ok { color:var(--ok); } #registro .err { color:var(--bad); }
+  .oculto { display:none; }
+</style>
+</head>
+<body>
+<h1>Control remoto</h1>
+
+<div class="card" id="login">
+  <input id="token" type="password" placeholder="Token" autocomplete="current-password">
+  <button id="entrar">Conectar</button>
+</div>
+
+<div class="card estado"><span class="punto" id="punto"></span><span id="estadoTxt">Desconectado</span></div>
+<div class="card oculto" id="panel"><div id="acciones"></div></div>
+<div class="card"><div id="registro"></div></div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const URL_WS = (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
+let ws = null, token = "", reintento = 1000, timer = null, sinReconectar = false;
+let agenteOn = false, conectado = false;
+
+function loguear(txt, clase) {
+  const l = document.createElement("div");
+  if (clase) l.className = clase;
+  l.textContent = new Date().toLocaleTimeString() + "  " + txt;
+  $("registro").prepend(l);
+  while ($("registro").childElementCount > 100) $("registro").lastChild.remove();
+}
+
+function pintarEstado() {
+  const p = $("punto");
+  p.className = "punto" + (conectado && agenteOn ? " ok" : conectado ? " warn" : "");
+  $("estadoTxt").textContent = !conectado ? "Desconectado del servidor"
+    : agenteOn ? "Conectado · agente en línea" : "Servidor OK · agente desconectado";
+  document.querySelectorAll("#acciones button").forEach((b) => (b.disabled = !(conectado && agenteOn)));
+}
+
+function pintarAcciones(lista) {
+  const cont = $("acciones");
+  cont.replaceChildren();
+  for (const a of lista) {
+    const b = document.createElement("button");
+    b.textContent = String(a.label ?? a.id);
+    if (a.peligrosa) b.className = "peligrosa";
+    b.onclick = () => ordenar(String(a.id), undefined, String(a.label ?? a.id));
+    cont.append(b);
+  }
+  $("panel").classList.toggle("oculto", lista.length === 0);
+  pintarEstado();
+}
+
+function ordenar(accion, nonce, label) {
+  if (!ws || ws.readyState !== 1) return loguear("sin conexión", "err");
+  ws.send(JSON.stringify({ type: "orden", accion, nonce }));
+  if (!nonce) loguear("→ " + label);
+}
+
+function conectar() {
+  clearTimeout(timer);
+  ws = new WebSocket(URL_WS);
+  ws.onopen = () => ws.send(JSON.stringify({ type: "auth", rol: "cliente", token }));
+  ws.onmessage = (ev) => {
+    let m; try { m = JSON.parse(ev.data); } catch { return; }
+    if (m.type === "auth_ok") { conectado = true; reintento = 1000; sessionStorage.setItem("tk", token); $("login").classList.add("oculto"); pintarEstado(); }
+    else if (m.type === "estado") { agenteOn = !!m.agente; if (!agenteOn) pintarAcciones([]); pintarEstado(); }
+    else if (m.type === "acciones") pintarAcciones(Array.isArray(m.lista) ? m.lista : []);
+    else if (m.type === "resultado") {
+      if (m.requiere_confirmacion) {
+        if (confirm("¿Confirmás ejecutar «" + m.accion + "»?")) ordenar(m.accion, m.nonce, m.accion);
+        else loguear("cancelado: " + m.accion);
+      } else if (m.ok) loguear("✓ " + m.accion + ": " + (typeof m.resultado === "string" ? m.resultado : JSON.stringify(m.resultado)), "ok");
+      else loguear("✗ " + (m.accion ? m.accion + ": " : "") + m.error, "err");
+    }
+  };
+  ws.onclose = (ev) => {
+    conectado = false; agenteOn = false; pintarAcciones([]);
+    if (ev.code === 1008) { // token malo o IP bloqueada: no reintentar en bucle
+      sinReconectar = true; sessionStorage.removeItem("tk");
+      $("login").classList.remove("oculto");
+      return loguear("Rechazado: token inválido o demasiados intentos", "err");
+    }
+    if (sinReconectar) return;
+    timer = setTimeout(conectar, reintento);
+    reintento = Math.min(reintento * 2, 15000);
+  };
+}
+
+$("entrar").onclick = () => {
+  token = $("token").value.trim();
+  if (!token) return;
+  sinReconectar = false; $("token").value = ""; conectar();
+};
+$("token").addEventListener("keydown", (e) => { if (e.key === "Enter") $("entrar").click(); });
+const guardado = sessionStorage.getItem("tk");
+if (guardado) { token = guardado; conectar(); }
+pintarEstado();
+</script>
+</body>
+</html>
