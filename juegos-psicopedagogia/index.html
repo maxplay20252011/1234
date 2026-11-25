@@ -612,7 +612,7 @@ async function runGoNoGo(root, api) {
   }
   if (api.practice) { bye(); api.end({ score: 1, max: 1, lines: [], notes: [] }); return; }
   status.textContent = '¡Ahora va en serio! 💪'; await sleep(1300);
-  const trials = shuffle([...Array(30).fill('go'), ...Array(10).fill('nogo')]), N = trials.length; counting = true;
+  const nG = wantCount ? Math.max(1, Math.round(wantCount * .75)) : 30, nN = wantCount ? Math.max(1, wantCount - nG) : 10, trials = shuffle([...Array(nG).fill('go'), ...Array(nN).fill('nogo')]), N = trials.length; counting = true;
   for (let i = 0; i < N; i++) {
     if (!api.alive()) return bye();
     setP(i, N); status.textContent = ' ';
@@ -627,7 +627,7 @@ async function runGoNoGo(root, api) {
   if (antic >= 5) notes.push('Respuestas anticipadas frecuentes (' + antic + ').');
   if (v > 220) notes.push('Alta variabilidad del tiempo de reacción (' + v + ' ms): suele asociarse a fluctuaciones de atención.');
   if (!notes.length) notes.push('Sin señales marcadas de desatención o impulsividad en esta muestra breve.');
-  api.end({ score: hits + rej, max: N, lines: [['Aciertos ' + PR[0], hits + '/30'], ['Omisiones', omis], ['Errores ' + PR[1], comm + '/10'], ['TR medio (ms)', rt || '-'], ['Variabilidad TR (ms)', v || '-'], ['Anticipaciones', antic]], notes, rt: rt ? Math.round(rt / 100) / 10 : null });
+  api.end({ score: hits + rej, max: N, lines: [['Aciertos ' + PR[0], hits + '/' + nG], ['Omisiones', omis], ['Errores ' + PR[1], comm + '/' + nN], ['TR medio (ms)', rt || '-'], ['Variabilidad TR (ms)', v || '-'], ['Anticipaciones', antic]], notes, rt: rt ? Math.round(rt / 100) / 10 : null });
 }
 
 /* 3. Contá las sílabas */
@@ -715,7 +715,7 @@ const desc = (s, c) => (SG[s] ? 'la ' : 'el ') + SN[s] + ' ' + CN[c][SG[s]];
 
 /* 6. Descubrí la regla: flexibilidad cognitiva */
 async function runSort(root, api) {
-  const crit = [0, 4, 5, 6][api.level], N = api.practice ? 10 : 48, setP = progress(root);
+  const crit = [0, 4, 5, 6][api.level], N = api.practice ? 10 : cntN(48), setP = progress(root);
   const status = h('div', { class: 'status' }, 'Elegí debajo de qué carta va la de arriba. Te digo si acertaste: ¡descubrí la regla!');
   const stimBox = h('div'), fb = h('div', { class: 'fb', 'aria-live': 'polite' }), refs = h('div', { class: 'row' });
   const mk = (si, ci, cls) => h('div', { class: cls }, h('span', { class: 'shape', style: 'color:' + CO[ci] }, SH[si]), h('small', { class: 'muted' }, SN[si] + ' ' + CN[ci][SG[si]]));
@@ -3386,7 +3386,14 @@ function openGame(g, circuit) {
   ++session; playing = false; setPause(false);
   const p = cur(), sug = levelByAge(p.age), c = axc(g.ax); let lvl = sug, chosen = g.options ? g.options[0].value : null;
   const lv = h('div', { class: 'lv', role: 'radiogroup', 'aria-label': 'Nivel' }, (g.ultra ? [1, 2, 3, 4] : [1, 2, 3]).map(n => h('label', { class: (n === sug ? 'on' : '') + (n === 4 ? ' ultra' : '') }, h('input', { type: 'radio', name: 'lv', checked: n === sug, onchange: e => { lvl = n; [...e.target.closest('.lv').children].forEach((l, k) => l.classList.toggle('on', k === n - 1)); } }), LV[n] + (n === sug ? ' · sugerido' : n === 4 ? ' · muy difícil' : ''))));
-  const cnt = !circuit && !NOCOUNT.has(g.id) ? [h('div', { class: 'lab' }, 'Cantidad de ejercicios'), h('div', { class: 'lv cnt', role: 'radiogroup', 'aria-label': 'Cantidad de ejercicios' }, COUNTS.map(n => h('label', { class: n === pickedCount ? 'on' : '' }, h('input', { type: 'radio', name: 'cnt', checked: n === pickedCount, onchange: e => { pickedCount = n; store.set('pp9_count', n); [...e.target.closest('.lv').children].forEach((l, k) => l.classList.toggle('on', COUNTS[k] === n)); } }), n === 0 ? 'Normal' : String(n))))] : null;
+  const cnt = !circuit && !NOCOUNT.has(g.id) ? (() => {
+    const box = h('div', { class: 'lv cnt', role: 'radiogroup', 'aria-label': 'Cantidad de ejercicios' }), num = h('input', { type: 'number', min: 1, max: 100, inputmode: 'numeric', placeholder: 'Otra', 'aria-label': 'Escribí otra cantidad (1 a 100)', value: COUNTS.includes(pickedCount) ? '' : String(pickedCount), style: 'width:92px;padding:10px;border-radius:14px;border:2px solid var(--line);font:inherit;text-align:center;background:var(--panel);color:var(--ink)' });
+    const paint = () => { [...box.querySelectorAll('label')].forEach((l, k) => { l.classList.toggle('on', COUNTS[k] === pickedCount); l.firstChild.checked = COUNTS[k] === pickedCount; }); num.style.borderColor = COUNTS.includes(pickedCount) ? '' : 'var(--brand)'; };
+    COUNTS.forEach(n => box.append(h('label', { class: n === pickedCount ? 'on' : '' }, h('input', { type: 'radio', name: 'cnt', checked: n === pickedCount, onchange: () => { pickedCount = n; store.set('pp9_count', n); num.value = ''; paint(); } }), n === 0 ? 'Normal' : String(n))));
+    num.oninput = () => { const v = Math.round(+num.value); if (v >= 1 && v <= 100) { pickedCount = v; store.set('pp9_count', v); paint(); } else if (num.value === '') { pickedCount = 0; store.set('pp9_count', 0); paint(); } };
+    paint();
+    return [h('div', { class: 'lab' }, 'Cantidad de ejercicios'), box, h('div', { class: 'row', style: 'align-items:center;margin:6px 0' }, h('span', { class: 'muted' }, 'u otra cantidad (1 a 100):'), num)];
+  })() : null;
   const opts = g.options ? [h('div', { class: 'lab' }, g.optionsLabel), h('div', { class: 'lv' }, g.options.map((o, i) => h('label', { class: i === 0 ? 'on' : '' }, h('input', { type: 'radio', name: 'opt', checked: i === 0, onchange: e => { chosen = o.value; [...e.target.closest('.lv').children].forEach((l, k) => l.classList.toggle('on', k === i)); } }), o.label)))] : null;
   const body = h('div', { class: 'stage' },
     h('div', { class: 'tile', style: 'width:88px;height:88px;font-size:3rem;margin:0 auto 8px;border-radius:24px' }, g.icon), h('h2', {}, g.title), h('span', { class: 'tag' }, g.area), BANKS[g.id] ? h('p', { class: 'bank' }, fmtMiles(BANKS[g.id]) + ' ejercicios distintos en este juego') : null,
@@ -3422,10 +3429,10 @@ function genericSnap() {
     notes: ['Este juego solo informa cuántas rondas se completaron y el tiempo jugado; los aciertos y errores se calculan al terminar la partida.'], partial: { done: i, total: N, label: 'rondas' } };
 }
 /* ================= v9: elegir cuántos ejercicios hacer ================= */
-const NOCOUNT = new Set(['simon', 'gonogo', 'memo', 'sort', 'cancel', 'corsi', 'hanoi', 'dig', 'cancnum', 'fluidez', 'memhist', 'memopal', 'mix']);
+const NOCOUNT = new Set(['simon', 'memo', 'cancel', 'corsi', 'hanoi', 'dig', 'cancnum', 'fluidez', 'memhist', 'memopal', 'mix']);
 const COUNTS = [0, 5, 10, 15, 20, 30, 50];
 let wantCount = 0, curOpt = null, collecting = null, pickedCount = store.get('pp9_count', 0);
-if (!COUNTS.includes(pickedCount)) pickedCount = 0;
+if (!Number.isInteger(pickedCount) || pickedCount < 0 || pickedCount > 100) pickedCount = 0;
 function fitItems(items, api) {
   const n = wantCount; if (items.length >= n) return items.slice(0, n);
   const kf = it => { try { return it && it.key != null ? 'k' + it.key : JSON.stringify(it); } catch (e) { return null; } };
