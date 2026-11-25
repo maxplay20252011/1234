@@ -3376,11 +3376,12 @@ function openGame(g, circuit) {
   ++session; playing = false; setPause(false);
   const p = cur(), sug = levelByAge(p.age), c = axc(g.ax); let lvl = sug, chosen = g.options ? g.options[0].value : null;
   const lv = h('div', { class: 'lv', role: 'radiogroup', 'aria-label': 'Nivel' }, (g.ultra ? [1, 2, 3, 4] : [1, 2, 3]).map(n => h('label', { class: (n === sug ? 'on' : '') + (n === 4 ? ' ultra' : '') }, h('input', { type: 'radio', name: 'lv', checked: n === sug, onchange: e => { lvl = n; [...e.target.closest('.lv').children].forEach((l, k) => l.classList.toggle('on', k === n - 1)); } }), LV[n] + (n === sug ? ' · sugerido' : n === 4 ? ' · muy difícil' : ''))));
+  const cnt = !circuit && !NOCOUNT.has(g.id) ? [h('div', { class: 'lab' }, 'Cantidad de ejercicios'), h('div', { class: 'lv cnt', role: 'radiogroup', 'aria-label': 'Cantidad de ejercicios' }, COUNTS.map(n => h('label', { class: n === pickedCount ? 'on' : '' }, h('input', { type: 'radio', name: 'cnt', checked: n === pickedCount, onchange: e => { pickedCount = n; store.set('pp9_count', n); [...e.target.closest('.lv').children].forEach((l, k) => l.classList.toggle('on', COUNTS[k] === n)); } }), n === 0 ? 'Normal' : String(n))))] : null;
   const opts = g.options ? [h('div', { class: 'lab' }, g.optionsLabel), h('div', { class: 'lv' }, g.options.map((o, i) => h('label', { class: i === 0 ? 'on' : '' }, h('input', { type: 'radio', name: 'opt', checked: i === 0, onchange: e => { chosen = o.value; [...e.target.closest('.lv').children].forEach((l, k) => l.classList.toggle('on', k === i)); } }), o.label)))] : null;
   const body = h('div', { class: 'stage' },
     h('div', { class: 'tile', style: 'width:88px;height:88px;font-size:3rem;margin:0 auto 8px;border-radius:24px' }, g.icon), h('h2', {}, g.title), h('span', { class: 'tag' }, g.area), BANKS[g.id] ? h('p', { class: 'bank' }, fmtMiles(BANKS[g.id]) + ' ejercicios distintos en este juego') : null,
     circuit ? h('p', { class: 'muted' }, 'Circuito · juego ' + (circuit.i + 1) + ' de ' + circuit.queue.length) : null,
-    h('p', { class: 'lead' }, g.how), h('div', { class: 'lab' }, 'Nivel'), lv, opts,
+    h('p', { class: 'lead' }, g.how), h('div', { class: 'lab' }, 'Nivel'), lv, cnt, opts,
     h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => startGame(g, lvl, chosen, circuit) }, 'Empezar'), h('button', { class: 'btn sun', onclick: () => showTutorial(g, circuit) }, 'Cómo se juega'), h('button', { class: 'btn ghost', onclick: () => guard(showHub) }, circuit ? 'Salir del circuito' : 'Volver')));
   say(g.how);
   show(h('div', {}, h('div', { class: 'panel', style: '--c:' + c }, body)));
@@ -3388,7 +3389,7 @@ function openGame(g, circuit) {
 }
 
 function startGame(g, level, opt, circuit, practice) {
-  const s = ++session; playing = true; setPause(false); curGame = g; curLevel = level;
+  const s = ++session; playing = true; setPause(false); curGame = g; curLevel = level; curOpt = opt; wantCount = practice || circuit || NOCOUNT.has(g.id) ? 0 : pickedCount;
   const api = { alive: () => s === session, level: level === 4 ? 3 : level, ultra: level === 4, practice: !!practice, end: r => { if (s === session) finish(g, r, level, circuit, practice); } };
   curApi = api;
   const body = h('div', { class: 'stage' }), c = axc(g.ax);
@@ -3399,6 +3400,32 @@ function startGame(g, level, opt, circuit, practice) {
   g.run(body, api, opt);
 }
 
+/* ================= v9: elegir cuántos ejercicios hacer ================= */
+const NOCOUNT = new Set(['simon', 'gonogo', 'memo', 'sort', 'cancel', 'consig', 'copia', 'corsi', 'react', 'hanoi', 'dig', 'nback', 'cancnum', 'animal', 'fluidez', 'memhist', 'memopal', 'mix']);
+const COUNTS = [0, 5, 10, 15, 20, 30, 50];
+let wantCount = 0, curOpt = null, collecting = null, pickedCount = store.get('pp9_count', 0);
+if (!COUNTS.includes(pickedCount)) pickedCount = 0;
+function fitItems(items, api) {
+  const n = wantCount; if (items.length >= n) return items.slice(0, n);
+  const kf = it => { try { return it && it.key != null ? 'k' + it.key : JSON.stringify(it); } catch (e) { return null; } };
+  const seen = new Set(items.map(kf)), out = items.slice(), g = curGame, saved = collecting;
+  for (let tries = 0; tries < 80 && out.length < n; tries++) {
+    collecting = [];
+    try { const x = g.run(document.createElement('div'), { alive: () => false, level: api.level, ultra: api.ultra, practice: false, end() {} }, curOpt); if (x && x.catch) x.catch(() => {}); } catch (e) {}
+    for (const it of collecting) { const k = kf(it); if (k === null || !seen.has(k)) { if (k !== null) seen.add(k); out.push(it); if (out.length >= n) break; } }
+  }
+  collecting = saved;
+  for (let i = 0; out.length < n && items.length; i++) out.push(items[i % items.length]);   // espacio agotado: repite en vez de quedarse corto
+  return out;
+}
+['runQuiz', 'runBuilder', 'runAdult'].forEach(nm => {
+  const orig = window[nm];
+  window[nm] = function (root, api, cfg) {
+    if (collecting) { collecting.push(...cfg.items); return Promise.resolve(); }
+    if (wantCount && !api.practice && !api.noProgress && cfg.items && cfg.items.length) cfg = { ...cfg, items: fitItems(cfg.items, api) };
+    return orig.call(this, root, api, cfg);
+  };
+});
 /* ================= v8: estadísticas ampliadas, imagen de la partida y resultados parciales ================= */
 function logStats(log) {
   const n = log.length, oks = log.filter(x => x.ok), bads = log.filter(x => !x.ok), sec = x => x.rt / 1000; let st = 0, best = 0;
