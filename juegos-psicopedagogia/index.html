@@ -393,7 +393,7 @@ if (!profiles.length) { profiles = [{ id: 'p' + uid(), name: 'Alumno/a 1', age: 
 if (!profiles.find(p => p.id === curId)) { curId = profiles[0].id; saveP(); }
 const levelByAge = age => age <= 6 ? 1 : age <= 9 ? 2 : 3;
 const LV = ['', 'Fácil', 'Medio', 'Difícil', 'Ultra'];
-const resOf = pid => results.filter(r => r.pid === pid);
+const resOf = pid => results.filter(r => r.pid === pid && !r.partial);
 function streak(pid) {
   const days = new Set(resOf(pid).map(r => dayKey(r.ts)));
   let d = new Date(), n = 0;
@@ -428,12 +428,21 @@ function checkAch(pid) {
 /* ================= navegación ================= */
 const app = $('#app');
 let curGame = null;
-let session = 0, playing = false, rerender = () => showHub(), curNav = 'hub';
+let curApi = null, curLevel = 1, session = 0, playing = false, rerender = () => showHub(), curNav = 'hub';
 const NAVS = [['hub', 'Juegos'], ['circuit', 'Circuito'], ['progress', 'Progreso'], ['settings', 'Ajustes'], ['help', 'Ayuda']];
 function setNav(v) { curNav = v; $('#nav').querySelectorAll('button[data-v]').forEach(b => b.classList.toggle('act', b.dataset.v === v)); }
 function leave() { session++; playing = false; setPause(false); try { speechSynthesis.cancel(); } catch (e) {} }
 function guard(next) {
-  if (playing) { setPause(true); askConfirm('¿Salir de la partida? Se pierde el avance.', () => { leave(); next(); }, () => setPause(false), 'Salir', 'Seguir jugando'); return; }
+  if (playing) {
+    setPause(true); const snap = curApi && curApi.snap && !curApi.practice ? curApi.snap() : null;
+    if (snap) {
+      let close; const g = curGame, lv = curLevel;
+      close = modal(h('div', {}, h('h2', {}, 'Te querés ir'), h('p', {}, 'Ya respondiste ' + snap.partial.done + ' de ' + snap.partial.total + ' ejercicios. Podés ver los datos de lo que hiciste antes de salir.'),
+        h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { close(); leave(); finish(g, snap, lv, null, false, { after: next }); } }, '📊 Salir y ver mis datos'),
+          h('button', { class: 'btn ghost', onclick: () => { close(); leave(); next(); } }, 'Salir sin guardar'), h('button', { class: 'btn ghost', onclick: () => { close(); setPause(false); } }, 'Seguir jugando'))));
+      return;
+    }
+    askConfirm('¿Salir de la partida? Se pierde el avance.', () => { leave(); next(); }, () => setPause(false), 'Salir', 'Seguir jugando'); return; }
   leave(); next();
 }
 const GO = { hub: () => showHub(), circuit: () => startCircuit(), progress: () => showProgress(), settings: () => showSettings(), help: () => showHelp() };
@@ -497,7 +506,17 @@ const numOpts = a => {
 async function runQuiz(root, api, cfg) {
   const items = api.practice ? cfg.items.slice(0, 3) : cfg.items, N = items.length, setP = api.noProgress ? () => {} : progress(root);
   const stageEl = h('div'), choices = h('div', { class: 'row' + (cfg.choiceClass ? ' ' + cfg.choiceClass : '') }), fb = h('div', { class: 'fb', 'aria-live': 'polite' }), tools = h('div', { class: 'row' });
-  let cur = null, correct = 0, hints = 0; const rts = [], fails = [], cats = {};
+  let cur = null, correct = 0, hints = 0; const rts = [], fails = [], cats = {}, log = [];
+  const summ = (n, part) => {
+    const rt = mean(rts) / 1000, notes = cfg.notes ? cfg.notes({ correct, N: n, rt, cats }).slice() : [], ls = logStats(log);
+    const cs = Object.entries(cats).map(([k, v]) => k + ' (' + v + ')');
+    if (cs.length) notes.push('Errores por categoría: ' + cs.join(', ') + '.');
+    if (rt > 6) notes.push('Tiempo de respuesta medio alto (' + rt.toFixed(1) + ' s): puede indicar procesamiento lento o inseguridad; observar si hay estrategia.');
+    notes.push(...ls.notes);
+    return { score: correct, max: n, rt: Math.round(rt * 10) / 10, review: fails.slice(), log: ls.log, partial: part ? { done: n, total: N } : null,
+      lines: [['Aciertos', correct], ['Errores', n - correct], ['Tiempo medio (s)', rt.toFixed(1)], ...(cfg.hint && !api.ultra ? [['Pistas usadas', hints]] : []), ...ls.lines], notes };
+  };
+  api.snap = () => log.length && !api.noProgress ? summ(log.length, true) : null;
   const listenBtn = cfg.speak ? h('button', { class: 'btn ghost sm', onclick: () => speak(cfg.speak(cur.it)) }, '🔊 Escuchar') : null;
   const hintBtn = cfg.hint && !api.ultra ? h('button', { class: 'btn ghost sm', onclick: () => {
     const c = [...choices.children].filter(b => !b.disabled && b.dataset.ok === '0');
@@ -514,7 +533,7 @@ async function runQuiz(root, api, cfg) {
     const opts = cfg.options(it), t0 = performance.now();
     const p = await new Promise(res => { choices.replaceChildren(...opts.map(o => h('button', { class: 'opt' + (o.cls ? ' ' + o.cls : ''), 'data-ok': o.ok ? 1 : 0, onclick: e => res({ o, el: e.currentTarget }) }, o.label))); if (api.practice) [...choices.children].forEach(b => { if (b.dataset.ok === '1') b.classList.add('demo'); }); });
     if (!api.alive()) return;
-    rts.push(performance.now() - t0);
+    rts.push(performance.now() - t0); log.push({ ok: !!p.o.ok, rt: rts[rts.length - 1], hint: cur.hinted });
     [...choices.children].forEach(b => b.disabled = true);
     if (p.o.ok) { correct++; p.el.classList.add('right'); fb.textContent = '🦉 ' + (cfg.fbRight ? cfg.fbRight(it) : pick(PRAISE)); fb.className = 'fb good'; sOk(); }
     else {
@@ -525,15 +544,7 @@ async function runQuiz(root, api, cfg) {
     cfg.onAnswer && cfg.onAnswer(it, p.o.ok, stageEl);
     await sleep(p.o.ok ? 1200 : 1800);
   }
-  const rt = mean(rts) / 1000, notes = cfg.notes ? cfg.notes({ correct, N, rt, cats }) : [];
-  const cs = Object.entries(cats).map(([k, v]) => k + ' (' + v + ')');
-  if (cs.length) notes.push('Errores por categoría: ' + cs.join(', ') + '.');
-  if (rt > 6) notes.push('Tiempo de respuesta medio alto (' + rt.toFixed(1) + ' s): puede indicar procesamiento lento o inseguridad; observar si hay estrategia.');
-  api.end({
-    score: correct, max: N, rt: Math.round(rt * 10) / 10, review: fails,
-    lines: [['Aciertos', correct], ['Errores', N - correct], ['Tiempo medio (s)', rt.toFixed(1)], ...(cfg.hint && !api.ultra ? [['Pistas usadas', hints]] : [])],
-    notes
-  });
+  api.end(summ(N, false));
 }
 
 /* ================= JUEGOS ================= */
@@ -937,7 +948,10 @@ async function runBuilder(root, api, cfg) {
   const promptEl = h('div'), slots = h('div', { class: 'slots' }), bank = h('div', { class: 'row' }), fb = h('div', { class: 'fb', 'aria-live': 'polite' });
   const clear = h('button', { class: 'btn ghost sm' }, 'Borrar todo');
   root.append(h('div', { class: 'status' }, (api.practice ? 'Práctica · ' : '') + cfg.instr), promptEl, slots, bank, h('div', { class: 'row' }, clear), fb);
-  const join = cfg.join == null ? ' ' : cfg.join; let correct = 0; const rts = [], fails = [];
+  const join = cfg.join == null ? ' ' : cfg.join; let correct = 0; const rts = [], fails = [], log = [];
+  const summ = (n, part) => { const rt = mean(rts) / 1000, ls = logStats(log);
+    return { score: correct, max: n, rt: Math.round(rt * 10) / 10, review: fails.slice(), log: ls.log, partial: part ? { done: n, total: N } : null, lines: [['Aciertos', correct], ['Errores', n - correct], ['Tiempo medio (s)', rt.toFixed(1)], ...ls.lines], notes: [...(cfg.notes || []), ...ls.notes] }; };
+  api.snap = () => log.length && !api.noProgress ? summ(log.length, true) : null;
   for (let i = 0; i < N; i++) {
     if (!api.alive()) return;
     setP(i, N); fb.textContent = ''; fb.className = 'fb'; clear.disabled = false;
@@ -954,13 +968,12 @@ async function runBuilder(root, api, cfg) {
       clear.onclick = () => { if (!locked) { placed = []; draw(); } }; draw();
     });
     if (!api.alive()) return; clear.disabled = true; rts.push(performance.now() - t0);
-    const ok = res.join(join) === it.parts.join(join);
+    const ok = res.join(join) === it.parts.join(join); log.push({ ok, rt: rts[rts.length - 1] });
     if (ok) { correct++; fb.textContent = '🦉 ' + pick(PRAISE); fb.className = 'fb good'; sOk(); }
     else { fails.push(it.parts.join(join)); fb.textContent = '🦉 ' + (cfg.fbWrong ? cfg.fbWrong(it) : 'Era: ' + it.parts.join(join)); fb.className = 'fb bad'; sBad(); }
     await sleep(ok ? 1100 : 2100);
   }
-  const rt = mean(rts) / 1000;
-  api.end({ score: correct, max: N, rt: Math.round(rt * 10) / 10, review: fails, lines: [['Aciertos', correct], ['Errores', N - correct], ['Tiempo medio (s)', rt.toFixed(1)]], notes: cfg.notes || [] });
+  api.end(summ(N, false));
 }
 
 /* ---- Socioemocional ---- */
@@ -1493,22 +1506,24 @@ function numPal(n) {
 async function runAdult(root, api, cfg) {
   const items = api.practice ? cfg.items.slice(0, 2) : cfg.items, N = items.length, setP = api.noProgress ? () => {} : progress(root);
   const stageEl = h('div'), tools = h('div', { class: 'row' }), marks = h('div', { class: 'row' });
-  let cur = null, okN = 0, revealed = true; const times = [], cats = {};
+  let cur = null, okN = 0, revealed = true; const times = [], cats = {}, log = []; let T0 = performance.now();
+  const summ = (n, part) => { const total = (performance.now() - T0) / 1000, ls = logStats(log);
+    return { score: okN, max: n, rt: Math.round(mean(times) / 100) / 10, review: [], log: ls.log, partial: part ? { done: n, total: N } : null,
+      lines: [['Correctos', okN + '/' + n], ['Errores', n - okN], ['Correctos por minuto', Math.round(okN / Math.max(1, total) * 60)], ...Object.entries(cats).map(([k, v]) => [k, v[0] + '/' + v[1]]), ...ls.lines], notes: [...(cfg.notes || []), ...ls.notes] }; };
+  api.snap = () => log.length && !api.noProgress ? summ(log.length, true) : null;
   const draw = () => stageEl.replaceChildren(cfg.render(cur.it, revealed));
   if (cfg.speak) tools.append(h('button', { class: 'btn ghost sm', onclick: () => speak(cfg.speak(cur.it)) }, 'Escuchar'));
   if (cfg.reveal) tools.append(h('button', { class: 'btn ghost sm', onclick: () => { revealed = !revealed; draw(); } }, 'Mostrar / ocultar'));
   const good = h('button', { class: 'btn', style: 'background:var(--good);box-shadow:0 4px 0 #0b5e3c;color:#fff' }, 'Bien'), bad = h('button', { class: 'btn danger' }, 'Error');
   marks.append(good, bad);
   root.append(h('div', { class: 'status' }, (api.practice ? 'Práctica · ' : '') + cfg.instr), stageEl, tools, marks, h('p', { class: 'muted' }, 'El adulto marca «Bien» o «Error» según lo que hace el niño o la niña.'));
-  const T0 = performance.now();
+  T0 = performance.now();
   for (let i = 0; i < N; i++) {
     if (!api.alive()) return; setP(i, N); cur = { it: items[i] }; revealed = !cfg.reveal; draw();
     const t0 = performance.now(), ok = await new Promise(r => { good.onclick = () => r(true); bad.onclick = () => r(false); }); if (!api.alive()) return;
-    times.push(performance.now() - t0); const c = cfg.cat ? cfg.cat(cur.it) : 'ítems'; cats[c] = cats[c] || [0, 0]; cats[c][1]++; if (ok) { okN++; cats[c][0]++; sOk(); } else sBad();
+    times.push(performance.now() - t0); log.push({ ok, rt: times[times.length - 1] }); const c = cfg.cat ? cfg.cat(cur.it) : 'ítems'; cats[c] = cats[c] || [0, 0]; cats[c][1]++; if (ok) { okN++; cats[c][0]++; sOk(); } else sBad();
   }
-  const total = (performance.now() - T0) / 1000, perMin = Math.round(okN / total * 60);
-  api.end({ score: okN, max: N, rt: Math.round(mean(times) / 100) / 10, lines: [['Correctos', okN + '/' + N], ['Errores', N - okN], ['Tiempo total (s)', Math.round(total)], ['Correctos por minuto', perMin], ...Object.entries(cats).map(([k, v]) => [k, v[0] + '/' + v[1]])],
-    notes: cfg.notes || [] });
+  api.end(summ(N, false));
 }
 
 /* ---- Lectoescritura / morfología ---- */
@@ -2974,7 +2989,14 @@ function runDictado2(root, api) {
 const SHAPEP = { 'triángulo': { l: 3 }, 'cuadrado': { l: 4, sq: true }, 'rectángulo': { l: 4, rect: true }, 'rombo': { l: 4, rh: true }, 'pentágono': { l: 5 }, 'hexágono': { l: 6 }, 'octágono': { l: 8 }, 'trapecio': { l: 4 }, 'círculo': { l: 0 }, 'óvalo': { l: 0 } };
 function runFiguras2(root, api) {
   const names = [['círculo', 'cuadrado', 'triángulo', 'rectángulo'], ['círculo', 'cuadrado', 'triángulo', 'rectángulo', 'rombo', 'óvalo', 'pentágono'], Object.keys(SHAPEP)][api.level - 1];
-  const gen = () => { const t = api.level === 1 ? 0 : rnd(4); const n = pick(names); const pol = Object.keys(SHAPEP).filter(x => SHAPEP[x].l > 0);
+  const pol = Object.keys(SHAPEP).filter(x => SHAPEP[x].l > 0), plu = s => s + 's', pq = (c, nm) => c + ' ' + plu(nm);
+  const gen = () => { const t = api.level === 1 ? pick([0, 0, 7]) : api.level === 2 ? pick([0, 1, 2, 3, 4, 7]) : pick([1, 2, 3, 4, 5, 6, 7, 7]); const n = pick(names);
+    if (t === 4) { const p = pick(pol); return { t, n: p, q: '¿Cuántos vértices (esquinas) tiene el ' + p + '?', a: SHAPEP[p].l, key: 'vert|' + p }; }
+    if (t === 5) { const p = pick(pol), k = R(2, api.level === 3 ? 8 : 5); return { t, n: p, q: 'Juntás ' + k + ' ' + plu(p) + '. ¿Cuántos lados hay en total?', a: k * SHAPEP[p].l, ex: [k + SHAPEP[p].l, (k + 1) * SHAPEP[p].l, (k - 1) * SHAPEP[p].l], key: 'tot|' + p + k }; }
+    if (t === 6) { let p, q; do { p = pick(pol); q = pick(pol); } while (SHAPEP[p].l <= SHAPEP[q].l); return { t, n: p, q: '¿Cuántos lados más tiene el ' + p + ' que el ' + q + '?', a: SHAPEP[p].l - SHAPEP[q].l, key: 'dif|' + p + '|' + q }; }
+    if (t === 7) { const kinds = api.level === 1 ? 1 : 2, shp = take(names, kinds), ks = shp.map(() => R(1, api.level === 3 ? 7 : 5)), ask = kinds === 1 ? 0 : rnd(3);
+      const q = kinds === 1 ? '¿Cuántas figuras hay?' : ask === 2 ? '¿Cuántas figuras hay en total?' : '¿Cuántos ' + plu(shp[ask]) + ' hay?', a = kinds === 1 ? ks[0] : ask === 2 ? ks[0] + ks[1] : ks[ask];
+      return { t, n: shp[0], shp, ks, q, a, ex: ks, key: 'cuenta|' + shp.join(',') + '|' + ks.join(',') + '|' + ask }; }
     if (t === 0) return { t, n, c: pick(CO), key: 'nombre|' + n };
     if (t === 1) { const p = pick(pol); return { t, n: p, q: '¿Cuántos lados tiene el ' + p + '?', a: SHAPEP[p].l, key: 'lados|' + p }; }
     if (t === 2) { const p = pick(['triángulo', 'pentágono', 'hexágono', 'octágono']); return { t, n: p, q: '¿Cuál de estas figuras tiene ' + SHAPEP[p].l + ' lados?', a: p, key: 'cuál|' + p }; }
@@ -2982,8 +3004,8 @@ function runFiguras2(root, api) {
   const items = freshGen('figuras', gen, 10, it => it.key);
   return runQuiz(root, api, {
     instr: '¿Qué sabés de las figuras?', items,
-    render: it => it.t === 0 ? h('div', { class: 'clock', html: polySVG(it.n, it.c) }) : h('div', {}, h('div', { class: 'clock', html: it.t === 1 ? polySVG(it.n, 'var(--soft)') : '' }), h('h2', { style: 'font-size:1.3rem' }, it.q)),
-    options: it => it.t === 0 ? shuffle([it.n, ...take(names.filter(x => x !== it.n), 3)]).map(o => ({ label: o, ok: o === it.n })) : it.t === 1 ? numOpts(it.a) : it.t === 2 ? shuffle([it.a, ...take(['triángulo', 'pentágono', 'hexágono', 'octágono', 'cuadrado', 'círculo'].filter(x => x !== it.a), 3)]).map(o => ({ label: o, ok: o === it.a })) : shuffle([it.a, ...it.d]).map(o => ({ label: o, ok: o === it.a })),
+    render: it => it.t === 0 ? h('div', { class: 'clock', html: polySVG(it.n, it.c) }) : it.t === 7 ? h('div', {}, h('div', { style: 'display:flex;flex-wrap:wrap;gap:4px;justify-content:center;max-width:420px;margin:0 auto' }, shuffle(it.shp.flatMap((s, i) => Array.from({ length: it.ks[i] }, () => h('div', { style: 'width:58px', html: polySVG(s, CO[i % 4]).replace('width="150" height="150"', 'width="58" height="58"') })))) ), h('h2', { style: 'font-size:1.3rem' }, it.q)) : h('div', {}, h('div', { class: 'clock', html: it.t === 1 || it.t === 4 ? polySVG(it.n, 'var(--soft)') : '' }), h('h2', { style: 'font-size:1.3rem' }, it.q)),
+    options: it => it.t === 0 ? shuffle([it.n, ...take(names.filter(x => x !== it.n), 3)]).map(o => ({ label: o, ok: o === it.n })) : it.t === 1 || it.t === 4 || it.t === 6 ? numOpts(it.a) : it.t === 5 || it.t === 7 ? optsNum(it.a, it.ex.filter(v => v !== it.a).concat([it.a + 1, it.a - 1])) : it.t === 2 ? shuffle([it.a, ...take(['triángulo', 'pentágono', 'hexágono', 'octágono', 'cuadrado', 'círculo'].filter(x => x !== it.a), 3)]).map(o => ({ label: o, ok: o === it.a })) : shuffle([it.a, ...it.d]).map(o => ({ label: o, ok: o === it.a })),
     fbWrong: it => it.t === 0 ? 'Es un ' + it.n : 'La respuesta era ' + it.a, failLabel: it => it.key,
     notes: () => ['Confundir cuadrado/rectángulo o rombo/cuadrado girado señala que reconoce por apariencia y no por propiedades (lados, ángulos).']
   });
@@ -3211,7 +3233,7 @@ function runAmigos2(root, api) {
 }
 
 Object.entries({ contar: runContar2, stroop: runStroop2, rot: runRotacion2, tablas: runTablas2, donde: runDonde2, simdice: runSimonDice2, regla: runCambioRegla2, amigos: runAmigos2 }).forEach(([id, fn]) => { const g = GAMES.find(x => x.id === id); if (g) g.run = fn; });
-const BANKS = {"syl": 769, "spell": 381, "series": 1996, "calc": 4953, "rima": 1531, "espejo": 4461, "intruso": 11999, "pseudo": 1167, "emo": 134, "social": 51, "anto": 212, "sino": 158, "ana": 3899, "cat": 11487, "ora": 3676, "comp": 6389, "cloze": 4455, "sili": 754, "soni": 789, "forma": 753, "letras": 582, "contar": 291, "mayor": 9211, "valor": 10178, "prob": 8956, "reloj": 2940, "plata": 8943, "rot": 1500, "dif": 11953, "stroop": 264, "hist": 49, "mat": 2845, "plural": 726, "genero": 2720, "alfa": 9998, "tilde": 736, "junto": 4023, "bienesc": 150, "palabras": 4718, "silfalta": 1071, "silfin": 754, "quitasil": 1417, "numletra": 983, "vecino": 2285, "saltos": 983, "tablas": 2178, "fracc": 906, "figuras": 28, "donde": 3583, "flechas": 12799, "simdice": 528, "regla": 375, "lectura": 1167, "dictado": 1590, "dias": 3163, "ordinal": 11716, "amigos": 1074, "mix": 1104};
+const BANKS = {"syl": 769, "spell": 381, "series": 1996, "calc": 4953, "rima": 1531, "espejo": 4461, "intruso": 11999, "pseudo": 1167, "emo": 134, "social": 51, "anto": 212, "sino": 158, "ana": 3899, "cat": 11487, "ora": 3676, "comp": 6389, "cloze": 4455, "sili": 754, "soni": 789, "forma": 753, "letras": 582, "contar": 291, "mayor": 9211, "valor": 10178, "prob": 8956, "reloj": 2940, "plata": 8943, "rot": 1500, "dif": 11953, "stroop": 264, "hist": 49, "mat": 2845, "plural": 726, "genero": 2720, "alfa": 9998, "tilde": 736, "junto": 4023, "bienesc": 150, "palabras": 4718, "silfalta": 1071, "silfin": 754, "quitasil": 1417, "numletra": 983, "vecino": 2285, "saltos": 983, "tablas": 2178, "fracc": 906, "figuras": 1788, "donde": 3583, "flechas": 12799, "simdice": 528, "regla": 375, "lectura": 1167, "dictado": 1590, "dias": 3163, "ordinal": 11716, "amigos": 1074, "mix": 1104};
 const bankTotal = () => Object.values(BANKS).reduce((a, b) => a + b, 0);
 
 /* Simón: 7 juegos de sonidos distintos */
@@ -3312,7 +3334,7 @@ const AXES = ['Mem. trabajo', 'Atención', 'Fonología', 'Lectoescritura', 'Comp
 const AXC = { 'Mem. trabajo': '#5b6cf0', 'Atención': '#e8851c', 'Fonología': '#2f9fe0', 'Lectoescritura': '#2e9e68', 'Comprensión': '#a8820a', 'Mem. visual': '#c4488f', 'Flexibilidad': '#3b6fe0', 'Razonamiento': '#d6473f', 'Cálculo': '#12a094', 'Lenguaje': '#e8706a', 'Visoespacial': '#9b5de5', 'Socioemocional': '#e0527a', 'Mixto': '#5b6cf0' };
 
 /* ================= pantallas ================= */
-const lastOf = (pid, gid) => results.filter(r => r.pid === pid && r.gid === gid).slice(-1)[0];
+const lastOf = (pid, gid) => results.filter(r => r.pid === pid && r.gid === gid && !r.partial).slice(-1)[0];
 const semOf = pct => pct >= 80 ? ['🟢 Logrado', '#1f9d62'] : pct >= 50 ? ['🟡 En proceso', '#c98a00'] : ['🔴 A reforzar', '#d6403f'];
 let filterAx = 'Todas', query = '';
 const axc = ax => AXC[ax] || 'var(--brand)';
@@ -3366,8 +3388,9 @@ function openGame(g, circuit) {
 }
 
 function startGame(g, level, opt, circuit, practice) {
-  const s = ++session; playing = true; setPause(false); curGame = g;
+  const s = ++session; playing = true; setPause(false); curGame = g; curLevel = level;
   const api = { alive: () => s === session, level: level === 4 ? 3 : level, ultra: level === 4, practice: !!practice, end: r => { if (s === session) finish(g, r, level, circuit, practice); } };
+  curApi = api;
   const body = h('div', { class: 'stage' }), c = axc(g.ax);
   show(h('div', {}, h('div', { class: 'bar' },
     h('div', { class: 'gh', style: '--c:' + c }, h('div', { class: 'tile' }, g.icon), h('div', {}, h('h2', {}, g.title), h('span', { class: 'tag' }, (practice ? 'Práctica con ayuda · ' : LV[level] + ' · ') + g.area))),
@@ -3376,8 +3399,53 @@ function startGame(g, level, opt, circuit, practice) {
   g.run(body, api, opt);
 }
 
-function finish(g, r, level, circuit, practice) {
-  playing = false; const p = cur();
+/* ================= v8: estadísticas ampliadas, imagen de la partida y resultados parciales ================= */
+function logStats(log) {
+  const n = log.length, oks = log.filter(x => x.ok), bads = log.filter(x => !x.ok), sec = x => x.rt / 1000; let st = 0, best = 0;
+  log.forEach(x => { st = x.ok ? st + 1 : 0; best = Math.max(best, st); });
+  const all = log.map(sec), lines = [['Racha máxima de aciertos', best], ['Tiempo total (s)', Math.round(all.reduce((a, b) => a + b, 0))], ['Respuesta más rápida (s)', Math.min(...all).toFixed(1)], ['Respuesta más lenta (s)', Math.max(...all).toFixed(1)]], notes = [];
+  if (oks.length && bads.length) lines.push(['Tiempo en aciertos / errores (s)', mean(oks.map(sec)).toFixed(1) + ' / ' + mean(bads.map(sec)).toFixed(1)]);
+  if (n >= 6) {
+    const k = Math.floor(n / 2), pc = a => Math.round(100 * a.filter(x => x.ok).length / a.length), a = pc(log.slice(0, k)), b = pc(log.slice(k));
+    lines.push(['1ª mitad → 2ª mitad', a + '% → ' + b + '%']);
+    if (a - b >= 25) notes.push('Rindió bastante menos en la segunda mitad (' + a + '% → ' + b + '%): puede haber fatiga o caída de la atención sostenida.');
+    else if (b - a >= 25) notes.push('Mejoró hacia el final (' + a + '% → ' + b + '%): quizá necesitó entrar en calor o aprendió la consigna sobre la marcha.');
+  }
+  if (bads.length >= 3 && oks.length >= 3 && mean(bads.map(sec)) < .6 * mean(oks.map(sec))) notes.push('Los errores fueron mucho más rápidos que los aciertos: posible respuesta impulsiva (conviene pedir que mire todas las opciones antes de elegir).');
+  if (best >= 8) notes.push('Buena constancia: ' + best + ' aciertos seguidos.');
+  return { lines, notes, log: log.map(x => [+!!x.ok, Math.round(x.rt / 100) / 10, +!!x.hint]) };
+}
+function resultImage(g, rec, r, level) {
+  const W = 900, P = 48, F = "'Fredoka','Atkinson Hyperlegible',system-ui,sans-serif", cv = document.createElement('canvas'), col = axc(g.ax), brand = col.startsWith('var') ? '#3e63dd' : col;
+  const lines = rec.lines.slice(0, 14), rowsN = Math.ceil(lines.length / 2), log = r.log || [], sq = 46, gap = 8, per = Math.floor((W - 2 * P + gap) / (sq + gap)), tlRows = Math.ceil(log.length / per);
+  const rev = (r.review || []).slice(0, 5), parcial = !!r.partial;
+  const H = 130 + 150 + 300 + (parcial ? 56 : 0) + rowsN * 104 + (log.length ? 70 + tlRows * (sq + 26) : 0) + (rev.length ? 70 + rev.length * 38 : 0) + 70;
+  cv.width = W; cv.height = H; const x = cv.getContext('2d');
+  const rr = (a, b, w, hh, rad, fill, stroke) => { x.beginPath(); x.roundRect ? x.roundRect(a, b, w, hh, rad) : x.rect(a, b, w, hh); if (fill) { x.fillStyle = fill; x.fill(); } if (stroke) { x.strokeStyle = stroke; x.lineWidth = 2; x.stroke(); } };
+  const fit = (t, w) => { t = String(t); while (x.measureText(t).width > w && t.length > 3) t = t.slice(0, -2); return t; };
+  x.fillStyle = '#ffffff'; x.fillRect(0, 0, W, H); x.fillStyle = brand; x.fillRect(0, 0, W, 120);
+  x.fillStyle = '#fff'; x.textBaseline = 'middle'; x.font = '700 30px ' + F; x.textAlign = 'left'; x.fillText('🧠 Juegos de Psicopedagogía', P, 44); x.font = '400 24px ' + F;
+  const d = new Date(rec.ts); x.fillText(d.toLocaleDateString('es-AR') + ' · ' + d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }), P, 86);
+  let y = 170; x.fillStyle = '#1b1f3b'; x.font = '700 50px ' + F; x.fillText(fit(g.icon + ' ' + g.title, W - 2 * P), P, y); y += 48; x.font = '400 26px ' + F; x.fillStyle = '#5b6078'; x.fillText(LV[level] + ' · ' + g.area, P, y);
+  if (parcial) { y += 52; rr(P, y - 24, W - 2 * P, 48, 14, '#fff4d6', '#e0a800'); x.fillStyle = '#7a5a00'; x.font = '700 24px ' + F; x.textAlign = 'center'; x.fillText('PARCIAL · ' + r.partial.done + ' de ' + r.partial.total + ' ejercicios', W / 2, y); x.textAlign = 'left'; y += 24; }
+  const pct = rec.pct, cx = W / 2, cy = y + 150, rad = 100, semC = r.nosem ? brand : semOf(pct)[1].startsWith('var') ? brand : semOf(pct)[1];
+  x.lineWidth = 22; x.lineCap = 'round'; x.strokeStyle = '#e8eaf3'; x.beginPath(); x.arc(cx, cy, rad, 0, 7); x.stroke();
+  x.strokeStyle = semC; x.beginPath(); x.arc(cx, cy, rad, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * Math.max(.005, pct / 100)); x.stroke();
+  x.fillStyle = '#1b1f3b'; x.textAlign = 'center'; x.font = '700 64px ' + F; x.fillText(pct + '%', cx, cy); x.font = '600 30px ' + F; x.fillText(fit(rec.headline, W - 2 * P), cx, cy + rad + 52);
+  if (!r.nosem) { x.font = '400 20px ' + F; x.fillStyle = '#5b6078'; x.fillText(semOf(pct)[0] + ' · referencia interna, no normativa', cx, cy + rad + 90); }
+  y = cy + rad + 132; x.textAlign = 'left'; const cw = (W - 2 * P - 20) / 2;
+  lines.forEach(([k, v], i) => { const a = P + (i % 2) * (cw + 20), b = y + Math.floor(i / 2) * 104; rr(a, b, cw, 90, 18, '#f3f5fc', '#dfe3f3');
+    x.fillStyle = '#1b1f3b'; x.font = '700 34px ' + F; x.fillText(fit(v, cw - 32), a + 18, b + 30); x.fillStyle = '#5b6078'; x.font = '400 21px ' + F; x.fillText(fit(k, cw - 32), a + 18, b + 66); });
+  y += rowsN * 104 + 22;
+  if (log.length) { x.fillStyle = '#1b1f3b'; x.font = '700 28px ' + F; x.fillText('Ejercicio por ejercicio', P, y); y += 34;
+    log.forEach(([ok, s, hh], i) => { const a = P + (i % per) * (sq + gap), b = y + Math.floor(i / per) * (sq + 26); rr(a, b, sq, sq, 10, ok ? '#30a46c' : '#e5484d'); x.fillStyle = '#fff'; x.font = '700 20px ' + F; x.textAlign = 'center'; x.fillText(ok ? (hh ? '💡' : '✔') : '✖', a + sq / 2, b + sq / 2); x.fillStyle = '#5b6078'; x.font = '400 14px ' + F; x.fillText(s + ' s', a + sq / 2, b + sq + 12); x.textAlign = 'left'; });
+    y += tlRows * (sq + 26) + 28; }
+  if (rev.length) { x.fillStyle = '#1b1f3b'; x.font = '700 28px ' + F; x.fillText('Para repasar', P, y); y += 40; x.font = '400 22px ' + F; x.fillStyle = '#3a3f5c'; rev.forEach((t, i) => { x.fillText(fit('• ' + t, W - 2 * P), P, y + i * 38); }); y += rev.length * 38 + 10; }
+  x.fillStyle = '#8a8fa8'; x.font = '400 18px ' + F; x.textAlign = 'center'; x.fillText('Observación de apoyo, no es un diagnóstico', W / 2, H - 34);
+  return cv;
+}
+function finish(g, r, level, circuit, practice, opt) {
+  playing = false; const p = cur(); opt = opt || {}; if (r.partial) circuit = null;
   if (practice) {
     show(h('div', {}, h('div', { class: 'panel stage', style: '--c:' + axc(g.ax) }, h('div', { class: 'big' }, '✅'), h('h2', {}, 'Práctica terminada'), h('p', { class: 'lead' }, 'Ya sabés cómo se juega. Esta práctica no se guardó.'),
       h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => openGame(g, circuit) }, 'Jugar en serio'), h('button', { class: 'btn ghost', onclick: () => startGame(g, 1, g.options ? g.options[0].value : null, circuit, true) }, 'Repetir práctica'), h('button', { class: 'btn ghost', onclick: showHub }, 'Menú')))));
@@ -3385,13 +3453,13 @@ function finish(g, r, level, circuit, practice) {
   }
   const pct = r.pct != null ? r.pct : (r.max ? Math.round(100 * r.score / r.max) : 0);
   const prev = lastOf(p.id, g.id);
-  const rec = { id: uid(), ts: Date.now(), pid: p.id, gid: g.id, game: g.title, area: g.area, level, score: r.score, max: r.max, pct, headline: r.headline || (r.score + ' de ' + r.max), lines: r.lines, rt: r.rt || null, obs: '' };
+  const rec = { id: uid(), ts: Date.now(), pid: p.id, gid: g.id, game: g.title, area: g.area, level, score: r.score, max: r.max, pct, headline: r.headline || (r.score + ' de ' + r.max), lines: r.lines, rt: r.rt || null, obs: '', log: r.log || null, partial: r.partial || null };
+  if (r.partial) rec.headline = 'Parcial: ' + r.score + ' de ' + r.max + ' respondidos (de ' + r.partial.total + ')';
   results.push(rec); saveR();
-  const newAch = checkAch(p.id); newAch.forEach(a => toast('Logro desbloqueado: ' + a.t));
-  if (pct >= 85) confetti();
+  if (!r.partial) { const newAch = checkAch(p.id); newAch.forEach(a => toast('Logro desbloqueado: ' + a.t)); if (pct >= 85) confetti(); }
   const [semT, semC] = semOf(pct);
   let cmp = null;
-  if (prev) { const d = pct - prev.pct; cmp = (d > 0 ? '▲ +' + d : d < 0 ? '▼ ' + d : '＝ igual') + ' puntos respecto de la vez anterior (' + prev.pct + '%)' + (prev.level !== level ? ' · nivel distinto' : ''); }
+  if (prev && !r.partial) { const d = pct - prev.pct; cmp = (d > 0 ? '▲ +' + d : d < 0 ? '▼ ' + d : '＝ igual') + ' puntos respecto de la vez anterior (' + prev.pct + '%)' + (prev.level !== level ? ' · nivel distinto' : ''); }
   const notes = [...(level === 4 ? ['Nivel Ultra: está pensado para ser muy exigente (sin pistas y con varios pasos). Un resultado de 40 a 60 % ya es muy bueno.'] : []), ...(r.notes || []), ...g.observe];
   const obs = h('textarea', { rows: 2, id: 'obs', placeholder: 'Observaciones del profesional (opcional): conducta, estrategias, comentarios…', oninput: e => { rec.obs = e.target.value; saveR(); } });
   let nextBtns;
@@ -3400,10 +3468,20 @@ function finish(g, r, level, circuit, practice) {
     if (last) { const u = unlock(p.id, 'circuit'); if (u) toast('Logro desbloqueado: ' + u.t); }
     nextBtns = last ? [h('button', { class: 'btn', onclick: () => circuitSummary(circuit) }, 'Ver resumen del circuito')]
       : [h('button', { class: 'btn', onclick: () => openGame(GAMES.find(x => x.id === circuit.queue[circuit.i + 1]), { ...circuit, i: circuit.i + 1 }) }, 'Siguiente juego →'), h('button', { class: 'btn ghost', onclick: () => guard(showHub) }, 'Terminar circuito')];
-  } else nextBtns = [h('button', { class: 'btn', onclick: () => openGame(g, null) }, 'Jugar de nuevo'), h('button', { class: 'btn ghost', onclick: showHub }, 'Otro juego'), h('button', { class: 'btn ghost', onclick: showProgress }, 'Ver progreso')];
-  say(pct >= 60 ? '¡Muy bien!' : '¡Buen intento!');
+  } else if (r.partial) nextBtns = [...(opt.after ? [h('button', { class: 'btn', onclick: () => { leave(); opt.after(); } }, 'Seguir a donde iba →')] : []), h('button', { class: 'btn ghost', onclick: () => openGame(g, null) }, 'Jugar de nuevo'), h('button', { class: 'btn ghost', onclick: showHub }, 'Menú')];
+  else nextBtns = [h('button', { class: 'btn', onclick: () => openGame(g, null) }, 'Jugar de nuevo'), h('button', { class: 'btn ghost', onclick: showHub }, 'Otro juego'), h('button', { class: 'btn ghost', onclick: showProgress }, 'Ver progreso')];
+  if (!r.partial) say(pct >= 60 ? '¡Muy bien!' : '¡Buen intento!');
+  let imgBox = null;
+  try {
+    const cv = resultImage(g, rec, r, level), url = cv.toDataURL('image/png'), nm = 'partida-' + g.id + '.png', share = () => cv.toBlob(b => { try { const f = new File([b], nm, { type: 'image/png' }); if (navigator.canShare && navigator.canShare({ files: [f] })) navigator.share({ files: [f], title: g.title }).catch(() => {}); else toast('Tu navegador no permite compartir: mantené apretada la imagen para guardarla'); } catch (e) { toast('No se pudo compartir'); } });
+    const copy = () => cv.toBlob(b => { try { navigator.clipboard.write([new ClipboardItem({ 'image/png': b })]).then(() => toast('Imagen copiada'), () => toast('No se pudo copiar: mantené apretada la imagen')); } catch (e) { toast('No se pudo copiar: mantené apretada la imagen'); } });
+    imgBox = h('div', { class: 'resimg', style: 'margin:10px 0' }, h('img', { src: url, alt: 'Datos de la partida: ' + g.title + ', ' + rec.headline + ', ' + pct + '%', style: 'width:100%;max-width:480px;border-radius:16px;border:1px solid var(--line)' }),
+      h('p', { class: 'muted' }, 'Esta es la imagen de tu partida. Mantené apretada la imagen para guardarla.'),
+      h('div', { class: 'row' }, navigator.share ? h('button', { class: 'btn sm', onclick: share }, '📤 Compartir') : null, window.ClipboardItem && navigator.clipboard ? h('button', { class: 'btn ghost sm', onclick: copy }, '📋 Copiar imagen') : null, h('a', { class: 'btn ghost sm', href: url, download: nm }, '⬇ Descargar PNG')));
+  } catch (e) { imgBox = null; }
   show(h('div', {}, h('div', { class: 'panel stage', style: '--c:' + axc(g.ax) },
     h('div', { class: 'gh', style: 'justify-content:center;margin-bottom:6px' }, h('div', { class: 'tile' }, g.icon), h('div', { style: 'text-align:left' }, h('h2', {}, g.title), h('span', { class: 'tag' }, LV[level] + ' · ' + g.area))),
+    imgBox,
     h('div', { class: 'ring', style: '--p:' + pct + ';--c:' + (r.nosem ? 'var(--brand)' : semC) }, h('div', {}, h('span', {}, pct + '%'))),
     h('h2', {}, rec.headline),
     r.nosem ? null : h('p', {}, h('span', { class: 'sem', style: 'color:' + semC + ';border-color:' + semC }, semT), h('small', { class: 'muted' }, ' referencia interna, no normativa')),
