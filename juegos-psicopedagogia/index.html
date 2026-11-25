@@ -284,7 +284,7 @@ button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
   <noscript><p class="panel">Este material necesita JavaScript activado en el navegador.</p></noscript>
   <footer class="noprint">Material lúdico de apoyo: no es un test estandarizado ni reemplaza una evaluación psicopedagógica. Los datos se guardan solo en este navegador.</footer>
 </div>
-<div class="ov" id="pause" hidden><div class="mbox" style="text-align:center"><h2>⏸ En pausa</h2><p class="muted">Tomate un respiro. La partida sigue donde la dejaste.</p><div class="row"><button class="btn" id="resume">▶ Continuar</button><button class="btn ghost" id="pTut">Cómo se juega</button></div></div></div>
+<div class="ov" id="pause" hidden><div class="mbox" style="text-align:center"><h2>⏸ En pausa</h2><p class="muted">Tomate un respiro. La partida sigue donde la dejaste.</p><div class="row"><button class="btn" id="resume">▶ Continuar</button><button class="btn ghost" id="pTut">Cómo se juega</button><button class="btn ghost" id="pExit">🚪 Salir</button></div></div></div>
 
 <script>
 /* ================= utilidades ================= */
@@ -452,6 +452,7 @@ if (!document.documentElement.requestFullscreen) { const fb = $('#nav .fsb'); if
 function show(node) { app.replaceChildren(node); window.scrollTo(0, 0); }
 function setPause(v) { paused = v; $('#pause').hidden = !v; }
 $('#resume').onclick = () => setPause(false);
+$('#pExit').onclick = () => { setPause(false); const g = curGame; if (g) $('#exitGame') ? $('#exitGame').click() : guard(showHub); };
 $('#pTut').onclick = () => { if (curGame) showTutorial(curGame, null); };
 document.addEventListener('keydown', e => {
   if (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
@@ -3404,7 +3405,7 @@ function startGame(g, level, opt, circuit, practice) {
   const body = h('div', { class: 'stage' }), c = axc(g.ax);
   show(h('div', {}, h('div', { class: 'bar' },
     h('div', { class: 'gh', style: '--c:' + c }, h('div', { class: 'tile' }, g.icon), h('div', {}, h('h2', {}, g.title), h('span', { class: 'tag' }, (practice ? 'Práctica con ayuda · ' : LV[level] + ' · ') + g.area))),
-    h('button', { class: 'btn ghost sm', onclick: () => setPause(true), 'aria-label': 'Pausa' }, 'Pausa (P)')),
+    h('div', { class: 'row', style: 'gap:6px;flex-wrap:nowrap' }, h('button', { class: 'btn ghost sm', onclick: () => setPause(true), 'aria-label': 'Pausa' }, 'Pausa (P)'), h('button', { class: 'btn ghost sm', id: 'exitGame', onclick: () => guard(showHub), 'aria-label': 'Salir del juego' }, '🚪 Salir'))),
     h('div', { class: 'panel game', style: '--c:' + c }, body)));
   g.run(body, api, opt);
 }
