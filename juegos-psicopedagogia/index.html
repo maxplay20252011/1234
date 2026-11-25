@@ -434,10 +434,10 @@ function setNav(v) { curNav = v; $('#nav').querySelectorAll('button[data-v]').fo
 function leave() { session++; playing = false; setPause(false); try { speechSynthesis.cancel(); } catch (e) {} }
 function guard(next) {
   if (playing) {
-    setPause(true); const snap = curApi && curApi.snap && !curApi.practice ? curApi.snap() : null;
+    setPause(true); const snap = curApi && !curApi.practice ? ((curApi.snap && curApi.snap()) || genericSnap()) : null;
     if (snap) {
       let close; const g = curGame, lv = curLevel;
-      close = modal(h('div', {}, h('h2', {}, 'Te querés ir'), h('p', {}, 'Ya respondiste ' + snap.partial.done + ' de ' + snap.partial.total + ' ejercicios. Podés ver los datos de lo que hiciste antes de salir.'),
+      close = modal(h('div', {}, h('h2', {}, 'Te querés ir'), h('p', {}, 'No terminaste la partida: hiciste ' + snap.partial.done + (snap.partial.total ? ' de ' + snap.partial.total : '') + ' ' + (snap.partial.label || 'ejercicios') + '. Podés ver los datos de lo que hiciste hasta ahora antes de salir.'),
         h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { close(); leave(); finish(g, snap, lv, null, false, { after: next }); } }, '📊 Salir y ver mis datos'),
           h('button', { class: 'btn ghost', onclick: () => { close(); leave(); next(); } }, 'Salir sin guardar'), h('button', { class: 'btn ghost', onclick: () => { close(); setPause(false); } }, 'Seguir jugando'))));
       return;
@@ -553,6 +553,7 @@ async function runSimon(root, api, mode) {
   const cols = pick(SIMON_SETS);
 
   let len = [0, 2, 3, 4][api.level], lives = 3, best = 0, ok = 0, fail = 0, accepting = false, pending = null;
+  api.snap = () => ok + fail ? spanSnap(best, ok, fail, mode) : null;
   const status = h('div', { class: 'status', 'aria-live': 'polite' }), livesEl = h('div', { class: 'lives' });
   const paintLives = () => livesEl.textContent = '❤️'.repeat(lives) + '🖤'.repeat(3 - lives);
   const btns = cols.map((c, i) => h('button', { class: 'pad', style: '--c:' + c.c, disabled: true, onclick: () => tap(i) }, c.s + ' ' + c.n));
@@ -684,6 +685,7 @@ function runMemotest(root, api, theme) {
   const grid = h('div', { class: 'mem', style: 'grid-template-columns:repeat(4,1fr)' }), status = h('div', { class: 'status' }, 'Encontrá las parejas'), tm = h('div', { class: 'timer muted' }, '⏱ 0 s');
   root.append(status, tm, grid);
   let first = null, lock = false, moves = 0, found = 0, misses = 0, elapsed = 0;
+  api.snap = () => moves ? { score: found, max: pairs, pct: Math.round(100 * found / pairs), nosem: true, headline: found + ' de ' + pairs + ' parejas en ' + moves + ' intentos', lines: [['Parejas encontradas', found + '/' + pairs], ['Intentos', moves], ['Tiempo (s)', elapsed]], notes: ['Partida sin terminar.'], partial: { done: found, total: pairs, label: 'parejas' } } : null;
   const iv = setInterval(() => { if (!api.alive()) return clearInterval(iv); if (!paused) { elapsed++; tm.textContent = '⏱ ' + elapsed + ' s'; } }, 1000);
   const els = cards.map((c, i) => h('button', { class: 'mc', 'aria-label': 'Carta ' + (i + 1), onclick: () => flip(i) }, '❓'));
   els.forEach(e => grid.append(e));
@@ -889,7 +891,7 @@ function runPseudo(root, api) {
 
 /* 14. Seguí las consignas */
 async function runConsignas(root, api) {
-  const steps = api.practice ? [1, 2] : [[1, 1, 1, 1, 2, 2, 2, 2], [2, 2, 2, 2, 3, 3, 3, 3], [3, 3, 3, 3, 4, 4, 4, 4]][api.level - 1], N = steps.length, setP = progress(root);
+  const steps = api.practice ? [1, 2] : ((b) => wantCount ? Array.from({ length: wantCount }, (_, i) => b[Math.floor(i * b.length / wantCount)]) : b)([[1, 1, 1, 1, 2, 2, 2, 2], [2, 2, 2, 2, 3, 3, 3, 3], [3, 3, 3, 3, 4, 4, 4, 4]][api.level - 1]), N = steps.length, setP = progress(root);
   const instr = h('div', { class: 'status', style: 'font-size:1.25rem', 'aria-live': 'polite' }), board = h('div', { class: 'row' }), fb = h('div', { class: 'fb', 'aria-live': 'polite' });
   root.append(instr, board, fb);
   let ok = 0, ordErr = 0, elemErr = 0, pending = null; const fails = [];
@@ -1263,7 +1265,7 @@ function runRotacion(root, api) {
   });
 }
 async function runCopia(root, api) {
-  const n = [0, 3, 4, 4][api.level], k = [0, 3, 5, 7][api.level], showMs = [0, 3000, 3000, 2500][api.level], N = api.practice ? 2 : 6, setP = progress(root);
+  const n = [0, 3, 4, 4][api.level], k = [0, 3, 5, 7][api.level], showMs = [0, 3000, 3000, 2500][api.level], N = api.practice ? 2 : cntN(6), setP = progress(root);
   const status = h('div', { class: 'status', 'aria-live': 'polite' }), grid = h('div', { class: 'cgrid', style: 'grid-template-columns:repeat(' + n + ',1fr);max-width:' + (n * 76) + 'px' }), done = h('button', { class: 'btn' }, 'Listo');
   root.append(status, grid, h('div', { class: 'row' }, done));
   let exact = 0; const acc = [];
@@ -1289,6 +1291,7 @@ async function runCopia(root, api) {
 async function runCorsi(root, api, mode) {
   if (api.ultra) mode = 'inverso';
   const n = api.level === 3 ? 16 : 9, cols = api.level === 3 ? 4 : 3; let len = api.ultra ? 5 : [0, 2, 3, 4][api.level], lives = 3, best = 0, ok = 0, fail = 0, pending = null, accepting = false;
+  api.snap = () => ok + fail ? spanSnap(best, ok, fail, mode) : null;
   const status = h('div', { class: 'status', 'aria-live': 'polite' }), livesEl = h('div', { class: 'lives' });
   const paintLives = () => livesEl.textContent = '❤️'.repeat(lives) + '🖤'.repeat(3 - lives);
   const btns = Array.from({ length: n }, (_, i) => h('button', { class: 'blk', disabled: true, 'aria-label': 'Bloque ' + (i + 1), onclick: () => tap(i) }));
@@ -1357,7 +1360,7 @@ function runStroop(root, api) {
   });
 }
 async function runReaccion(root, api) {
-  const N = api.practice ? 3 : 8, setP = progress(root); let resolve = null;
+  const N = api.practice ? 3 : cntN(8), setP = progress(root); let resolve = null;
   const ball = h('button', { class: 'react', 'aria-live': 'polite' }, '...'), status = h('div', { class: 'status' }, 'Cuando el círculo se ponga verde, tocalo lo más rápido que puedas');
   root.append(status, h('div', { class: 'row' }, ball));
   ball.onpointerdown = e => { e.preventDefault(); if (resolve) resolve(); };
@@ -1379,7 +1382,7 @@ async function runReaccion(root, api) {
     notes: [early >= 3 ? 'Varias anticipaciones (' + early + '): tendencia a responder antes de la señal (impulsividad).' : 'Pocas anticipaciones: buen control de la respuesta.', 'Una alta variabilidad entre intentos suele asociarse a fluctuaciones de atención. No hay baremos: comparar con las propias partidas del alumno.'] });
 }
 async function runNback(root, api) {
-  const n = api.ultra ? 3 : api.level === 3 ? 2 : 1, ms = api.ultra ? 2100 : [0, 2000, 1500, 1900][api.level], T = api.practice ? 10 : api.ultra ? 30 : 24, E = pick(NBACK_SETS), seq = [];
+  const n = api.ultra ? 3 : api.level === 3 ? 2 : 1, ms = api.ultra ? 2100 : [0, 2000, 1500, 1900][api.level], T = api.practice ? 10 : cntN(api.ultra ? 30 : 24), E = pick(NBACK_SETS), seq = [];
   for (let i = 0; i < T; i++) { if (i >= n && rnd(100) < 30) seq.push(seq[i - n]); else { let e; do { e = pick(E); } while (i >= n && e === seq[i - n]); seq.push(e); } }
   const setP = progress(root), stim = h('div', { class: 'stim', 'aria-live': 'polite' }), fb = h('div', { class: 'fb' });
   const btn = h('button', { class: 'btn go-btn', onpointerdown: e => { e.preventDefault(); press(); } }, n === 1 ? '¡Igual que el anterior!' : '¡Igual que el de hace ' + n + '!');
@@ -1405,6 +1408,7 @@ async function runHanoi(root, api) {
   const n = api.practice ? 2 : api.ultra ? 6 : [0, 3, 4, 5][api.level], DC = ['#e5484d', '#f08a24', '#e0b000', '#38a169', '#3b6fe0', '#9b5de5'];
   const std = api.practice || (api.level === 1 && !api.ultra), goal = std ? 2 : rnd(3), start0 = std ? [Array.from({ length: n }, (_, i) => n - i), [], []] : (() => { let q; do { q = hanoiRandom(n); } while (q[goal].length === n); return q; })(), BEST = hanoiBest(start0, goal, n);
   let pegs, sel = null, moves = 0, resets = 0, finish_ = null; const t0 = performance.now();
+  api.snap = () => moves ? { noPct: true, nosem: true, score: moves, max: BEST, headline: moves + ' movimientos (mínimo ' + BEST + ')', lines: [['Movimientos', moves], ['Mínimo posible', BEST], ['Reinicios', resets], ['Tiempo (s)', Math.round((performance.now() - t0) / 1000)]], notes: ['Partida sin terminar: aún no resolvió la torre.'], partial: { done: moves, total: null, label: 'movimientos' } } : null;
   const reset = () => { pegs = start0.map(q => q.slice()); sel = null; draw(); };
   const status = h('div', { class: 'status', 'aria-live': 'polite' }, 'Pasá todos los discos a la torre ' + (goal + 1) + ' (la marcada). Un disco grande nunca va sobre uno más chico.'), area = h('div', { class: 'hanoi' }), cnt = h('div', { class: 'muted' });
   root.append(status, area, cnt, h('div', { class: 'row' }, h('button', { class: 'btn ghost sm', onclick: () => { resets++; reset(); } }, 'Empezar de nuevo')));
@@ -1435,6 +1439,7 @@ function runHistoria(root, api) {
 async function runDigitos(root, api, mode) {
   if (api.ultra) mode = 'ordenado';
   let len = api.ultra ? 4 : [0, 2, 3, 4][api.level], best = 0, ok = 0, fail = 0, failsAt = 0, entry = [], resolve = null;
+  api.snap = () => ok + fail ? spanSnap(best, ok, fail, mode) : null;
   const status = h('div', { class: 'status', 'aria-live': 'polite' }), disp = h('div', { class: 'digits' }, ' ');
   const keys = [1, 2, 3, 4, 5, 6, 7, 8, 9].map(d => h('button', { class: 'key', onclick: () => add(d) }, String(d)));
   const back = h('button', { class: 'key', onclick: () => { entry.pop(); paint(); } }, '⌫'), zero = h('button', { class: 'key', onclick: () => add(0) }, '0'), go = h('button', { class: 'key', style: 'background:var(--brand);color:var(--brand-ink)', onclick: () => resolve && resolve() }, 'Listo');
@@ -1748,8 +1753,8 @@ const GOW = [null,
   { name: 'seres vivos', yes: ['árbol', 'flor', 'perro', 'pez', 'pasto', 'mariposa', 'hongo', 'gato', 'abeja', 'rosa', 'pájaro', 'yuyo'], no: ['piedra', 'sol', 'río', 'mesa', 'nube', 'arena', 'lápiz', 'montaña', 'luna', 'agua', 'viento', 'auto'] }
 ];
 async function runAnimal(root, api) {
-  const cfg = goCfg(api.level), dur = [0, 2200, 1800, 1500][api.level], T = api.practice ? 4 : 28;
-  const trials = api.practice ? shuffle(['go', 'go', 'nogo', 'nogo']) : shuffle([...Array(17).fill('go'), ...Array(11).fill('nogo')]);
+  const cfg = goCfg(api.level), dur = [0, 2200, 1800, 1500][api.level], T = api.practice ? 4 : cntN(28), nGo = api.practice ? 2 : Math.max(1, Math.round(T * 17 / 28));
+  const trials = api.practice ? shuffle(['go', 'go', 'nogo', 'nogo']) : shuffle([...Array(nGo).fill('go'), ...Array(T - nGo).fill('nogo')]);
   const setP = progress(root), stim = h('div', { class: 'stim', style: 'font-size:3.2rem;font-family:var(--font-d)', 'aria-live': 'polite' }), status = h('div', { class: 'status' }, (api.practice ? 'Práctica · ' : '') + 'Tocá el botón SOLO si la palabra es de «' + cfg.name + '»');
   const btn = h('button', { class: 'btn go-btn', onpointerdown: e => { e.preventDefault(); respond(); } }, '¡Es de ' + cfg.name + '!'); root.append(status, stim, h('div', { class: 'row' }, btn));
   const key = e => { if (e.code === 'Space' && !e.repeat && playing && !paused) { e.preventDefault(); respond(); } }; document.addEventListener('keydown', key); const bye = () => document.removeEventListener('keydown', key);
@@ -1763,7 +1768,7 @@ async function runAnimal(root, api) {
   }
   bye(); if (!api.alive()) return;
   const rt = Math.round(mean(rts));
-  api.end({ score: hits + rej, max: T, rt: rt ? Math.round(rt / 100) / 10 : null, lines: [['Detectadas', hits + '/17'], ['Omisiones', omis], ['Falsas alarmas', fa], ['TR medio (ms)', rt || '-']],
+  api.end({ score: hits + rej, max: T, rt: rt ? Math.round(rt / 100) / 10 : null, lines: [['Detectadas', hits + '/' + nGo], ['Omisiones', omis], ['Falsas alarmas', fa], ['TR medio (ms)', rt || '-']],
     notes: [fa >= 3 ? 'Varias falsas alarmas (' + fa + '): tendencia a responder sin terminar de procesar la palabra (impulsividad).' : 'Buen control de la respuesta.', omis >= 4 ? 'Muchas omisiones (' + omis + '): posible dificultad para sostener la atención o lectura lenta.' : 'Pocas omisiones.', 'A diferencia de «Estrella y bomba», acá hay que leer y categorizar: mezcla atención, lectura y semántica.'] });
 }
 function runSimonDice(root, api) {
@@ -3389,7 +3394,7 @@ function openGame(g, circuit) {
 }
 
 function startGame(g, level, opt, circuit, practice) {
-  const s = ++session; playing = true; setPause(false); curGame = g; curLevel = level; curOpt = opt; wantCount = practice || circuit || NOCOUNT.has(g.id) ? 0 : pickedCount;
+  const s = ++session; playing = true; setPause(false); curGame = g; curLevel = level; curOpt = opt; curProg = null; startTs = Date.now(); wantCount = practice || circuit || NOCOUNT.has(g.id) ? 0 : pickedCount;
   const api = { alive: () => s === session, level: level === 4 ? 3 : level, ultra: level === 4, practice: !!practice, end: r => { if (s === session) finish(g, r, level, circuit, practice); } };
   curApi = api;
   const body = h('div', { class: 'stage' }), c = axc(g.ax);
@@ -3400,8 +3405,19 @@ function startGame(g, level, opt, circuit, practice) {
   g.run(body, api, opt);
 }
 
+/* ================= v10: datos parciales en todos los juegos ================= */
+let curProg = null, startTs = 0;
+const _progress = progress;
+window.progress = root => { const f = _progress(root); return (i, N) => { curProg = { i, N, api: curApi }; f(i, N); }; };
+const cntN = d => wantCount || d;
+const spanSnap = (best, ok, fail, mode) => ({ score: best, max: 9, pct: Math.round(100 * best / 9), nosem: true, headline: 'Span máximo ' + best, lines: [['Span máximo', best], ['Aciertos', ok], ['Errores', fail], ['Modo', mode]], notes: ['Partida sin terminar: el span máximo es el más largo logrado hasta ahora.'], partial: { done: ok + fail, total: null, label: 'rondas' } });
+function genericSnap() {
+  if (!curProg || curProg.api !== curApi || curProg.i < 1) return null; const { i, N } = curProg;
+  return { noPct: true, nosem: true, score: i, max: N, headline: i + ' de ' + N + ' rondas completadas', lines: [['Rondas completadas', i + '/' + N], ['Tiempo jugado (s)', Math.round((Date.now() - startTs) / 1000)]],
+    notes: ['Este juego solo informa cuántas rondas se completaron y el tiempo jugado; los aciertos y errores se calculan al terminar la partida.'], partial: { done: i, total: N, label: 'rondas' } };
+}
 /* ================= v9: elegir cuántos ejercicios hacer ================= */
-const NOCOUNT = new Set(['simon', 'gonogo', 'memo', 'sort', 'cancel', 'consig', 'copia', 'corsi', 'react', 'hanoi', 'dig', 'nback', 'cancnum', 'animal', 'fluidez', 'memhist', 'memopal', 'mix']);
+const NOCOUNT = new Set(['simon', 'gonogo', 'memo', 'sort', 'cancel', 'corsi', 'hanoi', 'dig', 'cancnum', 'fluidez', 'memhist', 'memopal', 'mix']);
 const COUNTS = [0, 5, 10, 15, 20, 30, 50];
 let wantCount = 0, curOpt = null, collecting = null, pickedCount = store.get('pp9_count', 0);
 if (!COUNTS.includes(pickedCount)) pickedCount = 0;
@@ -3454,11 +3470,11 @@ function resultImage(g, rec, r, level) {
   x.fillStyle = '#fff'; x.textBaseline = 'middle'; x.font = '700 30px ' + F; x.textAlign = 'left'; x.fillText('🧠 Juegos de Psicopedagogía', P, 44); x.font = '400 24px ' + F;
   const d = new Date(rec.ts); x.fillText(d.toLocaleDateString('es-AR') + ' · ' + d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }), P, 86);
   let y = 170; x.fillStyle = '#1b1f3b'; x.font = '700 50px ' + F; x.fillText(fit(g.icon + ' ' + g.title, W - 2 * P), P, y); y += 48; x.font = '400 26px ' + F; x.fillStyle = '#5b6078'; x.fillText(LV[level] + ' · ' + g.area, P, y);
-  if (parcial) { y += 52; rr(P, y - 24, W - 2 * P, 48, 14, '#fff4d6', '#e0a800'); x.fillStyle = '#7a5a00'; x.font = '700 24px ' + F; x.textAlign = 'center'; x.fillText('PARCIAL · ' + r.partial.done + ' de ' + r.partial.total + ' ejercicios', W / 2, y); x.textAlign = 'left'; y += 24; }
+  if (parcial) { y += 52; rr(P, y - 24, W - 2 * P, 48, 14, '#fff4d6', '#e0a800'); x.fillStyle = '#7a5a00'; x.font = '700 24px ' + F; x.textAlign = 'center'; x.fillText('PARCIAL, NO TERMINADA · ' + r.partial.done + (r.partial.total ? ' de ' + r.partial.total : '') + ' ' + (r.partial.label || 'ejercicios'), W / 2, y); x.textAlign = 'left'; y += 24; }
   const pct = rec.pct, cx = W / 2, cy = y + 150, rad = 100, semC = r.nosem ? brand : semOf(pct)[1].startsWith('var') ? brand : semOf(pct)[1];
   x.lineWidth = 22; x.lineCap = 'round'; x.strokeStyle = '#e8eaf3'; x.beginPath(); x.arc(cx, cy, rad, 0, 7); x.stroke();
-  x.strokeStyle = semC; x.beginPath(); x.arc(cx, cy, rad, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * Math.max(.005, pct / 100)); x.stroke();
-  x.fillStyle = '#1b1f3b'; x.textAlign = 'center'; x.font = '700 64px ' + F; x.fillText(pct + '%', cx, cy); x.font = '600 30px ' + F; x.fillText(fit(rec.headline, W - 2 * P), cx, cy + rad + 52);
+  if (!r.noPct) { x.strokeStyle = semC; x.beginPath(); x.arc(cx, cy, rad, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * Math.max(.005, pct / 100)); x.stroke(); }
+  x.fillStyle = '#1b1f3b'; x.textAlign = 'center'; x.font = '700 64px ' + F; if (r.noPct) { x.fillText(r.partial.done, cx, cy - 12); x.font = '400 24px ' + F; x.fillText(r.partial.label || 'hechos', cx, cy + 36); x.font = '700 64px ' + F; } else x.fillText(pct + '%', cx, cy); x.font = '600 30px ' + F; x.fillText(fit(rec.headline, W - 2 * P), cx, cy + rad + 52);
   if (!r.nosem) { x.font = '400 20px ' + F; x.fillStyle = '#5b6078'; x.fillText(semOf(pct)[0] + ' · referencia interna, no normativa', cx, cy + rad + 90); }
   y = cy + rad + 132; x.textAlign = 'left'; const cw = (W - 2 * P - 20) / 2;
   lines.forEach(([k, v], i) => { const a = P + (i % 2) * (cw + 20), b = y + Math.floor(i / 2) * 104; rr(a, b, cw, 90, 18, '#f3f5fc', '#dfe3f3');
@@ -3481,7 +3497,7 @@ function finish(g, r, level, circuit, practice, opt) {
   const pct = r.pct != null ? r.pct : (r.max ? Math.round(100 * r.score / r.max) : 0);
   const prev = lastOf(p.id, g.id);
   const rec = { id: uid(), ts: Date.now(), pid: p.id, gid: g.id, game: g.title, area: g.area, level, score: r.score, max: r.max, pct, headline: r.headline || (r.score + ' de ' + r.max), lines: r.lines, rt: r.rt || null, obs: '', log: r.log || null, partial: r.partial || null };
-  if (r.partial) rec.headline = 'Parcial: ' + r.score + ' de ' + r.max + ' respondidos (de ' + r.partial.total + ')';
+  if (r.partial) rec.headline = r.partial.label && r.headline ? 'Parcial · ' + r.headline : 'Parcial: ' + r.score + ' de ' + r.max + ' respondidos (de ' + r.partial.total + ')';
   results.push(rec); saveR();
   if (!r.partial) { const newAch = checkAch(p.id); newAch.forEach(a => toast('Logro desbloqueado: ' + a.t)); if (pct >= 85) confetti(); }
   const [semT, semC] = semOf(pct);
@@ -3509,7 +3525,7 @@ function finish(g, r, level, circuit, practice, opt) {
   show(h('div', {}, h('div', { class: 'panel stage', style: '--c:' + axc(g.ax) },
     h('div', { class: 'gh', style: 'justify-content:center;margin-bottom:6px' }, h('div', { class: 'tile' }, g.icon), h('div', { style: 'text-align:left' }, h('h2', {}, g.title), h('span', { class: 'tag' }, LV[level] + ' · ' + g.area))),
     imgBox,
-    h('div', { class: 'ring', style: '--p:' + pct + ';--c:' + (r.nosem ? 'var(--brand)' : semC) }, h('div', {}, h('span', {}, pct + '%'))),
+    r.noPct ? null : h('div', { class: 'ring', style: '--p:' + pct + ';--c:' + (r.nosem ? 'var(--brand)' : semC) }, h('div', {}, h('span', {}, pct + '%'))),
     h('h2', {}, rec.headline),
     r.nosem ? null : h('p', {}, h('span', { class: 'sem', style: 'color:' + semC + ';border-color:' + semC }, semT), h('small', { class: 'muted' }, ' referencia interna, no normativa')),
     cmp ? h('p', { class: 'muted' }, cmp) : null,
