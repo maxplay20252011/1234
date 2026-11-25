@@ -832,6 +832,7 @@ async function runCancel(root, api, _opt, cfgs) {
   const status = h('div', { class: 'status' }, 'Tocá todas las ' + (cfg.what || 'letras') + ' «' + cfg.t.join('» y «') + '»'), tm = h('div', { class: 'timer muted' }, '');
   const grid = h('div', { class: 'cgrid', style: 'grid-template-columns:repeat(' + cfg.m + ',1fr)' });
   let hits = 0, wrong = 0, done = false, elapsed = 0;
+  api.snap = () => hits + wrong ? { score: Math.max(0, hits - wrong), max: k, pct: Math.round(100 * Math.max(0, hits - wrong) / k), headline: hits + ' de ' + k + ' encontradas', lines: [['Encontradas', hits + '/' + k], ['Toques equivocados', wrong], ['Tiempo (s)', Math.round(elapsed)]], notes: ['Partida sin terminar: faltaban ' + (k - hits) + ' por encontrar.'], partial: { done: hits + wrong, total: null, label: 'toques' } } : null;
   const els = cells.map(c => h('button', { class: 'cell', onclick: e => {
     if (done) return; const b = e.currentTarget; b.disabled = true;
     if (cfg.t.includes(c)) { hits++; b.classList.add('right'); sOk(); if (hits === k) done = true; } else { wrong++; b.classList.add('wrong'); sBad(); }
@@ -1802,6 +1803,7 @@ async function runFluidez(root, api) {
   const start = h('button', { class: 'btn' }, 'Empezar (el adulto está listo)'), plus = h('button', { class: 'btn', style: 'font-size:1.6rem;padding:16px 28px' }, '+1 palabra'), minus = h('button', { class: 'btn ghost' }, '−1 (corregir)'), stop = h('button', { class: 'btn ghost' }, 'Terminar ronda');
   const ctr = h('div', { class: 'row' }); root.append(status, cat, tmr, cnt, ctr);
   const counts = [];
+  api.snap = () => counts.length ? { noPct: true, nosem: true, score: counts.reduce((a, c) => a + c[2], 0), max: rounds.length, headline: counts.reduce((a, c) => a + c[2], 0) + ' palabras en ' + counts.length + ' rondas', lines: counts.map(c => [c[0], c[2]]), notes: ['Partida sin terminar.'], partial: { done: counts.length, total: rounds.length, label: 'rondas' } } : null;
   for (let r = 0; r < rounds.length; r++) {
     if (!api.alive()) return; let n = 0, stopped = false; cnt.textContent = '0'; tmr.textContent = secs + ' s';
     status.textContent = 'Ronda ' + (r + 1) + ' de ' + rounds.length + ' · decí en voz alta todas las palabras que puedas de:'; cat.textContent = rounds[r][0]; ctr.replaceChildren(start);
@@ -1886,6 +1888,7 @@ async function runMemoPalabra(root, api) {
   const pairs = api.practice ? 3 : [0, 4, 6, 8][api.level], pool = memoPairs(pairs), cards = shuffle(pool.flatMap((p, i) => [{ id: i, t: p[0], w: false }, { id: i, t: p[1], w: true }]));
   const grid = h('div', { class: 'mem', style: 'grid-template-columns:repeat(4,1fr)' }), status = h('div', { class: 'status' }, memoTxt), tm = h('div', { class: 'timer muted' }, '⏱ 0 s');
   root.append(status, tm, grid); let first = null, lock = false, moves = 0, found = 0, misses = 0, elapsed = 0;
+  api.snap = () => moves ? { score: found, max: pairs, pct: Math.round(100 * found / pairs), nosem: true, headline: found + ' de ' + pairs + ' parejas en ' + moves + ' intentos', lines: [['Parejas encontradas', found + '/' + pairs], ['Intentos', moves], ['Tiempo (s)', elapsed]], notes: ['Partida sin terminar.'], partial: { done: found, total: pairs, label: 'parejas' } } : null;
   const iv = setInterval(() => { if (!api.alive()) return clearInterval(iv); if (!paused) { elapsed++; tm.textContent = '⏱ ' + elapsed + ' s'; } }, 1000);
   const els = cards.map((c, i) => h('button', { class: 'mc', 'aria-label': 'Carta ' + (i + 1), onclick: () => flip(i) }, '❓')); els.forEach(e => grid.append(e));
   async function flip(i) {
@@ -3317,6 +3320,7 @@ async function mixCapture(g, level) {
 }
 async function runMix(root, api) {
   const N = api.practice ? 3 : 10, ids = take(MIX_IDS, N + 4); let asked = 0, correct = 0; const areas = {}, fails = [], rts = [];
+  api.snap = () => asked ? { score: correct, max: asked, pct: Math.round(100 * correct / asked), nosem: true, headline: correct + ' de ' + asked + ' respondidas', review: fails.slice(), lines: [['Aciertos', correct + '/' + asked], ...Object.entries(areas).map(([k, [a, b]]) => [k, a + '/' + b])], notes: ['Partida sin terminar.'], partial: { done: asked, total: N } } : null;
   for (const id of ids) {
     if (asked >= N) break; if (!api.alive()) return;
     const g = GAMES.find(x => x.id === id), cfg = g && await mixCapture(g, api.level); if (!cfg || !cfg.items || !cfg.items.length) continue;
