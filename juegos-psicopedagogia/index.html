@@ -2992,7 +2992,226 @@ function runFiguras2(root, api) {
 /* ================= CONEXIÓN DE LOS BANCOS Y VARIEDAD EN JUEGOS PROPIOS ================= */
 const SWAP = { syl: runSyllables2, sili: runSilabaInicial2, silfin: runSilFin2, silfalta: runSilFalta2, quitasil: runQuitaSil2, forma: runFormaPalabra2, letras: runOrdenLetras2, soni: runSonidoInicial2, spell: runSpelling2, bienesc: runBienEscrita2, tilde: runTilde2, plural: runPlurales2, genero: runArticulos2, alfa: runAlfabetico2, ora: runOracion2, junto: runJunto2, palabras: runContarPalabras2, rima: runRimas2, anto: runAntonimos2, sino: runSinonimos2, ana: runAnalogias2, cat: runCategorias2, intruso: runIntruso2, emo: runEmociones2, social: runSocial2, cloze: runCloze2, comp: runComprension2, memhist: runMemHistoria2, hist: runHistoria2, pseudo: runPseudo2, lectura: runLecturaVozAlta2, dictado: runDictado2, figuras: runFiguras2 };
 Object.entries(SWAP).forEach(([id, fn]) => { const g = GAMES.find(x => x.id === id); if (g) g.run = fn; });
-const BANKS = {"syl": 769, "spell": 381, "series": 1996, "calc": 4953, "rima": 1531, "espejo": 4461, "intruso": 11999, "pseudo": 1167, "emo": 134, "social": 51, "anto": 212, "sino": 158, "ana": 3899, "cat": 11487, "ora": 3676, "comp": 6389, "cloze": 4455, "sili": 754, "soni": 789, "forma": 753, "letras": 582, "contar": 12, "mayor": 9211, "valor": 10178, "prob": 8956, "reloj": 2940, "plata": 8943, "rot": 138, "dif": 11953, "stroop": 40, "hist": 49, "mat": 2845, "plural": 726, "genero": 2720, "alfa": 9998, "tilde": 736, "junto": 4023, "bienesc": 150, "palabras": 4718, "silfalta": 1071, "silfin": 754, "quitasil": 1417, "numletra": 983, "vecino": 2285, "saltos": 983, "tablas": 450, "fracc": 906, "figuras": 10, "donde": 288, "flechas": 12799, "simdice": 8, "regla": 24, "lectura": 1167, "dictado": 1590, "dias": 3163, "ordinal": 11716, "amigos": 47, "mix": 1104};
+/* ================= v7: BANCOS PARA LOS 8 JUEGOS RESTANTES ================= */
+const fin = (gid, gen, n) => freshGen(gid, gen, n, it => it.key);
+const opts1 = (a, extra) => { const c = [...new Set([...(extra || []), a - 1, a + 1, a - 2, a + 2, a + 3, a - 3, a + 5].filter(v => Number.isInteger(v) && v >= 1 && v !== a))]; return shuffle([a, ...take(c, 3)]).map(v => ({ label: String(v), ok: v === a })); };
+
+/* ---------- Contar ---------- */
+const CONT_E = ['🍎', '⭐', '🐟', '🎈', '🚗', '🌸', '🐞', '🍪', '🐱', '🍓', '🦋', '🧸', '🍩', '🐸', '🌻', '⚽'];
+function runContar2(root, api) {
+  const L = api.level, hideMs = [0, 0, 4500, 1800][L];
+  const gen = () => {
+    const ts = L === 1 ? ['uno', 'uno', 'dos'] : L === 2 ? ['uno', 'dos', 'dos', 'mas'] : ['uno', 'dos', 'mas', 'falta', 'falta'], t = pick(ts), e1 = pick(CONT_E);
+    if (t === 'uno') { const n = R(...[[1, 5], [3, 9], [5, 14]][L - 1]); return { t, n, e1, ans: n, q: '¿Cuántos hay?', key: 'u' + n }; }
+    let e2; do { e2 = pick(CONT_E); } while (e2 === e1);
+    const mx = [4, 6, 8][L - 1];
+    if (t === 'mas') { let a, b; do { a = R(2, mx + 2); b = R(1, mx); } while (a <= b); return { t, a, b, e1, e2, ans: a - b, q: '¿Cuántos ' + e1 + ' hay de más que ' + e2 + '?', key: 'm' + a + '-' + b }; }
+    if (t === 'falta') { const n = R(3, 9), N = n + R(1, 6); return { t, n, e1, N, ans: N - n, q: 'Hay ' + n + '. ¿Cuántos faltan para tener ' + N + '?', key: 'f' + n + '>' + N }; }
+    const a = R(1, mx), b = R(1, mx), qq = L === 1 ? pick(['a', 'b']) : pick(['a', 'b', 's']);
+    return { t, a, b, e1, e2, ans: qq === 'a' ? a : qq === 'b' ? b : a + b, q: qq === 'a' ? '¿Cuántos ' + e1 + ' hay?' : qq === 'b' ? '¿Cuántos ' + e2 + ' hay?' : '¿Cuántos hay en total?', key: 'd' + a + ',' + b + qq };
+  };
+  const items = fin('contar', gen, 10);
+  const spans = (n, e) => Array.from({ length: n }, () => h('span', { style: 'transform:rotate(' + R(-20, 20) + 'deg)' }, e));
+  return runQuiz(root, api, {
+    instr: L === 3 ? 'Miralos rápido y contá de memoria' : 'Contá con atención', items,
+    render: it => {
+      const kids = it.t === 'uno' || it.t === 'falta' ? spans(it.n, it.e1) : shuffle([...spans(it.a, it.e1), ...spans(it.b, it.e2)]);
+      const box = h('div', { class: 'dots' }, kids);
+      if (hideMs && it.t !== 'falta') setTimeout(() => { if (box.isConnected) box.style.visibility = 'hidden'; }, hideMs);
+      return h('div', {}, box, h('h2', { class: 'big', style: 'font-size:1.5rem;line-height:1.3' }, it.q));
+    },
+    options: it => opts1(it.ans, it.t === 'dos' ? [it.a, it.b] : it.t === 'mas' ? [it.a, it.b] : []),
+    fbWrong: it => 'Eran ' + it.ans, failLabel: it => it.q + ' → ' + it.ans,
+    notes: () => ['Contar objetos pequeños de un vistazo (subitización) es un precursor del sentido numérico. En «de más» y «faltan» se pasa del conteo a la comparación y a la resta. Observar si cuenta de a uno, agrupa o estima.']
+  });
+}
+
+/* ---------- Stroop ---------- */
+const COL10 = [['rojo', '#e5484d'], ['azul', '#3e63dd'], ['verde', '#30a46c'], ['amarillo', '#e0a800'], ['naranja', '#f76b15'], ['marrón', '#8b5e3c'], ['celeste', '#0fb5d8'], ['rosa', '#f08bbd'], ['gris', '#8b8d98'], ['violeta', '#8e4ec6']];
+function runStroop2(root, api) {
+  if (api.ultra) return runStroopU(root, api);
+  const L = api.level, nc = [4, 6, 10][L - 1];
+  const gen = () => {
+    const form = L === 1 ? pick(['mancha', 'mancha', 'forma']) : pick(['mancha', 'palabra', 'palabra', 'forma']);
+    const rule = L === 3 && form === 'palabra' && rnd(3) === 0 ? 'palabra' : 'tinta';
+    let w = rnd(nc), ink = rnd(nc), sh = rnd(4);
+    if (form === 'palabra' && (rule === 'palabra' || rnd(L === 2 ? 3 : 4) !== 0)) { while (ink === w) ink = rnd(nc); }
+    if (form === 'mancha') { w = -1; sh = -1; } else if (form === 'forma') w = -1; else sh = -1;
+    return { form, w, ink, rule, sh, key: [form, w, ink, rule, sh].join('|') };
+  };
+  const items = fin('stroop', gen, 12);
+  const up = i => COL10[i][0].toUpperCase();
+  return runQuiz(root, api, {
+    instr: 'Mirá bien y elegí', items, cat: it => it.form === 'palabra' ? (it.ink === it.w ? 'coincide' : 'no coincide') : it.form,
+    render: it => h('div', {},
+      h('div', { class: 'status', style: 'font-weight:700' }, it.rule === 'palabra' ? 'Tocá lo que DICE la palabra' : it.form === 'palabra' ? 'Tocá el COLOR de la tinta, no lo que dice' : '¿De qué color es?'),
+      it.form === 'mancha' ? h('div', { class: 'swatch', style: 'background:' + COL10[it.ink][1] }) :
+        it.form === 'forma' ? h('div', { class: 'stroop', style: 'color:' + COL10[it.ink][1] + ';font-size:5rem' }, SH[it.sh]) :
+          h('div', { class: 'stroop', style: 'color:' + COL10[it.ink][1] }, up(it.w))),
+    options: it => { const ans = it.rule === 'palabra' ? it.w : it.ink; let other = it.form === 'palabra' ? (it.rule === 'palabra' ? it.ink : it.w) : -1; if (other === ans) other = -1; const pool = [...Array(nc).keys()].filter(i => i !== ans && i !== other);
+      const ds = take(pool, 3 - (other >= 0 ? 1 : 0)); if (other >= 0) ds.push(other);
+      return shuffle([ans, ...ds]).map(c => ({ label: h('span', {}, h('span', { class: 'dot', style: 'background:' + COL10[c][1] }), COL10[c][0]), ok: c === ans })); },
+    fbWrong: it => it.rule === 'palabra' ? 'La palabra decía ' + COL10[it.w][0] : 'La tinta era ' + COL10[it.ink][0],
+    failLabel: it => it.form === 'palabra' ? 'dice ' + COL10[it.w][0] + ', tinta ' + COL10[it.ink][0] + (it.rule === 'palabra' ? ' (leer)' : '') : it.form + ' ' + COL10[it.ink][0],
+    notes: () => ['Versión simplificada del efecto Stroop: mide control de la interferencia. En el nivel 3 a veces se invierte la regla (leer la palabra e ignorar la tinta), lo que exige cambiar de consigna. Más errores y mayor tiempo cuando la palabra no coincide con la tinta es lo esperable.']
+  });
+}
+
+/* ---------- Rotación mental ---------- */
+const ROT_L = ['F', 'R', 'G', 'J', 'L', 'P', 'Q', 'b', 'd', 'f', 'g', 'h', 'j', 'p', 'q', 'r', 't'];
+function runRotacion2(root, api) {
+  if (api.ultra) return runRotacionU(root, api);
+  const L = api.level, no = [2, 3, 4][L - 1];
+  const gen = () => {
+    const ask = L >= 2 && rnd(3) === 0 ? 'esp' : 'rot', l = pick(ROT_L), ang = ask === 'esp' ? pick([0, 90, 180, 270]) : pick([90, 180, 270]);
+    const others = take([0, 90, 180, 270], no - 1).sort((a, b) => a - b);
+    return { ask, l, ang, others, key: ask + '|' + l + '|' + ang + '|' + others.join(',') };
+  };
+  const items = fin('rot', gen, 10);
+  return runQuiz(root, api, {
+    instr: 'Rotación mental', items, cat: it => it.ask === 'esp' ? 'espejo' : 'rotación mental',
+    render: it => h('div', {}, h('div', { class: 'status', style: 'font-weight:700' }, it.ask === 'esp' ? 'Buscá la letra en ESPEJO (invertida)' : 'Buscá la MISMA letra, solo girada'), h('div', { class: 'letter rot' }, it.l)),
+    options: it => shuffle([{ ang: it.ang, ok: true, mir: it.ask === 'esp' }, ...it.others.map(a => ({ ang: a, ok: false, mir: it.ask !== 'esp' }))]).map(o => ({ ok: o.ok, label: h('span', { class: 'optletter rot', style: 'transform:rotate(' + o.ang + 'deg)' + (o.mir ? ' scaleX(-1)' : '') }, it.l) })),
+    fbWrong: it => it.ask === 'esp' ? 'La del espejo es la que tiene la forma invertida' : 'Las del espejo tienen la forma invertida; la correcta solo estaba girada', failLabel: it => (it.ask === 'esp' ? 'espejo ' : 'giro ') + it.l,
+    notes: () => ['La rotación mental es una habilidad visoespacial clave para geometría y lectura de mapas. Confundir giro con espejo se vincula con las reversiones b/d, p/q. Con letras como b, d, p, q el giro de 180° produce otra letra: ahí se ve si compara la forma o solo la apariencia.']
+  });
+}
+
+/* ---------- Tablas ---------- */
+function runTablas2(root, api) {
+  if (api.ultra) return runTablasU(root, api);
+  const L = api.level, tabs = [[2, 3, 4, 5, 10], [3, 4, 6, 7, 8, 9, 11, 12], [6, 7, 8, 9, 11, 12, 13, 14, 15]][L - 1], bmax = L === 1 ? 10 : 12;
+  const gen = () => {
+    const ts = L === 1 ? ['x', 'x', 'falta', 'seq'] : L === 2 ? ['x', 'x', 'div', 'falta', 'seq'] : ['x', 'div', 'falta', 'xc', 'xc', 'dif'];
+    const t = pick(ts), a = pick(tabs), b = R(L === 3 ? 3 : 1, bmax), p = a * b;
+    if (t === 'x') return { q: a + ' × ' + b, ans: p, ex: [p + a, p - a, p + 10, p - 10], key: a + 'x' + b };
+    if (t === 'div') return { q: p + ' ÷ ' + a, ans: b, ex: [b + 1, b - 1, b + 2, a], key: p + '/' + a };
+    if (t === 'falta') return { q: a + ' × ❓ = ' + p, ans: b, ex: [b + 1, b - 1, b + 2], key: a + 'x?=' + p };
+    if (t === 'xc') { const c = R(1, 9); return { q: a + ' × ' + b + ' + ' + c, ans: p + c, ex: [p, p + c + a, p + c + 10, p - c], key: a + 'x' + b + '+' + c }; }
+    if (t === 'dif') { const c = R(1, Math.min(9, p - 1)); return { q: a + ' × ' + b + ' − ' + c, ans: p - c, ex: [p, p + c, p - c - a, p - c + 10], key: a + 'x' + b + '-' + c }; }
+    const s = R(1, 6), hole = R(1, 3), seq = [0, 1, 2, 3].map(i => a * (s + i)), ans = seq[hole];
+    return { q: seq.map((v, i) => i === hole ? '❓' : v).join(', '), ans, ex: [ans + a, ans - a, ans + 1, ans - 1], key: 's' + a + ',' + s + ',' + hole };
+  };
+  const items = fin('tablas', gen, 12);
+  return runQuiz(root, api, {
+    instr: 'Contestá lo más rápido que puedas', items, render: it => h('div', { class: 'big', style: 'font-size:' + (it.q.length > 14 ? '2.2rem' : '3.2rem') }, it.q),
+    options: it => optsNum(it.ans, it.ex),
+    fbWrong: it => it.q + ' → ' + it.ans, failLabel: it => it.q + ' → ' + it.ans,
+    notes: ({ rt }) => ['Tiempo medio por cuenta: ' + rt.toFixed(1) + ' s. Una respuesta automática suele ser < 3 s; más tiempo sugiere cálculo por conteo o por suma repetida. Las divisiones y los huecos (3 × ❓ = 12) muestran si entiende la tabla como relación inversa y no solo como secuencia memorizada.']
+  });
+}
+
+/* ---------- ¿Dónde está? ---------- */
+const DON_E = ['🐱', '🐶', '🐟', '🍎', '🚗', '🌸', '🎈', '⭐', '🐸', '🏠', '🌙', '⚽'];
+function runDonde2(root, api) {
+  if (api.ultra) return runDondeU(root, api);
+  const L = api.level, N = L === 3 ? 4 : 3, nobj = L === 3 ? 4 : 3, base = ['arriba', 'abajo', 'a la izquierda', 'a la derecha'];
+  const relGen = () => {
+    let cr, cc, fr, fc, dr, dc, okp;
+    do { cr = rnd(3); cc = rnd(3); fr = rnd(3); fc = rnd(3); dr = Math.sign(fr - cr); dc = Math.sign(fc - cc); const aligned = fr === cr || fc === cc, adj = Math.abs(fr - cr) + Math.abs(fc - cc) === 1; okp = (fr !== cr || fc !== cc) && (L === 1 ? adj : L === 2 ? aligned : true); } while (!okp);
+    return { t: 'rel', cr, cc, fr, fc, a: DIRN[dr + ',' + dc], key: 'r' + [cr, cc, fr, fc].join('') };
+  };
+  const dirs = L === 1 ? base : L === 2 ? base : Object.values(DIRN);
+  const DV = Object.fromEntries(Object.entries(DIRN).map(([k, v]) => [v, k.split(',').map(Number)]));
+  const objGen = () => {
+    for (let g = 0; g < 200; g++) {
+      const cells = take([...Array(N * N).keys()], nobj), es = take(DON_E, nobj), pos = cells.map(i => [Math.floor(i / N), i % N]), x = rnd(nobj), d = pick(dirs), [dr, dc] = DV[d];
+      const match = pos.map((p, i) => { if (i === x) return false; const rr = Math.sign(p[0] - pos[x][0]), cc = Math.sign(p[1] - pos[x][1]); if (L === 1) return p[0] - pos[x][0] === dr && p[1] - pos[x][1] === dc; return rr === dr && cc === dc; });
+      if (match.filter(Boolean).length === 1) { const ai = match.indexOf(true); return { t: 'obj', N, es, pos, x, d, a: es[ai], key: 'o' + N + pos.map(p => p.join('')).join('.') + 'x' + x + d }; }
+    }
+    return relGen();
+  };
+  const items = fin('donde', () => (rnd(2) ? objGen() : relGen()), 10);
+  const px = N === 4 ? 54 : 64;
+  return runQuiz(root, api, {
+    instr: 'Ubicación en el espacio', items,
+    render: it => it.t === 'rel'
+      ? h('div', {}, h('h2', { class: 'big', style: 'font-size:1.4rem' }, '¿Dónde está el 🐟 respecto del 🐱?'), h('div', { class: 'mat', style: 'grid-template-columns:repeat(3,64px)' }, ...Array.from({ length: 9 }, (_, i) => h('div', { style: 'width:64px;height:64px;font-size:2rem' }, i === it.cr * 3 + it.cc ? '🐱' : i === it.fr * 3 + it.fc ? '🐟' : ''))))
+      : h('div', {}, h('h2', { class: 'big', style: 'font-size:1.4rem;line-height:1.3' }, '¿Qué hay ' + it.d + ' del ' + it.es[it.x] + '?'), h('div', { class: 'mat', style: 'grid-template-columns:repeat(' + it.N + ',' + px + 'px)' }, ...Array.from({ length: it.N * it.N }, (_, i) => { const k = it.pos.findIndex(p => p[0] * it.N + p[1] === i); return h('div', { style: 'width:' + px + 'px;height:' + px + 'px;font-size:' + (px > 60 ? 2 : 1.7) + 'rem' }, k >= 0 ? it.es[k] : ''); }))),
+    options: it => it.t === 'rel' ? shuffle([it.a, ...take((L === 3 ? Object.values(DIRN) : base).filter(x => x !== it.a), 3)]).map(o => ({ label: o, ok: o === it.a })) : (() => { const oth = it.es.filter(e => e !== it.a && e !== it.es[it.x]); return shuffle([it.a, ...oth, ...take(DON_E.filter(e => !it.es.includes(e)), 3 - oth.length)]); })().map(o => ({ label: o, cls: 'emo', ok: o === it.a })),
+    fbWrong: it => it.t === 'rel' ? 'El pez está ' + it.a + ' del gato' : 'Había ' + it.a + ' ' + it.d + ' del ' + it.es[it.x], failLabel: it => it.t === 'rel' ? 'pez ' + it.a : it.d + ' del ' + it.es[it.x],
+    notes: () => ['Las relaciones espaciales (arriba/abajo, izquierda/derecha) son prerrequisito de la lectura y la geometría. En los tableros con varios objetos se pide ubicar «respecto de» un objeto distinto cada vez, lo que exige cambiar de punto de referencia. Las confusiones izquierda/derecha son frecuentes hasta los 7–8 años.']
+  });
+}
+
+/* ---------- Simón dice ---------- */
+const SIM_E = ['⭐', '❤️', '🔷', '🔶', '🌙', '🍀', '🔔', '🎈'];
+const SIM_V = ['tocá', 'señalá', 'elegí', 'agarrá', 'apretá', 'buscá'];
+function runSimonDice2(root, api) {
+  const L = api.level, p = [0, .75, .6, .5][L];
+  const gen = () => {
+    const simon = Math.random() < p, verb = pick(SIM_V), who = simon ? 'Simón dice' : (L === 3 ? pick(['', 'Pedro dice', 'Ana dice', 'La maestra dice']) : '');
+    if (L === 1) { const e = pick(SIM_E.slice(0, 4)); return { simon, verb, who, e, key: [verb, e, who].join('|') }; }
+    const s = rnd(4), c = rnd(4); return { simon, verb, who, s, c, key: [verb, s, c, who].join('|') };
+  };
+  const items = fin('simdice', gen, 12);
+  const lead = it => it.who ? it.who + ': ' : '';
+  return runQuiz(root, api, {
+    instr: 'Tocá SOLO si la orden empieza con «Simón dice»', items, cat: it => it.simon ? 'con Simón dice' : 'sin Simón dice',
+    render: it => h('h2', { class: 'big', style: 'font-size:1.9rem;line-height:1.3' }, lead(it) + it.verb + ' ' + (L === 1 ? it.e : desc(it.s, it.c))),
+    options: it => {
+      let cards;
+      if (L === 1) cards = [it.e, ...take(SIM_E.slice(0, 4).filter(x => x !== it.e), 3)];
+      else { const o = []; o.push([it.s, it.c]); o.push([(it.s + 1 + rnd(3)) % 4, it.c]); o.push([it.s, (it.c + 1 + rnd(3)) % 4]); let x; do { x = [rnd(4), rnd(4)]; } while (o.some(q => q[0] === x[0] && q[1] === x[1])); o.push(x); cards = o; }
+      const lab = L === 1 ? x => x : x => h('span', { class: 'shape', style: 'color:' + CO[x[1]] + ';font-size:2.4rem' }, SH[x[0]]);
+      return [...shuffle(cards).map((x, i) => ({ label: lab(x), cls: 'emo', ok: it.simon && (L === 1 ? x === it.e : x[0] === it.s && x[1] === it.c) })), { label: 'No toco', ok: !it.simon }];
+    },
+    fbWrong: it => it.simon ? 'Simón dijo que lo hicieras' : 'No dijo «Simón dice»: no había que tocar', failLabel: it => (it.simon ? 'con' : 'sin') + ' Simón dice, ' + it.verb,
+    notes: () => ['Juego clásico de inhibición: los errores «sin Simón dice» son errores de comisión (impulsividad). En el nivel 3 las órdenes sin Simón vienen con otros nombres («Pedro dice»), que tientan más a responder. Comparar los errores con y sin Simón dice.']
+  });
+}
+
+/* ---------- Cambio de regla ---------- */
+const SH5 = ['●', '■', '▲', '★', '♥'], CO5 = ['#e5484d', '#3e63dd', '#30a46c', '#e0a800', '#f76b15'];
+function runCambioRegla2(root, api) {
+  const L = api.level, cues = [];
+  for (let i = 0; i < 12; i++) cues.push(L === 1 ? (Math.floor(i / 4) % 2 ? 'forma' : 'color') : L === 2 ? ['color', 'color', 'forma', 'forma', 'cantidad', 'cantidad'][i % 6] : pick(['color', 'forma', 'cantidad']));
+  const act = L === 1 ? ['color', 'forma'] : ['color', 'forma', 'cantidad'];
+  const mkItem = cue => { const s = rnd(5), c = rnd(5), n = L === 1 ? 1 : R(1, 5), o = [];
+    const diff = (v, m) => (v + 1 + rnd(m - 1)) % m;
+    act.forEach(a => { o.push({ s: a === 'forma' ? s : diff(s, 5), c: a === 'color' ? c : diff(c, 5), n: L === 1 ? 1 : a === 'cantidad' ? n : (n % 5) + 1, only: a }); });
+    while (o.length < 4) { const q = { s: diff(s, 5), c: diff(c, 5), n: L === 1 ? 1 : (n + rnd(4)) % 5 + 1, only: null }; if (q.n === n && L > 1) q.n = (n % 5) + 1; if (!o.some(z => z.s === q.s && z.c === q.c && z.n === q.n)) o.push(q); }
+    return { cue, s, c, n, o: shuffle(o), key: [cue, s, c, n].join('|') }; };
+  const items = cues.map(c => fin('regla', () => mkItem(c), 1)[0]);
+  const card = (s, c, n) => h('span', { class: 'shape', style: 'color:' + CO5[c] + ';font-size:' + (n > 3 ? '1.5' : '2') + 'rem;line-height:1.1' }, SH5[s].repeat(n));
+  return runQuiz(root, api, {
+    instr: 'Mirá qué te piden y elegí', items, cat: it => 'por ' + it.cue,
+    render: it => h('div', {}, h('h2', { class: 'big', style: 'font-size:2rem' }, 'Por ' + it.cue.toUpperCase()), h('div', { class: 'stimcard' }, card(it.s, it.c, it.n))),
+    options: it => it.o.map(q => ({ label: card(q.s, q.c, q.n), ok: q.only === it.cue })),
+    fbWrong: it => 'Había que elegir por ' + it.cue, failLabel: it => 'por ' + it.cue,
+    notes: () => ['Cambio de regla EXPLÍCITO (te dicen cuál usar): más fácil que «Descubrí la regla». Desde el nivel 2 se suma la cantidad como tercer criterio. Comparar el tiempo en los ensayos donde la regla cambia vs. donde se repite.']
+  });
+}
+
+/* ---------- Amigos del 10 / 20 / 100 ---------- */
+function runAmigos2(root, api) {
+  const L = api.level;
+  const T = {
+    to: (a, t) => ({ q: a + ' + ❓ = ' + t, ans: t - a, key: a + '+?=' + t }),
+    rev: (a, t) => ({ q: t + ' − ' + a + ' = ❓', ans: t - a, key: t + '-' + a }),
+    dec: a => { const n = Math.ceil(a / 10) * 10; return { q: '¿Cuánto falta para la decena siguiente desde ' + a + '?', ans: n - a, key: 'dec' + a }; },
+    cen: a => { const n = Math.ceil(a / 100) * 100; return { q: '¿Cuánto falta para la centena siguiente desde ' + a + '?', ans: n - a, key: 'cen' + a }; },
+    dob: a => ({ q: 'El doble de ' + a, ans: 2 * a, key: 'dob' + a }),
+    mit: a => ({ q: 'La mitad de ' + a, ans: a / 2, key: 'mit' + a })
+  };
+  const gen = () => {
+    const f = [
+      () => { const k = rnd(6); return k === 0 ? T.rev(R(1, 9), 10) : k === 1 ? T.dob(R(1, 10)) : k === 2 ? T.mit(2 * R(1, 10)) : T.to(R(1, 9), 10); },
+      () => { const k = rnd(8); return k === 0 ? T.dob(R(1, 10)) : k === 1 ? T.mit(2 * R(1, 10)) : k === 2 ? T.to(R(1, 19), 20) : k === 3 ? T.to(R(1, 9) * 5, 50) : k === 4 ? T.to(R(1, 9) * 10, 100) : k === 5 ? T.dec(R(1, 9) * 10 + R(1, 9)) : k === 6 ? T.rev(R(1, 19), 20) : T.to(R(1, 19), 20); },
+      () => { const k = rnd(10); return k === 0 ? T.to(R(1, 99), 100) : k === 1 ? T.to(R(1, 99), 100) : k === 2 ? T.to(R(1, 19) * 5, 100) : k === 3 ? T.to(R(1, 99) * 10, 1000) : k === 4 ? T.to(R(1, 99) * 5, 500) : k === 5 ? T.cen(R(1, 9) * 100 + R(1, 99)) : k === 6 ? T.dob(R(11, 99)) : k === 7 ? T.mit(2 * R(11, 99)) : k === 8 ? T.rev(R(1, 99), 100) : T.to(R(1, 39) * 25, 1000); }
+    ][L - 1];
+    return f();
+  };
+  const items = fin('amigos', gen, 10);
+  return runQuiz(root, api, {
+    instr: '¿Cuánto falta, o cuánto es?', items, hint: true, render: it => h('div', { class: 'big', style: 'font-size:' + (it.q.length > 20 ? '1.7rem;line-height:1.3' : '3rem') }, it.q), options: it => optsNum(it.ans, [it.ans + 1, it.ans - 1, it.ans + 10, it.ans - 10, it.ans * 2]),
+    fbWrong: it => 'La respuesta era ' + fmtMiles(it.ans), failLabel: it => it.q + ' → ' + fmtMiles(it.ans),
+    notes: () => ['Los «amigos del 10 / 20 / 100» (complementos), el doble y la mitad son la base del cálculo mental. Si necesita contar con los dedos, todavía no está automatizado.']
+  });
+}
+
+Object.entries({ contar: runContar2, stroop: runStroop2, rot: runRotacion2, tablas: runTablas2, donde: runDonde2, simdice: runSimonDice2, regla: runCambioRegla2, amigos: runAmigos2 }).forEach(([id, fn]) => { const g = GAMES.find(x => x.id === id); if (g) g.run = fn; });
+const BANKS = {"syl": 769, "spell": 381, "series": 1996, "calc": 4953, "rima": 1531, "espejo": 4461, "intruso": 11999, "pseudo": 1167, "emo": 134, "social": 51, "anto": 212, "sino": 158, "ana": 3899, "cat": 11487, "ora": 3676, "comp": 6389, "cloze": 4455, "sili": 754, "soni": 789, "forma": 753, "letras": 582, "contar": 291, "mayor": 9211, "valor": 10178, "prob": 8956, "reloj": 2940, "plata": 8943, "rot": 1500, "dif": 11953, "stroop": 264, "hist": 49, "mat": 2845, "plural": 726, "genero": 2720, "alfa": 9998, "tilde": 736, "junto": 4023, "bienesc": 150, "palabras": 4718, "silfalta": 1071, "silfin": 754, "quitasil": 1417, "numletra": 983, "vecino": 2285, "saltos": 983, "tablas": 2178, "fracc": 906, "figuras": 28, "donde": 3583, "flechas": 12799, "simdice": 528, "regla": 375, "lectura": 1167, "dictado": 1590, "dias": 3163, "ordinal": 11716, "amigos": 1074, "mix": 1104};
 const bankTotal = () => Object.values(BANKS).reduce((a, b) => a + b, 0);
 
 /* Simón: 7 juegos de sonidos distintos */
